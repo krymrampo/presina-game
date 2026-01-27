@@ -10,7 +10,7 @@ from game_online import PresinaGameOnline
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'presina_secret_key_2026'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Dizionario per memorizzare le stanze di gioco
 games = {}

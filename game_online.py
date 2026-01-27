@@ -3,6 +3,7 @@ Versione online del gioco Presina con supporto multiplayer.
 """
 
 import random
+import threading
 from card import create_deck, Card
 from player import Player
 
@@ -392,8 +393,7 @@ class PresinaGameOnline:
             self.end_round()
         else:
             # Aspetta un po' prima della prossima mano
-            self.socketio.sleep(2)
-            self.start_trick()
+            threading.Timer(2, self.start_trick).start()
     
     def end_round(self):
         """Termina un turno."""
@@ -427,8 +427,7 @@ class PresinaGameOnline:
         self.dealer_index = (self.dealer_index + 1) % len(self.players)
         
         if self.current_round < 5:
-            self.socketio.sleep(5)
-            self.start_round()
+            threading.Timer(5, self.start_round).start()
         else:
             self.end_game()
     
