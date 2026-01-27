@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presina - Gioco Online</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Schermata Home -->
+        <div id="home-screen" class="screen active">
+            <h1>🎴 PRESINA 🎴</h1>
+            <p class="subtitle">Il gioco della puntata perfetta!</p>
+            
+            <div class="menu">
+                <div class="input-group">
+                    <label for="player-name">Il tuo nome:</label>
+                    <input type="text" id="player-name" placeholder="Inserisci il tuo nome" maxlength="20">
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="showCreateGame()">
+                        Crea Partita
+                    </button>
+                    <button class="btn btn-secondary" onclick="showJoinGame()">
+                        Unisciti a Partita
+                    </button>
+                </div>
+                
+                <button class="btn btn-info" onclick="showRules()">
+                    📖 Regole del Gioco
+                </button>
+            </div>
+        </div>
+
+        <!-- Schermata Crea Partita -->
+        <div id="create-screen" class="screen">
+            <h2>Crea una Nuova Partita</h2>
+            
+            <div class="input-group">
+                <label for="num-players">Numero di giocatori:</label>
+                <select id="num-players">
+                    <option value="2">2 giocatori</option>
+                    <option value="3">3 giocatori</option>
+                    <option value="4" selected>4 giocatori</option>
+                    <option value="5">5 giocatori</option>
+                    <option value="6">6 giocatori</option>
+                    <option value="7">7 giocatori</option>
+                    <option value="8">8 giocatori</option>
+                </select>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="createGame()">
+                    Crea Stanza
+                </button>
+                <button class="btn btn-secondary" onclick="backToHome()">
+                    Indietro
+                </button>
+            </div>
+        </div>
+
+        <!-- Schermata Unisciti -->
+        <div id="join-screen" class="screen">
+            <h2>Unisciti a una Partita</h2>
+            
+            <div class="input-group">
+                <label for="room-code">Codice Stanza:</label>
+                <input type="text" id="room-code" placeholder="Inserisci codice" maxlength="6" style="text-transform: uppercase;">
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="joinGame()">
+                    Unisciti
+                </button>
+                <button class="btn btn-secondary" onclick="backToHome()">
+                    Indietro
+                </button>
+            </div>
+        </div>
+
+        <!-- Schermata Lobby -->
+        <div id="lobby-screen" class="screen">
+            <h2>Sala d'Attesa</h2>
+            
+            <div class="room-code-display">
+                <p>Codice Stanza:</p>
+                <h3 id="lobby-room-code">------</h3>
+                <p class="hint">Condividi questo codice con gli amici!</p>
+            </div>
+            
+            <div class="players-waiting">
+                <h3>Giocatori (<span id="player-count">0</span>/<span id="max-players">0</span>):</h3>
+                <ul id="players-list"></ul>
+            </div>
+            
+            <div id="start-game-section" style="display: none;">
+                <button class="btn btn-success" onclick="startGame()">
+                    🚀 Inizia Partita
+                </button>
+            </div>
+            
+            <p id="waiting-message" class="waiting-text">In attesa di altri giocatori...</p>
+        </div>
+
+        <!-- Schermata Gioco -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div class="round-info">
+                    <h3>Turno <span id="current-round">1</span>/5</h3>
+                    <p><span id="cards-this-round">5</span> carte</p>
+                </div>
+                
+                <div class="players-info">
+                    <h4>Giocatori:</h4>
+                    <div id="players-status"></div>
+                </div>
+            </div>
+
+            <div class="game-phase">
+                <h3 id="phase-title">Fase di Puntata</h3>
+                <p id="phase-description"></p>
+            </div>
+
+            <!-- Area Puntata -->
+            <div id="betting-area" class="betting-area" style="display: none;">
+                <p id="bet-instruction"></p>
+                <div class="bet-buttons" id="bet-buttons"></div>
+            </div>
+
+            <!-- Area Mano del Giocatore -->
+            <div id="hand-area" class="hand-area">
+                <h4>Le tue carte:</h4>
+                <div id="player-hand" class="cards-container"></div>
+                <p id="special-round-note" class="special-note" style="display: none;">
+                    🎭 Turno speciale: Questa è la tua carta, ma non puoi vederla!
+                </p>
+            </div>
+
+            <!-- Area Carte in Gioco -->
+            <div id="trick-area" class="trick-area" style="display: none;">
+                <h4>Carte giocate (<span id="trick-number">1</span>/<span id="total-tricks">5</span>):</h4>
+                <div id="cards-played" class="cards-played"></div>
+            </div>
+
+            <!-- Modale Jolly -->
+            <div id="joker-modal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <h3>Asso di Denari - Jolly!</h3>
+                    <p>Scegli come giocare il jolly:</p>
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="selectJokerMode('prende')">
+                            🔝 PRENDE<br>
+                            <small>(Più del Re di Denari)</small>
+                        </button>
+                        <button class="btn btn-danger" onclick="selectJokerMode('lascia')">
+                            ⬇️ LASCIA<br>
+                            <small>(Meno dell'Asso di Bastoni)</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messaggi di Gioco -->
+            <div id="game-messages" class="game-messages"></div>
+        </div>
+
+        <!-- Schermata Regole -->
+        <div id="rules-screen" class="screen">
+            <h2>📖 Regole del Gioco</h2>
+            <div class="rules-content">
+                <h3>Obiettivo</h3>
+                <p>Sopravvivere con il maggior numero di vite attraverso 5 turni di gioco.</p>
+
+                <h3>Setup</h3>
+                <ul>
+                    <li>Da 2 a 8 giocatori</li>
+                    <li>Ogni giocatore inizia con 5 vite</li>
+                    <li>Mazzo di carte da briscola (40 carte)</li>
+                </ul>
+
+                <h3>Turni</h3>
+                <ul>
+                    <li>Turno 1: 5 carte</li>
+                    <li>Turno 2: 4 carte</li>
+                    <li>Turno 3: 3 carte</li>
+                    <li>Turno 4: 2 carte</li>
+                    <li>Turno 5: 1 carta (speciale - vedi le carte altrui ma non la tua!)</li>
+                </ul>
+
+                <h3>Ordine delle Carte</h3>
+                <p>Dalla più debole alla più forte:</p>
+                <p><strong>Bastoni</strong> → <strong>Spade</strong> → <strong>Coppe</strong> → <strong>Denari</strong></p>
+                <p>Asso < 2 < 3 < 4 < 5 < 6 < 7 < Fante < Cavallo < Re</p>
+
+                <h3>Fase di Puntata</h3>
+                <ul>
+                    <li>Ogni giocatore punta quante mani riuscirà a vincere nel turno</li>
+                    <li>⚠️ L'ultimo giocatore NON può dire un numero che faccia tornare i conti!</li>
+                </ul>
+
+                <h3>Jolly - Asso di Denari</h3>
+                <p>Quando giochi l'Asso di Denari puoi scegliere:</p>
+                <ul>
+                    <li><strong>PRENDE</strong>: Vale più del Re di Denari (carta più forte)</li>
+                    <li><strong>LASCIA</strong>: Vale meno dell'Asso di Bastoni (carta più debole)</li>
+                </ul>
+
+                <h3>Fine Turno</h3>
+                <ul>
+                    <li>✅ Se indovini esattamente quante mani prendi: mantieni le vite</li>
+                    <li>❌ Se sbagli: perdi 1 vita</li>
+                </ul>
+
+                <h3>Vincitore</h3>
+                <p>Chi ha più vite alla fine dei 5 turni vince!</p>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="backToHome()">
+                Indietro
+            </button>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script src="{{ url_for('static', filename='game.js') }}"></script>
+</body>
+</html>
