@@ -110,6 +110,8 @@ class PresinaGameOnline:
                 player.socket_id = socket_id
                 player.connected = True
                 self.player_ids[socket_id] = player
+                if getattr(player, 'is_admin', False):
+                    self.admin_socket_id = socket_id
                 return True
         return False
     

@@ -14,8 +14,51 @@ let gameState = {
     canPlay: false,
     awaitingPlay: false,
     waitingForPlayer: null,
-    playingPhase: false
+    playingPhase: false,
+    currentTrick: 0
 };
+
+const SESSION_KEY = 'presina_session';
+
+function saveSession() {
+    if (!gameState.roomId || !gameState.playerName) {
+        return;
+    }
+    const payload = {
+        roomId: gameState.roomId,
+        roomName: gameState.roomName,
+        playerName: gameState.playerName
+    };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+}
+
+function clearSession() {
+    sessionStorage.removeItem(SESSION_KEY);
+}
+
+function loadSession() {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) {
+        return null;
+    }
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function attemptRejoin() {
+    const session = loadSession();
+    if (!session || !session.roomId || !session.playerName) {
+        return;
+    }
+    gameState.playerName = session.playerName;
+    socket.emit('rejoin_game', {
+        roomCode: session.roomId,
+        playerName: session.playerName
+    });
+}
 
 // ============================================
 // FUNZIONI UI - Navigazione
@@ -47,6 +90,25 @@ function addGameMessage(message, type = 'info') {
     setTimeout(() => {
         msgDiv.remove();
     }, 5000);
+}
+
+function ensureTrickDivider(trickNumber) {
+    if (!trickNumber) {
+        return;
+    }
+    const cardsPlayedDiv = document.getElementById('cards-played');
+    if (!cardsPlayedDiv) {
+        return;
+    }
+    const existing = cardsPlayedDiv.querySelector(`.trick-divider[data-trick="${trickNumber}"]`);
+    if (existing) {
+        return;
+    }
+    const divider = document.createElement('div');
+    divider.className = 'trick-divider';
+    divider.dataset.trick = String(trickNumber);
+    divider.textContent = `Mano ${trickNumber}`;
+    cardsPlayedDiv.appendChild(divider);
 }
 
 function hideCardConfirmation() {
@@ -146,6 +208,7 @@ function leaveRoom() {
     gameState.waitingForPlayer = null;
     gameState.playingPhase = false;
     clearCardSelection();
+    clearSession();
     
     showScreen('lobby');
     socket.emit('get_rooms');
@@ -327,6 +390,7 @@ socket.on('room_created', (data) => {
     gameState.roomName = data.roomName;
     gameState.playerId = data.playerId;
     gameState.isAdmin = true;
+    saveSession();
     
     document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
     document.getElementById('admin-controls').style.display = 'block';
@@ -342,6 +406,7 @@ socket.on('room_joined', (data) => {
     gameState.roomName = data.roomName;
     gameState.playerId = data.playerId;
     gameState.isAdmin = false;
+    saveSession();
     
     document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
     document.getElementById('admin-controls').style.display = 'none';
@@ -373,6 +438,7 @@ socket.on('round_started', (data) => {
     clearCardSelection();
     document.getElementById('trick-area').style.display = 'none';
     document.getElementById('cards-played').innerHTML = '';
+    gameState.currentTrick = 0;
     document.getElementById('current-round').textContent = data.round;
     document.getElementById('cards-this-round').textContent = data.cardsThisRound;
     document.getElementById('total-tricks').textContent = data.cardsThisRound;
@@ -408,9 +474,10 @@ socket.on('betting_complete', (data) => {
 socket.on('trick_started', (data) => {
     gameState.isMyTurn = false;
     refreshCardInteractivity();
+    gameState.currentTrick = data.trickNumber;
     document.getElementById('trick-number').textContent = data.trickNumber;
     document.getElementById('trick-area').style.display = 'block';
-    document.getElementById('cards-played').innerHTML = '';
+    ensureTrickDivider(data.trickNumber);
     
     document.getElementById('phase-title').textContent = 'Fase di Gioco';
     document.getElementById('phase-description').textContent = `Mano ${data.trickNumber} di ${data.totalTricks}`;
@@ -444,6 +511,7 @@ socket.on('card_played', (data) => {
     addGameMessage(`${data.playerName} ha giocato ${data.card.rankName} di ${data.card.suitName}`, 'info');
     
     const cardsPlayedDiv = document.getElementById('cards-played');
+    ensureTrickDivider(gameState.currentTrick);
     const playedCardDiv = document.createElement('div');
     playedCardDiv.className = 'played-card';
     playedCardDiv.innerHTML = `
@@ -479,10 +547,6 @@ socket.on('card_played', (data) => {
 // Mano vinta
 socket.on('trick_won', (data) => {
     addGameMessage(`${data.winnerName} vince la mano con ${data.winningCard.rankName} di ${data.winningCard.suitName}!`, 'success');
-    
-    setTimeout(() => {
-        document.getElementById('cards-played').innerHTML = '';
-    }, 2000);
 });
 
 // Turno terminato
@@ -521,6 +585,7 @@ socket.on('game_ended', (data) => {
     
     setTimeout(() => {
         if (confirm('Partita terminata! Vuoi tornare alla lobby?')) {
+            clearSession();
             showScreen('lobby');
             socket.emit('get_rooms');
         }
@@ -557,8 +622,32 @@ socket.on('kicked', (data) => {
     gameState.waitingForPlayer = null;
     gameState.playingPhase = false;
     clearCardSelection();
+    clearSession();
     showScreen('lobby');
     socket.emit('get_rooms');
+});
+
+// Rientro dopo refresh
+socket.on('rejoin_success', (data) => {
+    const session = loadSession();
+    gameState.roomId = data.roomCode;
+    gameState.roomName = data.roomName || (session && session.roomName) || data.roomCode;
+    gameState.playerId = data.playerId;
+    gameState.playerName = data.playerName || gameState.playerName;
+    gameState.isAdmin = !!data.isAdmin;
+    saveSession();
+
+    document.getElementById('room-title').textContent = '🏠 ' + gameState.roomName;
+    document.getElementById('admin-controls').style.display = gameState.isAdmin ? 'block' : 'none';
+    document.getElementById('waiting-message').style.display = gameState.isAdmin ? 'none' : 'block';
+
+    showScreen(data.gameStarted ? 'game' : 'room');
+    showNotification('Sei rientrato nella partita!');
+});
+
+socket.on('rejoin_failed', (data) => {
+    clearSession();
+    showNotification(data.message || 'Impossibile rientrare nella partita', true);
 });
 
 // Stato gioco
@@ -780,4 +869,5 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Mostra schermata home
     showScreen('home');
+    attemptRejoin();
 });

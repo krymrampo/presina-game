@@ -468,6 +468,14 @@ h3 {
     margin-top: 15px;
 }
 
+.trick-divider {
+    flex-basis: 100%;
+    text-align: center;
+    font-weight: bold;
+    color: #555;
+    margin-top: 10px;
+}
+
 .played-card {
     text-align: center;
 }

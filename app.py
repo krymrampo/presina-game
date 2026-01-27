@@ -285,15 +285,19 @@ def handle_rejoin_game(data):
         
         emit('rejoin_success', {
             'roomCode': room_code,
+            'roomName': game.room_name,
             'playerName': player_name,
             'playerId': request.sid,
             'gameStarted': game.has_started(),
             'isAdmin': is_admin
         })
         
-        # Invia lo stato del gioco e la mano del giocatore
-        game.broadcast_game_state()
-        game.send_player_hand(request.sid)
+        # Invia lo stato corretto in base alla fase
+        if game.has_started():
+            game.broadcast_game_state()
+            game.send_player_hand(request.sid)
+        else:
+            game.broadcast_room_state()
     else:
         emit('rejoin_failed', {'message': 'Impossibile rientrare nella partita'})
 
