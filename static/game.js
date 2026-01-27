@@ -114,6 +114,11 @@ function joinGame() {
 }
 
 function startGame() {
+    console.log('startGame chiamato, roomCode:', gameState.roomCode);
+    if (!gameState.roomCode) {
+        showNotification('Errore: codice stanza non trovato', true);
+        return;
+    }
     socket.emit('start_game', {
         roomCode: gameState.roomCode
     });
@@ -515,6 +520,16 @@ function displayBettingArea(data) {
 
 // Inizializzazione
 document.addEventListener('DOMContentLoaded', () => {
+    // Aggiungi event listener al pulsante inizia partita
+    const startBtn = document.getElementById('start-game-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Pulsante inizia cliccato!');
+            startGame();
+        });
+    }
+    
     // Prova a rientrare in una sessione esistente
     const session = loadSession();
     if (session && session.roomCode && session.playerName) {
