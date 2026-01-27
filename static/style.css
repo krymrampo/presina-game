@@ -327,6 +327,21 @@ h3 {
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
+.card.played {
+    display: none !important;
+}
+
+.card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.card.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
 .card.hidden {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;

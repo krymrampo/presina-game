@@ -30,19 +30,18 @@ def index():
 def handle_create_game(data):
     """Crea una nuova partita."""
     player_name = data.get('playerName', 'Giocatore')
-    num_players = data.get('numPlayers', 2)
     
     # Genera codice stanza unico
     room_code = generate_room_code()
     while room_code in games:
         room_code = generate_room_code()
     
-    # Crea la partita
-    game = PresinaGameOnline(room_code, num_players, socketio)
+    # Crea la partita (max 8 giocatori, ma si può iniziare con qualsiasi numero >= 2)
+    game = PresinaGameOnline(room_code, 8, socketio)
     games[room_code] = game
     
-    # Aggiungi il creatore
-    game.add_player(request.sid, player_name)
+    # Aggiungi il creatore come admin
+    game.add_player(request.sid, player_name, is_admin=True)
     join_room(room_code)
     
     emit('game_created', {
@@ -67,12 +66,12 @@ def handle_join_game(data):
     
     game = games[room_code]
     
-    if game.is_full():
-        emit('error', {'message': 'La stanza è piena!'})
-        return
-    
     if game.has_started():
         emit('error', {'message': 'La partita è già iniziata!'})
+        return
+    
+    if len(game.players) >= 8:
+        emit('error', {'message': 'La stanza è piena (max 8 giocatori)!'})
         return
     
     # Aggiungi il giocatore
@@ -100,8 +99,18 @@ def handle_start_game(data):
     
     game = games[room_code]
     
-    if not game.is_full():
-        emit('error', {'message': f'Servono {game.max_players} giocatori per iniziare!'})
+    # Verifica che chi avvia sia l'admin
+    if not game.is_admin(request.sid):
+        emit('error', {'message': 'Solo l\'admin può avviare la partita!'})
+        return
+    
+    # Verifica minimo 2 giocatori
+    if len(game.players) < 2:
+        emit('error', {'message': 'Servono almeno 2 giocatori per iniziare!'})
+        return
+    
+    if len(game.players) > 8:
+        emit('error', {'message': 'Massimo 8 giocatori!'})
         return
     
     # Avvia la partita
@@ -135,17 +144,54 @@ def handle_play_card(data):
     game.player_play_card(request.sid, card_index, joker_mode)
 
 
+@socketio.on('rejoin_game')
+def handle_rejoin_game(data):
+    """Permette a un giocatore di rientrare dopo un refresh."""
+    room_code = data.get('roomCode', '').upper()
+    player_name = data.get('playerName', '')
+    
+    if room_code not in games:
+        emit('rejoin_failed', {'message': 'La stanza non esiste più'})
+        return
+    
+    game = games[room_code]
+    
+    # Prova a riconnettere il giocatore
+    success = game.rejoin_player(request.sid, player_name)
+    
+    if success:
+        join_room(room_code)
+        
+        # Controlla se questo giocatore è admin
+        is_admin = game.is_admin(request.sid)
+        
+        emit('rejoin_success', {
+            'roomCode': room_code,
+            'playerName': player_name,
+            'playerId': request.sid,
+            'gameStarted': game.has_started(),
+            'isAdmin': is_admin
+        })
+        
+        # Invia lo stato del gioco e la mano del giocatore
+        game.broadcast_game_state()
+        game.send_player_hand(request.sid)
+    else:
+        emit('rejoin_failed', {'message': 'Impossibile rientrare nella partita'})
+
+
 @socketio.on('disconnect')
 def handle_disconnect():
     """Gestisce la disconnessione di un giocatore."""
     # Trova la stanza del giocatore
     for room_code, game in list(games.items()):
         if game.has_player(request.sid):
-            game.remove_player(request.sid)
+            # Non rimuovere il giocatore, segna solo come disconnesso
+            game.mark_player_disconnected(request.sid)
             leave_room(room_code)
             
-            # Se non ci sono più giocatori, rimuovi la partita
-            if game.is_empty():
+            # Se tutti sono disconnessi, rimuovi la partita dopo un timeout
+            if game.all_players_disconnected():
                 del games[room_code]
             else:
                 game.broadcast_game_state()

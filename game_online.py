@@ -39,16 +39,62 @@ class PresinaGameOnline:
         self.playing_phase = False
         self.waiting_for_player = None
         self.round_in_progress = False
+        self.admin_socket_id = None  # Socket ID dell'admin
     
-    def add_player(self, socket_id, name):
+    def add_player(self, socket_id, name, is_admin=False):
         """Aggiunge un giocatore alla partita."""
         if len(self.players) < self.max_players:
             player = Player(name)
             player.socket_id = socket_id
+            player.connected = True
+            player.is_admin = is_admin
             self.players.append(player)
             self.player_ids[socket_id] = player
+            
+            if is_admin:
+                self.admin_socket_id = socket_id
+            
             return True
         return False
+    
+    def is_admin(self, socket_id):
+        """Verifica se il socket_id è l'admin."""
+        if socket_id in self.player_ids:
+            return getattr(self.player_ids[socket_id], 'is_admin', False)
+        return False
+    
+    def rejoin_player(self, socket_id, player_name):
+        """Permette a un giocatore di rientrare nella partita."""
+        # Cerca il giocatore per nome
+        for player in self.players:
+            if player.name == player_name:
+                # Rimuovi vecchio socket_id se esiste
+                old_socket_id = player.socket_id
+                if old_socket_id in self.player_ids:
+                    del self.player_ids[old_socket_id]
+                
+                # Aggiorna con nuovo socket_id
+                player.socket_id = socket_id
+                player.connected = True
+                self.player_ids[socket_id] = player
+                return True
+        return False
+    
+    def mark_player_disconnected(self, socket_id):
+        """Segna un giocatore come disconnesso senza rimuoverlo."""
+        if socket_id in self.player_ids:
+            player = self.player_ids[socket_id]
+            player.connected = False
+            
+            # Notifica disconnessione temporanea
+            self.socketio.emit('player_disconnected', {
+                'playerName': player.name,
+                'message': f'{player.name} si è disconnesso temporaneamente'
+            }, room=self.room_code)
+    
+    def all_players_disconnected(self):
+        """Verifica se tutti i giocatori sono disconnessi."""
+        return all(not getattr(p, 'connected', True) for p in self.players)
     
     def remove_player(self, socket_id):
         """Rimuove un giocatore dalla partita."""
@@ -94,7 +140,8 @@ class PresinaGameOnline:
                 'lives': p.lives,
                 'bet': p.bet if self.betting_phase or self.playing_phase else None,
                 'tricksWon': p.tricks_won if self.playing_phase else 0,
-                'socketId': p.socket_id
+                'socketId': p.socket_id,
+                'isAdmin': getattr(p, 'is_admin', False)
             } for p in self.players],
             'gameStarted': self.game_started,
             'currentRound': self.current_round + 1 if self.game_started else 0,

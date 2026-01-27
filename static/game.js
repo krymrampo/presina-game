@@ -7,8 +7,32 @@ let gameState = {
     playerName: '',
     roomCode: '',
     currentScreen: 'home',
-    pendingCardIndex: null
+    pendingCardIndex: null,
+    myHand: [],  // Tiene traccia delle carte in mano
+    isAdmin: false  // Se è l'admin della stanza
 };
+
+// Salva/Recupera sessione da localStorage
+function saveSession() {
+    if (gameState.roomCode && gameState.playerName) {
+        localStorage.setItem('presina_session', JSON.stringify({
+            roomCode: gameState.roomCode,
+            playerName: gameState.playerName
+        }));
+    }
+}
+
+function loadSession() {
+    const saved = localStorage.getItem('presina_session');
+    if (saved) {
+        return JSON.parse(saved);
+    }
+    return null;
+}
+
+function clearSession() {
+    localStorage.removeItem('presina_session');
+}
 
 // Funzioni UI - Navigazione
 function showScreen(screenId) {
@@ -71,10 +95,8 @@ function addGameMessage(message, type = 'info') {
 
 // Funzioni Socket - Crea/Unisciti
 function createGame() {
-    const numPlayers = parseInt(document.getElementById('num-players').value);
     socket.emit('create_game', {
-        playerName: gameState.playerName,
-        numPlayers: numPlayers
+        playerName: gameState.playerName
     });
 }
 
@@ -112,10 +134,10 @@ function makeBet(bet) {
 }
 
 function playCard(cardIndex) {
-    const hand = document.querySelectorAll('#player-hand .card');
+    const hand = document.querySelectorAll('#player-hand .card:not(.played)');
     const card = hand[cardIndex];
     
-    if (card.classList.contains('disabled')) {
+    if (!card || card.classList.contains('disabled') || card.classList.contains('played')) {
         return;
     }
     
@@ -129,7 +151,11 @@ function playCard(cardIndex) {
             cardIndex: cardIndex
         });
         
-        // Disabilita tutte le carte
+        // Rimuovi visivamente la carta giocata
+        card.classList.add('played');
+        card.style.display = 'none';
+        
+        // Disabilita temporaneamente le altre carte
         document.querySelectorAll('#player-hand .card').forEach(c => {
             c.classList.add('disabled');
         });
@@ -145,9 +171,16 @@ function selectJokerMode(mode) {
         jokerMode: mode
     });
     
+    // Rimuovi visivamente la carta giocata
+    const hand = document.querySelectorAll('#player-hand .card:not(.played)');
+    if (hand[gameState.pendingCardIndex]) {
+        hand[gameState.pendingCardIndex].classList.add('played');
+        hand[gameState.pendingCardIndex].style.display = 'none';
+    }
+    
     gameState.pendingCardIndex = null;
     
-    // Disabilita tutte le carte
+    // Disabilita temporaneamente le altre carte
     document.querySelectorAll('#player-hand .card').forEach(c => {
         c.classList.add('disabled');
     });
@@ -157,19 +190,61 @@ function selectJokerMode(mode) {
 socket.on('game_created', (data) => {
     gameState.roomCode = data.roomCode;
     gameState.playerId = data.playerId;
+    gameState.isAdmin = true;  // Chi crea è admin
+    
+    saveSession();
     
     document.getElementById('lobby-room-code').textContent = data.roomCode;
     showScreen('lobby');
     showNotification('Stanza creata con successo!');
+    
+    // Mostra pulsante inizia solo per admin
+    document.getElementById('start-game-section').style.display = 'block';
+    document.getElementById('waiting-message').style.display = 'none';
 });
 
 socket.on('game_joined', (data) => {
     gameState.roomCode = data.roomCode;
     gameState.playerId = data.playerId;
+    gameState.isAdmin = false;  // Chi entra non è admin
+    
+    saveSession();
     
     document.getElementById('lobby-room-code').textContent = data.roomCode;
     showScreen('lobby');
     showNotification('Ti sei unito alla stanza!');
+    
+    // Nascondi pulsante inizia per non-admin
+    document.getElementById('start-game-section').style.display = 'none';
+    document.getElementById('waiting-message').style.display = 'block';
+});
+
+socket.on('rejoin_success', (data) => {
+    gameState.roomCode = data.roomCode;
+    gameState.playerId = data.playerId;
+    gameState.playerName = data.playerName;
+    gameState.isAdmin = data.isAdmin || false;
+    
+    saveSession();
+    
+    if (data.gameStarted) {
+        showScreen('game');
+        showNotification('Sei rientrato nella partita!');
+    } else {
+        document.getElementById('lobby-room-code').textContent = data.roomCode;
+        showScreen('lobby');
+        
+        // Mostra/nascondi pulsante inizia in base a ruolo admin
+        if (gameState.isAdmin) {
+            document.getElementById('start-game-section').style.display = 'block';
+            document.getElementById('waiting-message').style.display = 'none';
+        } else {
+            document.getElementById('start-game-section').style.display = 'none';
+            document.getElementById('waiting-message').style.display = 'block';
+        }
+        
+        showNotification('Sei rientrato nella stanza!');
+    }
 });
 
 socket.on('game_state', (state) => {
@@ -274,6 +349,9 @@ socket.on('game_ended', (data) => {
     
     addGameMessage(message, 'success');
     
+    // Pulisci la sessione
+    clearSession();
+    
     setTimeout(() => {
         if (confirm('Partita terminata! Vuoi tornare alla home?')) {
             location.reload();
@@ -292,24 +370,22 @@ socket.on('player_disconnected', (data) => {
 // Funzioni di rendering
 function updateLobby(state) {
     document.getElementById('player-count').textContent = state.players.length;
-    document.getElementById('max-players').textContent = state.maxPlayers;
     
     const playersList = document.getElementById('players-list');
     playersList.innerHTML = '';
     
     state.players.forEach(player => {
         const li = document.createElement('li');
-        li.textContent = `${player.name} ${player.socketId === gameState.playerId ? '(Tu)' : ''}`;
+        const isMe = player.socketId === gameState.playerId;
+        const adminBadge = player.isAdmin ? ' 👑' : '';
+        li.textContent = `${player.name}${adminBadge}${isMe ? ' (Tu)' : ''}`;
         playersList.appendChild(li);
     });
     
-    if (state.players.length === state.maxPlayers) {
-        document.getElementById('start-game-section').style.display = 'block';
-        document.getElementById('waiting-message').style.display = 'none';
-    }
-    
-    // Aggiorna anche lo stato dei giocatori in gioco
+    // Il pulsante inizia viene gestito già in game_created/game_joined
+    // Qui aggiorniamo solo lo stato dei giocatori in gioco
     if (state.gameStarted) {
+        showScreen('game');
         updatePlayersStatus(state);
     }
 }
@@ -439,5 +515,27 @@ function displayBettingArea(data) {
 
 // Inizializzazione
 document.addEventListener('DOMContentLoaded', () => {
+    // Prova a rientrare in una sessione esistente
+    const session = loadSession();
+    if (session && session.roomCode && session.playerName) {
+        gameState.playerName = session.playerName;
+        gameState.roomCode = session.roomCode;
+        
+        // Prova a rientrare nella partita
+        socket.emit('rejoin_game', {
+            roomCode: session.roomCode,
+            playerName: session.playerName
+        });
+    } else {
+        showScreen('home');
+    }
+});
+
+// Gestisci errore di rejoin
+socket.on('rejoin_failed', (data) => {
+    clearSession();
     showScreen('home');
+    if (data && data.message) {
+        showNotification(data.message, true);
+    }
 });

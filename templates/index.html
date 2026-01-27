@@ -39,18 +39,7 @@
         <div id="create-screen" class="screen">
             <h2>Crea una Nuova Partita</h2>
             
-            <div class="input-group">
-                <label for="num-players">Numero di giocatori:</label>
-                <select id="num-players">
-                    <option value="2">2 giocatori</option>
-                    <option value="3">3 giocatori</option>
-                    <option value="4" selected>4 giocatori</option>
-                    <option value="5">5 giocatori</option>
-                    <option value="6">6 giocatori</option>
-                    <option value="7">7 giocatori</option>
-                    <option value="8">8 giocatori</option>
-                </select>
-            </div>
+            <p class="hint">Crea una stanza e condividi il codice con i tuoi amici.<br>Quando tutti sono dentro, premi "Inizia Partita".</p>
             
             <div class="button-group">
                 <button class="btn btn-primary" onclick="createGame()">
@@ -92,7 +81,7 @@
             </div>
             
             <div class="players-waiting">
-                <h3>Giocatori (<span id="player-count">0</span>/<span id="max-players">0</span>):</h3>
+                <h3>Giocatori in stanza: <span id="player-count">0</span></h3>
                 <ul id="players-list"></ul>
             </div>
             
@@ -100,9 +89,10 @@
                 <button class="btn btn-success" onclick="startGame()">
                     🚀 Inizia Partita
                 </button>
+                <p class="hint">Minimo 2 giocatori per iniziare</p>
             </div>
             
-            <p id="waiting-message" class="waiting-text">In attesa di altri giocatori...</p>
+            <p id="waiting-message" class="waiting-text">In attesa che l'admin avvii la partita...</p>
         </div>
 
         <!-- Schermata Gioco -->
