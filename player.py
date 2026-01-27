@@ -17,12 +17,14 @@ class Player:
         self.hand = []
         self.bet = 0
         self.tricks_won = 0
+        self.has_bet = False
     
     def reset_for_round(self):
         """Resetta le statistiche per un nuovo turno."""
         self.hand = []
         self.bet = 0
         self.tricks_won = 0
+        self.has_bet = False
     
     def add_card(self, card):
         """Aggiunge una carta alla mano del giocatore."""
@@ -38,6 +40,7 @@ class Player:
     def make_bet(self, bet):
         """Imposta la puntata del giocatore."""
         self.bet = bet
+        self.has_bet = True
     
     def win_trick(self):
         """Incrementa il numero di mani vinte."""

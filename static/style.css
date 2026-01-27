@@ -409,10 +409,16 @@ h3 {
 }
 
 .card-value {
-    font-size: 0.7em;
-    color: #666;
     position: absolute;
-    bottom: 5px;
+    top: 6px;
+    right: 6px;
+    font-size: 0.7em;
+    font-weight: bold;
+    color: #333;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 2px 6px;
 }
 
 .card.bastoni {
@@ -617,6 +623,33 @@ h3 {
 .rules-content p {
     margin-bottom: 10px;
     line-height: 1.6;
+}
+
+.final-summary {
+    text-align: center;
+    font-weight: 600;
+    margin: 10px 0 20px;
+}
+
+.final-standings {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+.final-standings ol {
+    list-style-position: inside;
+    font-size: 1.05em;
+}
+
+.final-standings li {
+    padding: 6px 0;
+    border-bottom: 1px solid #e2e6ea;
+}
+
+.final-standings li:last-child {
+    border-bottom: none;
 }
 
 @media (max-width: 768px) {

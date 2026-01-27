@@ -202,7 +202,8 @@ class PresinaGameOnline:
                 'tricksWon': p.tricks_won if self.playing_phase else 0,
                 'socketId': p.socket_id,
                 'isAdmin': getattr(p, 'is_admin', False),
-                'connected': getattr(p, 'connected', True)
+                'connected': getattr(p, 'connected', True),
+                'hasBet': getattr(p, 'has_bet', False)
             } for p in self.players],
             'gameStarted': self.game_started,
             'currentRound': self.current_round + 1 if self.game_started else 0,

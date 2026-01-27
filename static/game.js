@@ -15,7 +15,8 @@ let gameState = {
     awaitingPlay: false,
     waitingForPlayer: null,
     playingPhase: false,
-    currentTrick: 0
+    currentTrick: 0,
+    turnNotified: false
 };
 
 const SESSION_KEY = 'presina_session';
@@ -90,6 +91,40 @@ function addGameMessage(message, type = 'info') {
     setTimeout(() => {
         msgDiv.remove();
     }, 5000);
+}
+
+function renderFinalScreen(data) {
+    const summaryEl = document.getElementById('final-summary');
+    const standingsEl = document.getElementById('final-standings');
+    if (!summaryEl || !standingsEl) {
+        return;
+    }
+    standingsEl.innerHTML = '';
+    if (data && Array.isArray(data.winners) && data.winners.length > 0) {
+        if (data.winners.length === 1) {
+            summaryEl.textContent = `Vincitore: ${data.winners[0]} con ${data.maxLives} vite`;
+        } else {
+            summaryEl.textContent = `Pareggio tra: ${data.winners.join(', ')} con ${data.maxLives} vite`;
+        }
+    } else {
+        summaryEl.textContent = 'Partita terminata';
+    }
+
+    if (data && Array.isArray(data.finalStandings)) {
+        data.finalStandings.forEach((p) => {
+            const li = document.createElement('li');
+            li.textContent = `${p.playerName} - ${p.lives} ❤️`;
+            standingsEl.appendChild(li);
+        });
+    }
+}
+
+function notifyMyTurn() {
+    if (gameState.turnNotified) {
+        return;
+    }
+    gameState.turnNotified = true;
+    showNotification('È il tuo turno!');
 }
 
 function ensureTrickGroup(trickNumber) {
@@ -214,6 +249,7 @@ function leaveRoom() {
     gameState.pendingCardIndex = null;
     gameState.selectedCardElement = null;
     gameState.isMyTurn = false;
+    gameState.turnNotified = false;
     gameState.canPlay = false;
     gameState.awaitingPlay = false;
     gameState.waitingForPlayer = null;
@@ -410,6 +446,7 @@ socket.on('room_created', (data) => {
     gameState.roomName = data.roomName;
     gameState.playerId = data.playerId;
     gameState.isAdmin = true;
+    gameState.turnNotified = false;
     saveSession();
     
     document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
@@ -426,6 +463,7 @@ socket.on('room_joined', (data) => {
     gameState.roomName = data.roomName;
     gameState.playerId = data.playerId;
     gameState.isAdmin = false;
+    gameState.turnNotified = false;
     saveSession();
     
     document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
@@ -444,6 +482,7 @@ socket.on('room_state', (state) => {
 // Partita iniziata
 socket.on('game_started', (data) => {
     gameState.isMyTurn = false;
+    gameState.turnNotified = false;
     gameState.awaitingPlay = false;
     refreshCardInteractivity();
     showScreen('game');
@@ -453,6 +492,7 @@ socket.on('game_started', (data) => {
 // Turno iniziato
 socket.on('round_started', (data) => {
     gameState.isMyTurn = false;
+    gameState.turnNotified = false;
     gameState.awaitingPlay = false;
     refreshCardInteractivity();
     clearCardSelection();
@@ -474,6 +514,7 @@ socket.on('player_hand', (data) => {
 // Richiesta puntata
 socket.on('request_bet', (data) => {
     gameState.isMyTurn = false;
+    gameState.turnNotified = false;
     gameState.awaitingPlay = false;
     refreshCardInteractivity();
     displayBettingArea(data);
@@ -493,6 +534,7 @@ socket.on('betting_complete', (data) => {
 // Mano iniziata
 socket.on('trick_started', (data) => {
     gameState.isMyTurn = false;
+    gameState.turnNotified = false;
     refreshCardInteractivity();
     gameState.currentTrick = data.trickNumber;
     document.getElementById('trick-number').textContent = data.trickNumber;
@@ -510,6 +552,7 @@ socket.on('request_card', (data) => {
     clearCardSelection();
     refreshCardInteractivity();
     addGameMessage(`${data.playerName}, gioca una carta!`, 'info');
+    notifyMyTurn();
 });
 
 // Richiesta modalità jolly (fallback server)
@@ -559,6 +602,7 @@ socket.on('card_played', (data) => {
         
         gameState.awaitingPlay = false;
         gameState.isMyTurn = false;
+        gameState.turnNotified = false;
         clearCardSelection();
         refreshCardInteractivity();
     }
@@ -600,16 +644,12 @@ socket.on('game_ended', (data) => {
     addGameMessage(message, 'success');
     
     gameState.isMyTurn = false;
+    gameState.turnNotified = false;
     gameState.awaitingPlay = false;
     refreshCardInteractivity();
-    
-    setTimeout(() => {
-        if (confirm('Partita terminata! Vuoi tornare alla lobby?')) {
-            clearSession();
-            showScreen('lobby');
-            socket.emit('get_rooms');
-        }
-    }, 3000);
+
+    renderFinalScreen(data);
+    showScreen('final');
 });
 
 // Errore
@@ -637,6 +677,7 @@ socket.on('kicked', (data) => {
     gameState.pendingCardIndex = null;
     gameState.selectedCardElement = null;
     gameState.isMyTurn = false;
+    gameState.turnNotified = false;
     gameState.canPlay = false;
     gameState.awaitingPlay = false;
     gameState.waitingForPlayer = null;
@@ -655,6 +696,7 @@ socket.on('rejoin_success', (data) => {
     gameState.playerId = data.playerId;
     gameState.playerName = data.playerName || gameState.playerName;
     gameState.isAdmin = !!data.isAdmin;
+    gameState.turnNotified = false;
     saveSession();
 
     document.getElementById('room-title').textContent = '🏠 ' + gameState.roomName;
@@ -728,6 +770,11 @@ function updatePlayersStatus(state) {
     if (myTurn !== gameState.isMyTurn) {
         gameState.isMyTurn = myTurn;
         if (!myTurn) {
+            gameState.turnNotified = false;
+        } else {
+            notifyMyTurn();
+        }
+        if (!myTurn) {
             gameState.awaitingPlay = false;
         }
         refreshCardInteractivity();
@@ -750,7 +797,14 @@ function updatePlayersStatus(state) {
                 `${isOnline ? '🟢 Online' : '🔴 Offline'}</span><br>`;
         html += `❤️ ${player.lives} vite<br>`;
         
-        if (player.bet !== null && player.bet !== undefined) {
+        const hasBet = !!player.hasBet;
+        if (state.bettingPhase) {
+            if (hasBet) {
+                html += `🎯 Puntata: ${player.bet}<br>`;
+            } else {
+                html += `⏳ Deve puntare<br>`;
+            }
+        } else if (hasBet && player.bet !== null && player.bet !== undefined) {
             html += `🎯 Puntata: ${player.bet}<br>`;
         }
         
@@ -775,7 +829,7 @@ function displayPlayerHand(data) {
     
     if (data.specialRound && data.hideOwnCard) {
         specialNote.style.display = 'block';
-        handDiv.innerHTML = createCardHTML({isHidden: true}, 0, false);
+        handDiv.innerHTML = createCardHTML({isHidden: true}, 0, true);
         
         if (data.otherPlayersCards && data.otherPlayersCards.length > 0) {
             const othersDiv = document.createElement('div');
@@ -809,13 +863,30 @@ function displayPlayerHand(data) {
 
 function createCardHTML(card, index, clickable) {
     if (card.isHidden) {
-        return `<div class="card hidden">?</div>`;
+        const onclick = clickable ? 'onclick="playCard(this)"' : '';
+        return `<div class="card hidden" ${onclick} data-index="${index}" data-is-hidden="true">?</div>`;
     }
     
     const suitClass = ['bastoni', 'spade', 'coppe', 'denari'][card.suit];
     const suitSymbol = ['🌲', '⚔️', '🏆', '💰'][card.suit];
     const onclick = clickable ? 'onclick="playCard(this)"' : '';
     const jokerClass = card.isJoker ? ' joker' : '';
+    let valueLabel = '';
+    if (card.isJoker) {
+        if (card.jokerMode === 'prende') {
+            valueLabel = '40/40';
+        } else if (card.jokerMode === 'lascia') {
+            valueLabel = '0/40';
+        } else {
+            valueLabel = 'J';
+        }
+    } else if (card.value !== null && card.value !== undefined) {
+        const numericValue = Number(card.value);
+        if (!Number.isNaN(numericValue)) {
+            const ordinal = Math.max(0, Math.min(39, numericValue)) + 1;
+            valueLabel = `${ordinal}/40`;
+        }
+    }
     
     return `
         <div class="card ${suitClass}${jokerClass}" 
@@ -824,6 +895,7 @@ function createCardHTML(card, index, clickable) {
              data-is-joker="${card.isJoker}"
              data-rank-name="${card.rankName}"
              data-suit-name="${card.suitName}">
+            ${valueLabel ? `<div class="card-value">${valueLabel}</div>` : ''}
             <div class="card-suit">${suitSymbol}</div>
             <div class="card-rank">${card.rankName}</div>
             ${card.isJoker ? '<div style="font-size: 0.8em;">JOLLY</div>' : ''}
@@ -889,6 +961,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Pulsanti Regole
     document.getElementById('back-from-rules-btn').addEventListener('click', () => showScreen('home'));
+
+    // Pulsante Schermata Finale
+    document.getElementById('back-to-lobby-btn').addEventListener('click', leaveRoom);
     
     // Pulsanti Jolly
     document.getElementById('joker-prende-btn').addEventListener('click', () => selectJokerMode('prende'));
