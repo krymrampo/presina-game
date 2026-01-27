@@ -26,45 +26,65 @@ def index():
     return render_template('index.html')
 
 
-@socketio.on('create_game')
-def handle_create_game(data):
-    """Crea una nuova partita."""
+@socketio.on('get_rooms')
+def handle_get_rooms():
+    """Restituisce la lista delle stanze pubbliche."""
+    rooms_list = []
+    for room_id, game in games.items():
+        rooms_list.append({
+            'id': room_id,
+            'name': game.room_name,
+            'playerCount': len([p for p in game.players if getattr(p, 'connected', True)]),
+            'started': game.has_started()
+        })
+    
+    emit('rooms_list', rooms_list)
+
+
+@socketio.on('create_room')
+def handle_create_room(data):
+    """Crea una nuova stanza pubblica."""
     player_name = data.get('playerName', 'Giocatore')
+    room_name = data.get('roomName', 'Stanza senza nome')
     
     # Genera codice stanza unico
     room_code = generate_room_code()
     while room_code in games:
         room_code = generate_room_code()
     
-    # Crea la partita (max 8 giocatori, ma si può iniziare con qualsiasi numero >= 2)
-    game = PresinaGameOnline(room_code, 8, socketio)
+    # Crea la partita (max 8 giocatori)
+    game = PresinaGameOnline(room_code, 8, socketio, room_name)
     games[room_code] = game
     
     # Aggiungi il creatore come admin
     game.add_player(request.sid, player_name, is_admin=True)
     join_room(room_code)
     
-    emit('game_created', {
-        'roomCode': room_code,
+    emit('room_created', {
+        'roomId': room_code,
+        'roomName': room_name,
         'playerName': player_name,
         'playerId': request.sid
     })
     
     # Notifica tutti nella stanza
-    game.broadcast_game_state()
+    game.broadcast_room_state()
+    
+    # Notifica tutti gli altri della nuova stanza (per aggiornare la lobby)
+    socketio.emit('rooms_list', get_rooms_list())
 
 
-@socketio.on('join_game')
-def handle_join_game(data):
-    """Unisciti a una partita esistente."""
-    room_code = data.get('roomCode', '').upper()
+@socketio.on('join_room')
+def handle_join_room(data):
+    """Unisciti a una stanza esistente."""
+    room_id = data.get('roomId', '')
     player_name = data.get('playerName', 'Giocatore')
     
-    if room_code not in games:
+    if room_id not in games:
         emit('error', {'message': 'Stanza non trovata!'})
         return
     
-    game = games[room_code]
+    game = games[room_id]
     
     if game.has_started():
         emit('error', {'message': 'La partita è già iniziata!'})
@@ -76,22 +96,75 @@ def handle_join_game(data):
     
     # Aggiungi il giocatore
     game.add_player(request.sid, player_name)
-    join_room(room_code)
+    join_room(room_id)
     
-    emit('game_joined', {
-        'roomCode': room_code,
+    emit('room_joined', {
+        'roomId': room_id,
+        'roomName': game.room_name,
         'playerName': player_name,
         'playerId': request.sid
     })
     
     # Notifica tutti nella stanza
-    game.broadcast_game_state()
+    game.broadcast_room_state()
+    
+    # Aggiorna la lobby per tutti
+    socketio.emit('rooms_list', get_rooms_list())
+
+
+@socketio.on('leave_room')
+def handle_leave_room(data):
+    """Lascia una stanza."""
+    room_id = data.get('roomId', '')
+    
+    if room_id not in games:
+        return
+    
+    game = games[room_id]
+    game.remove_player(request.sid)
+    leave_room(room_id)
+    
+    # Se la stanza è vuota, eliminala
+    if len(game.players) == 0:
+        del games[room_id]
+    else:
+        game.broadcast_room_state()
+    
+    # Aggiorna la lobby per tutti
+    socketio.emit('rooms_list', get_rooms_list())
+
+
+def get_rooms_list():
+    """Helper per ottenere la lista delle stanze."""
+    rooms_list = []
+    for room_id, game in games.items():
+        rooms_list.append({
+            'id': room_id,
+            'name': game.room_name,
+            'playerCount': len([p for p in game.players if getattr(p, 'connected', True)]),
+            'started': game.has_started()
+        })
+    return rooms_list
+
+
+@socketio.on('create_game')
+def handle_create_game(data):
+    """Crea una nuova partita (legacy, reindirizza a create_room)."""
+    data['roomName'] = 'Stanza di ' + data.get('playerName', 'Giocatore')
+    handle_create_room(data)
+
+
+@socketio.on('join_game')
+def handle_join_game(data):
+    """Unisciti a una partita esistente (legacy, reindirizza a join_room)."""
+    data['roomId'] = data.get('roomCode', '').upper()
+    handle_join_room(data)
 
 
 @socketio.on('start_game')
 def handle_start_game(data):
     """Avvia la partita."""
-    room_code = data.get('roomCode')
+    room_code = data.get('roomCode') or data.get('roomId')
     
     if room_code not in games:
         emit('error', {'message': 'Stanza non trovata!'})
@@ -120,7 +193,7 @@ def handle_start_game(data):
 @socketio.on('make_bet')
 def handle_make_bet(data):
     """Gestisce la puntata di un giocatore."""
-    room_code = data.get('roomCode')
+    room_code = data.get('roomCode') or data.get('roomId')
     bet = data.get('bet')
     
     if room_code not in games:
@@ -133,7 +206,7 @@ def handle_make_bet(data):
 @socketio.on('play_card')
 def handle_play_card(data):
     """Gestisce la giocata di una carta."""
-    room_code = data.get('roomCode')
+    room_code = data.get('roomCode') or data.get('roomId')
     card_index = data.get('cardIndex')
     joker_mode = data.get('jokerMode', None)
     

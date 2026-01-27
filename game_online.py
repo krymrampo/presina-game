@@ -13,7 +13,7 @@ class PresinaGameOnline:
     
     CARDS_PER_ROUND = [5, 4, 3, 2, 1]
     
-    def __init__(self, room_code, max_players, socketio):
+    def __init__(self, room_code, max_players, socketio, room_name=None):
         """
         Inizializza una partita online di Presina.
         
@@ -21,8 +21,10 @@ class PresinaGameOnline:
             room_code: Codice della stanza
             max_players: Numero massimo di giocatori
             socketio: Istanza di SocketIO per le comunicazioni
+            room_name: Nome pubblico della stanza
         """
         self.room_code = room_code
+        self.room_name = room_name or room_code
         self.max_players = max_players
         self.socketio = socketio
         self.players = []
@@ -124,6 +126,21 @@ class PresinaGameOnline:
     def has_started(self):
         """Verifica se la partita è iniziata."""
         return self.game_started
+    
+    def broadcast_room_state(self):
+        """Invia lo stato della stanza a tutti i giocatori (pre-partita)."""
+        state = {
+            'roomId': self.room_code,
+            'roomName': self.room_name,
+            'players': [{
+                'name': p.name,
+                'socketId': p.socket_id,
+                'isAdmin': getattr(p, 'is_admin', False),
+                'connected': getattr(p, 'connected', True)
+            } for p in self.players],
+            'gameStarted': self.game_started
+        }
+        self.socketio.emit('room_state', state, room=self.room_code)
     
     def broadcast_game_state(self):
         """Invia lo stato del gioco a tutti i giocatori."""

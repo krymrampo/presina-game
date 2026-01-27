@@ -5,71 +5,21 @@ const socket = io();
 let gameState = {
     playerId: null,
     playerName: '',
-    roomCode: '',
-    currentScreen: 'home',
-    pendingCardIndex: null,
-    myHand: [],  // Tiene traccia delle carte in mano
-    isAdmin: false  // Se è l'admin della stanza
+    roomId: '',
+    roomName: '',
+    isAdmin: false,
+    pendingCardIndex: null
 };
 
-// Salva/Recupera sessione da localStorage
-function saveSession() {
-    if (gameState.roomCode && gameState.playerName) {
-        localStorage.setItem('presina_session', JSON.stringify({
-            roomCode: gameState.roomCode,
-            playerName: gameState.playerName
-        }));
-    }
-}
+// ============================================
+// FUNZIONI UI - Navigazione
+// ============================================
 
-function loadSession() {
-    const saved = localStorage.getItem('presina_session');
-    if (saved) {
-        return JSON.parse(saved);
-    }
-    return null;
-}
-
-function clearSession() {
-    localStorage.removeItem('presina_session');
-}
-
-// Funzioni UI - Navigazione
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId + '-screen').classList.add('active');
-    gameState.currentScreen = screenId;
 }
 
-function showCreateGame() {
-    const playerName = document.getElementById('player-name').value.trim();
-    if (!playerName) {
-        showNotification('Inserisci il tuo nome!', true);
-        return;
-    }
-    gameState.playerName = playerName;
-    showScreen('create');
-}
-
-function showJoinGame() {
-    const playerName = document.getElementById('player-name').value.trim();
-    if (!playerName) {
-        showNotification('Inserisci il tuo nome!', true);
-        return;
-    }
-    gameState.playerName = playerName;
-    showScreen('join');
-}
-
-function showRules() {
-    showScreen('rules');
-}
-
-function backToHome() {
-    showScreen('home');
-}
-
-// Funzioni di notifica
 function showNotification(message, isError = false) {
     const notif = document.getElementById('notification');
     notif.textContent = message;
@@ -93,45 +43,123 @@ function addGameMessage(message, type = 'info') {
     }, 5000);
 }
 
-// Funzioni Socket - Crea/Unisciti
-function createGame() {
-    socket.emit('create_game', {
+// ============================================
+// FUNZIONI LOBBY
+// ============================================
+
+function enterLobby() {
+    const playerName = document.getElementById('player-name').value.trim();
+    if (!playerName) {
+        showNotification('Inserisci il tuo nome!', true);
+        return;
+    }
+    gameState.playerName = playerName;
+    showScreen('lobby');
+    
+    // Richiedi lista stanze
+    socket.emit('get_rooms');
+}
+
+function createRoom() {
+    const roomName = document.getElementById('room-name').value.trim();
+    if (!roomName) {
+        showNotification('Inserisci un nome per la stanza!', true);
+        return;
+    }
+    
+    document.getElementById('create-room-modal').style.display = 'none';
+    
+    socket.emit('create_room', {
+        playerName: gameState.playerName,
+        roomName: roomName
+    });
+}
+
+function joinRoom(roomId) {
+    socket.emit('join_room', {
+        roomId: roomId,
         playerName: gameState.playerName
     });
 }
 
-function joinGame() {
-    const roomCode = document.getElementById('room-code').value.trim().toUpperCase();
-    if (!roomCode || roomCode.length !== 6) {
-        showNotification('Inserisci un codice valido (6 caratteri)', true);
-        return;
-    }
-    
-    socket.emit('join_game', {
-        roomCode: roomCode,
-        playerName: gameState.playerName
+function leaveRoom() {
+    socket.emit('leave_room', {
+        roomId: gameState.roomId
     });
+    
+    gameState.roomId = '';
+    gameState.roomName = '';
+    gameState.isAdmin = false;
+    
+    showScreen('lobby');
+    socket.emit('get_rooms');
 }
 
 function startGame() {
-    console.log('startGame chiamato, roomCode:', gameState.roomCode);
-    if (!gameState.roomCode) {
-        showNotification('Errore: codice stanza non trovato', true);
-        return;
-    }
+    console.log('Avvio partita per stanza:', gameState.roomId);
     socket.emit('start_game', {
-        roomCode: gameState.roomCode
+        roomId: gameState.roomId
     });
 }
 
-// Funzioni di gioco
+function filterRooms() {
+    const searchText = document.getElementById('search-room').value.toLowerCase();
+    const roomCards = document.querySelectorAll('.room-card');
+    
+    roomCards.forEach(card => {
+        const roomName = card.dataset.roomName.toLowerCase();
+        if (roomName.includes(searchText)) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function renderRoomsList(rooms) {
+    const roomsList = document.getElementById('rooms-list');
+    
+    if (!rooms || rooms.length === 0) {
+        roomsList.innerHTML = '<p class="no-rooms">Nessuna stanza disponibile. Creane una!</p>';
+        return;
+    }
+    
+    roomsList.innerHTML = '';
+    
+    rooms.forEach(room => {
+        const roomCard = document.createElement('div');
+        roomCard.className = 'room-card';
+        roomCard.dataset.roomName = room.name;
+        
+        const statusClass = room.started ? 'in-game' : 'waiting';
+        const statusText = room.started ? '🎮 In Gioco' : '⏳ In Attesa';
+        
+        roomCard.innerHTML = `
+            <div class="room-info-card">
+                <h3>${room.name}</h3>
+                <p>👥 ${room.playerCount}/8 giocatori</p>
+                <span class="room-status ${statusClass}">${statusText}</span>
+            </div>
+            <button class="btn btn-primary" ${room.started || room.playerCount >= 8 ? 'disabled' : ''} 
+                    onclick="joinRoom('${room.id}')">
+                ${room.started ? 'Partita in corso' : 'Unisciti'}
+            </button>
+        `;
+        
+        roomsList.appendChild(roomCard);
+    });
+}
+
+// ============================================
+// FUNZIONI GIOCO
+// ============================================
+
 function makeBet(bet) {
     socket.emit('make_bet', {
-        roomCode: gameState.roomCode,
+        roomId: gameState.roomId,
         bet: bet
     });
     
-    // Disabilita i pulsanti di puntata
     document.querySelectorAll('.bet-button').forEach(btn => {
         btn.disabled = true;
         btn.style.opacity = '0.5';
@@ -146,21 +174,18 @@ function playCard(cardIndex) {
         return;
     }
     
-    // Se è un jolly, mostra il modale
     if (card.dataset.isJoker === 'true') {
         gameState.pendingCardIndex = cardIndex;
         document.getElementById('joker-modal').style.display = 'flex';
     } else {
         socket.emit('play_card', {
-            roomCode: gameState.roomCode,
+            roomId: gameState.roomId,
             cardIndex: cardIndex
         });
         
-        // Rimuovi visivamente la carta giocata
         card.classList.add('played');
         card.style.display = 'none';
         
-        // Disabilita temporaneamente le altre carte
         document.querySelectorAll('#player-hand .card').forEach(c => {
             c.classList.add('disabled');
         });
@@ -171,12 +196,11 @@ function selectJokerMode(mode) {
     document.getElementById('joker-modal').style.display = 'none';
     
     socket.emit('play_card', {
-        roomCode: gameState.roomCode,
+        roomId: gameState.roomId,
         cardIndex: gameState.pendingCardIndex,
         jokerMode: mode
     });
     
-    // Rimuovi visivamente la carta giocata
     const hand = document.querySelectorAll('#player-hand .card:not(.played)');
     if (hand[gameState.pendingCardIndex]) {
         hand[gameState.pendingCardIndex].classList.add('played');
@@ -185,82 +209,62 @@ function selectJokerMode(mode) {
     
     gameState.pendingCardIndex = null;
     
-    // Disabilita temporaneamente le altre carte
     document.querySelectorAll('#player-hand .card').forEach(c => {
         c.classList.add('disabled');
     });
 }
 
-// Event Listeners Socket
-socket.on('game_created', (data) => {
-    gameState.roomCode = data.roomCode;
+// ============================================
+// SOCKET EVENT LISTENERS
+// ============================================
+
+// Lista stanze
+socket.on('rooms_list', (rooms) => {
+    renderRoomsList(rooms);
+});
+
+// Stanza creata
+socket.on('room_created', (data) => {
+    gameState.roomId = data.roomId;
+    gameState.roomName = data.roomName;
     gameState.playerId = data.playerId;
-    gameState.isAdmin = true;  // Chi crea è admin
+    gameState.isAdmin = true;
     
-    saveSession();
-    
-    document.getElementById('lobby-room-code').textContent = data.roomCode;
-    showScreen('lobby');
-    showNotification('Stanza creata con successo!');
-    
-    // Mostra pulsante inizia solo per admin
-    document.getElementById('start-game-section').style.display = 'block';
+    document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
+    document.getElementById('admin-controls').style.display = 'block';
     document.getElementById('waiting-message').style.display = 'none';
+    
+    showScreen('room');
+    showNotification('Stanza creata!');
 });
 
-socket.on('game_joined', (data) => {
-    gameState.roomCode = data.roomCode;
+// Unito alla stanza
+socket.on('room_joined', (data) => {
+    gameState.roomId = data.roomId;
+    gameState.roomName = data.roomName;
     gameState.playerId = data.playerId;
-    gameState.isAdmin = false;  // Chi entra non è admin
+    gameState.isAdmin = false;
     
-    saveSession();
-    
-    document.getElementById('lobby-room-code').textContent = data.roomCode;
-    showScreen('lobby');
-    showNotification('Ti sei unito alla stanza!');
-    
-    // Nascondi pulsante inizia per non-admin
-    document.getElementById('start-game-section').style.display = 'none';
+    document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
+    document.getElementById('admin-controls').style.display = 'none';
     document.getElementById('waiting-message').style.display = 'block';
-});
-
-socket.on('rejoin_success', (data) => {
-    gameState.roomCode = data.roomCode;
-    gameState.playerId = data.playerId;
-    gameState.playerName = data.playerName;
-    gameState.isAdmin = data.isAdmin || false;
     
-    saveSession();
-    
-    if (data.gameStarted) {
-        showScreen('game');
-        showNotification('Sei rientrato nella partita!');
-    } else {
-        document.getElementById('lobby-room-code').textContent = data.roomCode;
-        showScreen('lobby');
-        
-        // Mostra/nascondi pulsante inizia in base a ruolo admin
-        if (gameState.isAdmin) {
-            document.getElementById('start-game-section').style.display = 'block';
-            document.getElementById('waiting-message').style.display = 'none';
-        } else {
-            document.getElementById('start-game-section').style.display = 'none';
-            document.getElementById('waiting-message').style.display = 'block';
-        }
-        
-        showNotification('Sei rientrato nella stanza!');
-    }
+    showScreen('room');
+    showNotification('Ti sei unito alla stanza!');
 });
 
-socket.on('game_state', (state) => {
-    updateLobby(state);
+// Stato stanza aggiornato
+socket.on('room_state', (state) => {
+    updateRoomState(state);
 });
 
+// Partita iniziata
 socket.on('game_started', (data) => {
     showScreen('game');
-    showNotification(data.message);
+    showNotification('La partita è iniziata!');
 });
 
+// Turno iniziato
 socket.on('round_started', (data) => {
     document.getElementById('current-round').textContent = data.round;
     document.getElementById('cards-this-round').textContent = data.cardsThisRound;
@@ -269,23 +273,28 @@ socket.on('round_started', (data) => {
     addGameMessage(`Turno ${data.round} iniziato - ${data.cardsThisRound} carte`, 'info');
 });
 
+// Mano del giocatore
 socket.on('player_hand', (data) => {
     displayPlayerHand(data);
 });
 
+// Richiesta puntata
 socket.on('request_bet', (data) => {
     displayBettingArea(data);
 });
 
+// Puntata effettuata
 socket.on('player_bet', (data) => {
     addGameMessage(`${data.playerName} ha puntato ${data.bet}`, 'info');
 });
 
+// Puntate complete
 socket.on('betting_complete', (data) => {
     document.getElementById('betting-area').style.display = 'none';
     addGameMessage(`Puntate completate: ${data.totalBets} su ${data.cardsThisRound}`, 'info');
 });
 
+// Mano iniziata
 socket.on('trick_started', (data) => {
     document.getElementById('trick-number').textContent = data.trickNumber;
     document.getElementById('trick-area').style.display = 'block';
@@ -295,19 +304,19 @@ socket.on('trick_started', (data) => {
     document.getElementById('phase-description').textContent = `Mano ${data.trickNumber} di ${data.totalTricks}`;
 });
 
+// Richiesta carta
 socket.on('request_card', (data) => {
-    // Abilita le carte nella mano
-    document.querySelectorAll('#player-hand .card').forEach(c => {
+    document.querySelectorAll('#player-hand .card:not(.played)').forEach(c => {
         c.classList.remove('disabled');
     });
     
     addGameMessage(`${data.playerName}, gioca una carta!`, 'info');
 });
 
+// Carta giocata
 socket.on('card_played', (data) => {
     addGameMessage(`${data.playerName} ha giocato ${data.card.rankName} di ${data.card.suitName}`, 'info');
     
-    // Aggiungi la carta all'area trick
     const cardsPlayedDiv = document.getElementById('cards-played');
     const playedCardDiv = document.createElement('div');
     playedCardDiv.className = 'played-card';
@@ -318,6 +327,7 @@ socket.on('card_played', (data) => {
     cardsPlayedDiv.appendChild(playedCardDiv);
 });
 
+// Mano vinta
 socket.on('trick_won', (data) => {
     addGameMessage(`${data.winnerName} vince la mano con ${data.winningCard.rankName} di ${data.winningCard.suitName}!`, 'success');
     
@@ -326,6 +336,7 @@ socket.on('trick_won', (data) => {
     }, 2000);
 });
 
+// Turno terminato
 socket.on('round_ended', (data) => {
     document.getElementById('trick-area').style.display = 'none';
     
@@ -338,6 +349,7 @@ socket.on('round_ended', (data) => {
     addGameMessage(message, 'info');
 });
 
+// Partita terminata
 socket.on('game_ended', (data) => {
     let message = '🎉 FINE PARTITA! 🎉\n\n';
     
@@ -354,28 +366,34 @@ socket.on('game_ended', (data) => {
     
     addGameMessage(message, 'success');
     
-    // Pulisci la sessione
-    clearSession();
-    
     setTimeout(() => {
-        if (confirm('Partita terminata! Vuoi tornare alla home?')) {
-            location.reload();
+        if (confirm('Partita terminata! Vuoi tornare alla lobby?')) {
+            showScreen('lobby');
+            socket.emit('get_rooms');
         }
-    }, 5000);
+    }, 3000);
 });
 
+// Errore
 socket.on('error', (data) => {
     showNotification(data.message, true);
 });
 
+// Giocatore disconnesso
 socket.on('player_disconnected', (data) => {
     showNotification(data.message, true);
 });
 
-// Funzioni di rendering
-function updateLobby(state) {
-    document.getElementById('player-count').textContent = state.players.length;
-    
+// Stato gioco
+socket.on('game_state', (state) => {
+    updatePlayersStatus(state);
+});
+
+// ============================================
+// FUNZIONI DI RENDERING
+// ============================================
+
+function updateRoomState(state) {
     const playersList = document.getElementById('players-list');
     playersList.innerHTML = '';
     
@@ -384,11 +402,11 @@ function updateLobby(state) {
         const isMe = player.socketId === gameState.playerId;
         const adminBadge = player.isAdmin ? ' 👑' : '';
         li.textContent = `${player.name}${adminBadge}${isMe ? ' (Tu)' : ''}`;
+        li.className = isMe ? 'current-player' : '';
         playersList.appendChild(li);
     });
     
-    // Il pulsante inizia viene gestito già in game_created/game_joined
-    // Qui aggiorniamo solo lo stato dei giocatori in gioco
+    // Se la partita è iniziata, vai alla schermata gioco
     if (state.gameStarted) {
         showScreen('game');
         updatePlayersStatus(state);
@@ -430,14 +448,10 @@ function displayPlayerHand(data) {
     const specialNote = document.getElementById('special-round-note');
     
     if (data.specialRound && data.hideOwnCard) {
-        // Turno speciale da 1 carta
         specialNote.style.display = 'block';
-        
-        // Mostra carta nascosta
         handDiv.innerHTML = createCardHTML({isHidden: true}, 0, false);
         
-        // Mostra le carte degli altri giocatori
-        if (data.otherPlayersCards.length > 0) {
+        if (data.otherPlayersCards && data.otherPlayersCards.length > 0) {
             const othersDiv = document.createElement('div');
             othersDiv.innerHTML = '<h4 style="margin-top: 20px;">Carte degli altri giocatori:</h4>';
             const othersCards = document.createElement('div');
@@ -459,7 +473,6 @@ function displayPlayerHand(data) {
     } else {
         specialNote.style.display = 'none';
         
-        // Mostra le carte normali
         data.hand.forEach((card, index) => {
             handDiv.innerHTML += createCardHTML(card, index, true);
         });
@@ -518,39 +531,39 @@ function displayBettingArea(data) {
     }
 }
 
-// Inizializzazione
-document.addEventListener('DOMContentLoaded', () => {
-    // Aggiungi event listener al pulsante inizia partita
-    const startBtn = document.getElementById('start-game-btn');
-    if (startBtn) {
-        startBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('Pulsante inizia cliccato!');
-            startGame();
-        });
-    }
-    
-    // Prova a rientrare in una sessione esistente
-    const session = loadSession();
-    if (session && session.roomCode && session.playerName) {
-        gameState.playerName = session.playerName;
-        gameState.roomCode = session.roomCode;
-        
-        // Prova a rientrare nella partita
-        socket.emit('rejoin_game', {
-            roomCode: session.roomCode,
-            playerName: session.playerName
-        });
-    } else {
-        showScreen('home');
-    }
-});
+// ============================================
+// INIZIALIZZAZIONE
+// ============================================
 
-// Gestisci errore di rejoin
-socket.on('rejoin_failed', (data) => {
-    clearSession();
+document.addEventListener('DOMContentLoaded', () => {
+    // Pulsanti Home
+    document.getElementById('enter-lobby-btn').addEventListener('click', enterLobby);
+    document.getElementById('show-rules-btn').addEventListener('click', () => showScreen('rules'));
+    
+    // Pulsanti Lobby
+    document.getElementById('create-room-btn').addEventListener('click', () => {
+        document.getElementById('create-room-modal').style.display = 'flex';
+    });
+    document.getElementById('back-home-btn').addEventListener('click', () => showScreen('home'));
+    document.getElementById('search-room').addEventListener('input', filterRooms);
+    
+    // Modale Crea Stanza
+    document.getElementById('confirm-create-btn').addEventListener('click', createRoom);
+    document.getElementById('cancel-create-btn').addEventListener('click', () => {
+        document.getElementById('create-room-modal').style.display = 'none';
+    });
+    
+    // Pulsanti Stanza
+    document.getElementById('start-game-btn').addEventListener('click', startGame);
+    document.getElementById('leave-room-btn').addEventListener('click', leaveRoom);
+    
+    // Pulsanti Regole
+    document.getElementById('back-from-rules-btn').addEventListener('click', () => showScreen('home'));
+    
+    // Pulsanti Jolly
+    document.getElementById('joker-prende-btn').addEventListener('click', () => selectJokerMode('prende'));
+    document.getElementById('joker-lascia-btn').addEventListener('click', () => selectJokerMode('lascia'));
+    
+    // Mostra schermata home
     showScreen('home');
-    if (data && data.message) {
-        showNotification(data.message, true);
-    }
 });

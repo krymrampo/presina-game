@@ -20,79 +20,84 @@
                     <input type="text" id="player-name" placeholder="Inserisci il tuo nome" maxlength="20">
                 </div>
                 
-                <div class="button-group">
-                    <button class="btn btn-primary" onclick="showCreateGame()">
-                        Crea Partita
-                    </button>
-                    <button class="btn btn-secondary" onclick="showJoinGame()">
-                        Unisciti a Partita
-                    </button>
-                </div>
+                <button class="btn btn-primary btn-large" id="enter-lobby-btn">
+                    🚪 Entra nella Lobby
+                </button>
                 
-                <button class="btn btn-info" onclick="showRules()">
+                <button class="btn btn-info" id="show-rules-btn">
                     📖 Regole del Gioco
                 </button>
             </div>
         </div>
 
-        <!-- Schermata Crea Partita -->
-        <div id="create-screen" class="screen">
-            <h2>Crea una Nuova Partita</h2>
-            
-            <p class="hint">Crea una stanza e condividi il codice con i tuoi amici.<br>Quando tutti sono dentro, premi "Inizia Partita".</p>
-            
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="createGame()">
-                    Crea Stanza
-                </button>
-                <button class="btn btn-secondary" onclick="backToHome()">
-                    Indietro
-                </button>
-            </div>
-        </div>
-
-        <!-- Schermata Unisciti -->
-        <div id="join-screen" class="screen">
-            <h2>Unisciti a una Partita</h2>
-            
-            <div class="input-group">
-                <label for="room-code">Codice Stanza:</label>
-                <input type="text" id="room-code" placeholder="Inserisci codice" maxlength="6" style="text-transform: uppercase;">
-            </div>
-            
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="joinGame()">
-                    Unisciti
-                </button>
-                <button class="btn btn-secondary" onclick="backToHome()">
-                    Indietro
-                </button>
-            </div>
-        </div>
-
-        <!-- Schermata Lobby -->
+        <!-- Schermata Lobby (lista stanze) -->
         <div id="lobby-screen" class="screen">
-            <h2>Sala d'Attesa</h2>
+            <h2>🎮 Stanze Disponibili</h2>
             
-            <div class="room-code-display">
-                <p>Codice Stanza:</p>
-                <h3 id="lobby-room-code">------</h3>
-                <p class="hint">Condividi questo codice con gli amici!</p>
+            <div class="lobby-header">
+                <div class="search-box">
+                    <input type="text" id="search-room" placeholder="🔍 Cerca stanza per nome...">
+                </div>
+                
+                <button class="btn btn-success" id="create-room-btn">
+                    ➕ Crea Nuova Stanza
+                </button>
+            </div>
+            
+            <div id="rooms-list" class="rooms-list">
+                <p class="no-rooms">Nessuna stanza disponibile. Creane una!</p>
+            </div>
+            
+            <button class="btn btn-secondary" id="back-home-btn">
+                ← Torna alla Home
+            </button>
+        </div>
+
+        <!-- Modale Crea Stanza -->
+        <div id="create-room-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Crea una Nuova Stanza</h3>
+                
+                <div class="input-group">
+                    <label for="room-name">Nome della stanza:</label>
+                    <input type="text" id="room-name" placeholder="Es: Partita con amici" maxlength="30">
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-success" id="confirm-create-btn">
+                        Crea Stanza
+                    </button>
+                    <button class="btn btn-secondary" id="cancel-create-btn">
+                        Annulla
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schermata Stanza (waiting room) -->
+        <div id="room-screen" class="screen">
+            <h2 id="room-title">Stanza</h2>
+            
+            <div class="room-info">
+                <p>Giocatori in attesa:</p>
             </div>
             
             <div class="players-waiting">
-                <h3>Giocatori in stanza: <span id="player-count">0</span></h3>
                 <ul id="players-list"></ul>
             </div>
             
-            <div id="start-game-section" style="display: none;">
-                <button id="start-game-btn" class="btn btn-success">
-                    🚀 Inizia Partita
+            <div id="admin-controls" style="display: none;">
+                <button class="btn btn-success btn-large" id="start-game-btn">
+                    🚀 INIZIA PARTITA
                 </button>
                 <p class="hint">Minimo 2 giocatori per iniziare</p>
             </div>
             
             <p id="waiting-message" class="waiting-text">In attesa che l'admin avvii la partita...</p>
+            
+            <button class="btn btn-danger" id="leave-room-btn">
+                🚪 Esci dalla Stanza
+            </button>
         </div>
 
         <!-- Schermata Gioco -->
@@ -141,11 +146,11 @@
                     <h3>Asso di Denari - Jolly!</h3>
                     <p>Scegli come giocare il jolly:</p>
                     <div class="button-group">
-                        <button class="btn btn-success" onclick="selectJokerMode('prende')">
+                        <button class="btn btn-success" id="joker-prende-btn">
                             🔝 PRENDE<br>
                             <small>(Più del Re di Denari)</small>
                         </button>
-                        <button class="btn btn-danger" onclick="selectJokerMode('lascia')">
+                        <button class="btn btn-danger" id="joker-lascia-btn">
                             ⬇️ LASCIA<br>
                             <small>(Meno dell'Asso di Bastoni)</small>
                         </button>
@@ -208,8 +213,8 @@
                 <p>Chi ha più vite alla fine dei 5 turni vince!</p>
             </div>
             
-            <button class="btn btn-secondary" onclick="backToHome()">
-                Indietro
+            <button class="btn btn-secondary" id="back-from-rules-btn">
+                ← Indietro
             </button>
         </div>
     </div>
