@@ -96,7 +96,7 @@
             <p id="waiting-message" class="waiting-text">In attesa che l'admin avvii la partita...</p>
             
             <button class="btn btn-danger" id="leave-room-btn">
-                🚪 Esci dalla Stanza
+                🚪 Abbandona
             </button>
         </div>
 
@@ -129,9 +129,19 @@
             <div id="hand-area" class="hand-area">
                 <h4>Le tue carte:</h4>
                 <div id="player-hand" class="cards-container"></div>
+                <div id="card-confirmation" class="card-confirmation" style="display: none;">
+                    <span id="selected-card-label"></span>
+                    <button class="btn btn-success" id="confirm-card-btn">
+                        ✅ Conferma
+                    </button>
+                    <button class="btn btn-secondary" id="cancel-card-btn">
+                        ✖ Annulla
+                    </button>
+                </div>
                 <p id="special-round-note" class="special-note" style="display: none;">
                     🎭 Turno speciale: Questa è la tua carta, ma non puoi vederla!
                 </p>
+                <div id="other-players-cards" class="other-players-cards"></div>
             </div>
 
             <!-- Area Carte in Gioco -->

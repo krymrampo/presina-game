@@ -34,7 +34,7 @@ def handle_get_rooms():
         rooms_list.append({
             'id': room_id,
             'name': game.room_name,
-            'playerCount': len([p for p in game.players if getattr(p, 'connected', True)]),
+            'playerCount': game.connected_count(),
             'started': game.has_started()
         })
     
@@ -90,12 +90,14 @@ def handle_join_room(data):
         emit('error', {'message': 'La partita è già iniziata!'})
         return
     
-    if len(game.players) >= 8:
+    if game.connected_count() >= game.max_players:
         emit('error', {'message': 'La stanza è piena (max 8 giocatori)!'})
         return
     
     # Aggiungi il giocatore
-    game.add_player(request.sid, player_name)
+    if not game.add_player(request.sid, player_name):
+        emit('error', {'message': 'La stanza è piena (max 8 giocatori)!'})
+        return
     join_room(room_id)
     
     emit('room_joined', {
@@ -134,6 +136,48 @@ def handle_leave_room(data):
     socketio.emit('rooms_list', get_rooms_list())
 
 
+@socketio.on('kick_player')
+def handle_kick_player(data):
+    """Rimuove un giocatore dalla stanza (solo admin, pre-partita)."""
+    room_id = data.get('roomId', '')
+    target_id = data.get('targetId', '')
+    
+    if room_id not in games:
+        emit('error', {'message': 'Stanza non trovata!'})
+        return
+    
+    game = games[room_id]
+    
+    if game.has_started():
+        emit('error', {'message': 'Non puoi rimuovere giocatori a partita iniziata!'})
+        return
+    
+    if not game.is_admin(request.sid):
+        emit('error', {'message': 'Solo l\'admin può rimuovere giocatori!'})
+        return
+    
+    if not target_id or target_id == request.sid:
+        emit('error', {'message': 'Giocatore non valido!'})
+        return
+    
+    if not game.has_player(target_id):
+        emit('error', {'message': 'Giocatore non trovato!'})
+        return
+    
+    game.remove_player(target_id)
+    leave_room(room_id, sid=target_id)
+    socketio.emit('kicked', {
+        'message': 'Sei stato rimosso dalla stanza'
+    }, room=target_id)
+    
+    if len(game.players) == 0:
+        del games[room_id]
+    else:
+        game.broadcast_room_state()
+    
+    socketio.emit('rooms_list', get_rooms_list())
+
+
 def get_rooms_list():
     """Helper per ottenere la lista delle stanze."""
     rooms_list = []
@@ -141,7 +185,7 @@ def get_rooms_list():
         rooms_list.append({
             'id': room_id,
             'name': game.room_name,
-            'playerCount': len([p for p in game.players if getattr(p, 'connected', True)]),
+            'playerCount': game.connected_count(),
             'started': game.has_started()
         })
     return rooms_list
@@ -178,11 +222,12 @@ def handle_start_game(data):
         return
     
     # Verifica minimo 2 giocatori
-    if len(game.players) < 2:
+    connected_players = game.connected_count()
+    if connected_players < 2:
         emit('error', {'message': 'Servono almeno 2 giocatori per iniziare!'})
         return
     
-    if len(game.players) > 8:
+    if connected_players > game.max_players:
         emit('error', {'message': 'Massimo 8 giocatori!'})
         return
     

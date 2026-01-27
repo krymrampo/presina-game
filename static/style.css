@@ -154,6 +154,14 @@ h3 {
     color: white;
 }
 
+.btn-small {
+    padding: 6px 10px;
+    font-size: 12px;
+    letter-spacing: 0;
+    text-transform: none;
+    flex: 0 0 auto;
+}
+
 .room-code-display {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -306,6 +314,23 @@ h3 {
     margin-top: 15px;
 }
 
+.card-confirmation {
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e2e6ea;
+}
+
+#selected-card-label {
+    font-weight: 600;
+    color: #333;
+}
+
 .card {
     width: 100px;
     height: 140px;
@@ -325,6 +350,12 @@ h3 {
 .card:hover {
     transform: translateY(-10px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.card.selected {
+    outline: 4px solid #28a745;
+    transform: translateY(-8px);
+    box-shadow: 0 12px 25px rgba(40, 167, 69, 0.4);
 }
 
 .card.played {
@@ -412,6 +443,14 @@ h3 {
     color: #ff4500;
     font-weight: bold;
     margin-top: 10px;
+}
+
+.other-players-cards {
+    margin-top: 20px;
+}
+
+.other-players-cards h4 {
+    margin-bottom: 10px;
 }
 
 .trick-area {

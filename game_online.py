@@ -45,19 +45,50 @@ class PresinaGameOnline:
     
     def add_player(self, socket_id, name, is_admin=False):
         """Aggiunge un giocatore alla partita."""
-        if len(self.players) < self.max_players:
-            player = Player(name)
-            player.socket_id = socket_id
-            player.connected = True
-            player.is_admin = is_admin
-            self.players.append(player)
-            self.player_ids[socket_id] = player
-            
-            if is_admin:
-                self.admin_socket_id = socket_id
-            
-            return True
-        return False
+        if not self.game_started:
+            self.prune_disconnected()
+        
+        if self.connected_count() >= self.max_players:
+            return False
+        
+        player = Player(name)
+        player.socket_id = socket_id
+        player.connected = True
+        player.is_admin = is_admin
+        self.players.append(player)
+        self.player_ids[socket_id] = player
+        
+        if is_admin:
+            self.admin_socket_id = socket_id
+        
+        return True
+
+    def connected_players(self):
+        """Ritorna la lista dei giocatori connessi."""
+        return [p for p in self.players if getattr(p, 'connected', True)]
+
+    def connected_count(self):
+        """Ritorna il numero di giocatori connessi."""
+        return len(self.connected_players())
+
+    def prune_disconnected(self):
+        """Rimuove i giocatori disconnessi prima dell'inizio partita."""
+        if self.game_started:
+            return
+        
+        removed_admin = False
+        for player in list(self.players):
+            if not getattr(player, 'connected', True):
+                if getattr(player, 'is_admin', False):
+                    removed_admin = True
+                if player.socket_id in self.player_ids:
+                    del self.player_ids[player.socket_id]
+                self.players.remove(player)
+        
+        if removed_admin and self.players:
+            if not any(getattr(p, 'is_admin', False) for p in self.players):
+                self.players[0].is_admin = True
+                self.admin_socket_id = self.players[0].socket_id
     
     def is_admin(self, socket_id):
         """Verifica se il socket_id è l'admin."""
@@ -102,6 +133,7 @@ class PresinaGameOnline:
         """Rimuove un giocatore dalla partita."""
         if socket_id in self.player_ids:
             player = self.player_ids[socket_id]
+            was_admin = getattr(player, 'is_admin', False)
             self.players.remove(player)
             del self.player_ids[socket_id]
             
@@ -110,6 +142,15 @@ class PresinaGameOnline:
                 'playerName': player.name,
                 'message': f'{player.name} si è disconnesso'
             }, room=self.room_code)
+            
+            if was_admin:
+                if self.players:
+                    for p in self.players:
+                        p.is_admin = False
+                    self.players[0].is_admin = True
+                    self.admin_socket_id = self.players[0].socket_id
+                else:
+                    self.admin_socket_id = None
     
     def has_player(self, socket_id):
         """Verifica se un giocatore è nella partita."""
@@ -117,7 +158,7 @@ class PresinaGameOnline:
     
     def is_full(self):
         """Verifica se la partita è piena."""
-        return len(self.players) == self.max_players
+        return self.connected_count() >= self.max_players
     
     def is_empty(self):
         """Verifica se la partita è vuota."""
@@ -220,7 +261,12 @@ class PresinaGameOnline:
     
     def start_game(self):
         """Avvia la partita."""
-        if not self.is_full():
+        if self.game_started:
+            return
+        
+        self.prune_disconnected()
+        connected = self.connected_count()
+        if connected < 2 or connected > self.max_players:
             return
         
         self.game_started = True

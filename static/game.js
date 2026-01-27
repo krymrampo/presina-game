@@ -8,7 +8,13 @@ let gameState = {
     roomId: '',
     roomName: '',
     isAdmin: false,
-    pendingCardIndex: null
+    pendingCardIndex: null,
+    selectedCardElement: null,
+    isMyTurn: false,
+    canPlay: false,
+    awaitingPlay: false,
+    waitingForPlayer: null,
+    playingPhase: false
 };
 
 // ============================================
@@ -41,6 +47,48 @@ function addGameMessage(message, type = 'info') {
     setTimeout(() => {
         msgDiv.remove();
     }, 5000);
+}
+
+function hideCardConfirmation() {
+    const confirmation = document.getElementById('card-confirmation');
+    const label = document.getElementById('selected-card-label');
+    confirmation.style.display = 'none';
+    label.textContent = '';
+}
+
+function clearCardSelection(preservePending = false) {
+    if (gameState.selectedCardElement) {
+        gameState.selectedCardElement.classList.remove('selected');
+    }
+    gameState.selectedCardElement = null;
+    if (!preservePending) {
+        gameState.pendingCardIndex = null;
+    }
+    hideCardConfirmation();
+}
+
+function refreshCardInteractivity() {
+    const canInteract = gameState.isMyTurn && !gameState.awaitingPlay;
+    gameState.canPlay = canInteract;
+
+    document.querySelectorAll('#player-hand .card:not(.played)').forEach(card => {
+        if (canInteract) {
+            card.classList.remove('disabled');
+        } else {
+            card.classList.add('disabled');
+        }
+    });
+
+    if (!canInteract) {
+        if (gameState.awaitingPlay) {
+            if (gameState.selectedCardElement) {
+                gameState.selectedCardElement.classList.remove('selected');
+            }
+            hideCardConfirmation();
+        } else {
+            clearCardSelection();
+        }
+    }
 }
 
 // ============================================
@@ -90,6 +138,14 @@ function leaveRoom() {
     gameState.roomId = '';
     gameState.roomName = '';
     gameState.isAdmin = false;
+    gameState.pendingCardIndex = null;
+    gameState.selectedCardElement = null;
+    gameState.isMyTurn = false;
+    gameState.canPlay = false;
+    gameState.awaitingPlay = false;
+    gameState.waitingForPlayer = null;
+    gameState.playingPhase = false;
+    clearCardSelection();
     
     showScreen('lobby');
     socket.emit('get_rooms');
@@ -99,6 +155,20 @@ function startGame() {
     console.log('Avvio partita per stanza:', gameState.roomId);
     socket.emit('start_game', {
         roomId: gameState.roomId
+    });
+}
+
+function kickPlayer(playerId, playerName) {
+    if (!gameState.isAdmin || !playerId) {
+        return;
+    }
+    if (!confirm(`Rimuovere ${playerName} dalla stanza?`)) {
+        return;
+    }
+    
+    socket.emit('kick_player', {
+        roomId: gameState.roomId,
+        targetId: playerId
     });
 }
 
@@ -167,50 +237,78 @@ function makeBet(bet) {
 }
 
 function playCard(cardIndex) {
-    const hand = document.querySelectorAll('#player-hand .card:not(.played)');
+    if (!gameState.canPlay || gameState.awaitingPlay) {
+        return;
+    }
+    
+    const hand = Array.from(document.querySelectorAll('#player-hand .card:not(.played)'));
     const card = hand[cardIndex];
     
     if (!card || card.classList.contains('disabled') || card.classList.contains('played')) {
         return;
     }
     
-    if (card.dataset.isJoker === 'true') {
-        gameState.pendingCardIndex = cardIndex;
+    if (gameState.selectedCardElement) {
+        gameState.selectedCardElement.classList.remove('selected');
+    }
+    
+    gameState.selectedCardElement = card;
+    gameState.pendingCardIndex = cardIndex;
+    card.classList.add('selected');
+    
+    const label = document.getElementById('selected-card-label');
+    const rankName = card.dataset.rankName || '';
+    const suitName = card.dataset.suitName || '';
+    label.textContent = rankName && suitName ? `${rankName} di ${suitName}` : 'Carta selezionata';
+    document.getElementById('card-confirmation').style.display = 'flex';
+}
+
+function confirmSelectedCard() {
+    if (!gameState.canPlay || gameState.awaitingPlay || !gameState.selectedCardElement) {
+        return;
+    }
+    
+    const hand = Array.from(document.querySelectorAll('#player-hand .card:not(.played)'));
+    const index = hand.indexOf(gameState.selectedCardElement);
+    if (index === -1) {
+        clearCardSelection();
+        return;
+    }
+    
+    gameState.pendingCardIndex = index;
+    gameState.awaitingPlay = true;
+    refreshCardInteractivity();
+    hideCardConfirmation();
+    
+    const isJoker = gameState.selectedCardElement.dataset.isJoker === 'true';
+    if (isJoker) {
         document.getElementById('joker-modal').style.display = 'flex';
     } else {
         socket.emit('play_card', {
             roomId: gameState.roomId,
-            cardIndex: cardIndex
-        });
-        
-        card.classList.add('played');
-        card.style.display = 'none';
-        
-        document.querySelectorAll('#player-hand .card').forEach(c => {
-            c.classList.add('disabled');
+            cardIndex: index
         });
     }
 }
 
+function cancelSelectedCard() {
+    clearCardSelection();
+    refreshCardInteractivity();
+}
+
 function selectJokerMode(mode) {
     document.getElementById('joker-modal').style.display = 'none';
-    
+
+    if (gameState.pendingCardIndex === null || gameState.pendingCardIndex === undefined) {
+        gameState.awaitingPlay = false;
+        refreshCardInteractivity();
+        return;
+    }
+
     socket.emit('play_card', {
         roomId: gameState.roomId,
         cardIndex: gameState.pendingCardIndex,
         jokerMode: mode
-    });
-    
-    const hand = document.querySelectorAll('#player-hand .card:not(.played)');
-    if (hand[gameState.pendingCardIndex]) {
-        hand[gameState.pendingCardIndex].classList.add('played');
-        hand[gameState.pendingCardIndex].style.display = 'none';
-    }
-    
-    gameState.pendingCardIndex = null;
-    
-    document.querySelectorAll('#player-hand .card').forEach(c => {
-        c.classList.add('disabled');
     });
 }
 
@@ -260,12 +358,21 @@ socket.on('room_state', (state) => {
 
 // Partita iniziata
 socket.on('game_started', (data) => {
+    gameState.isMyTurn = false;
+    gameState.awaitingPlay = false;
+    refreshCardInteractivity();
     showScreen('game');
     showNotification('La partita è iniziata!');
 });
 
 // Turno iniziato
 socket.on('round_started', (data) => {
+    gameState.isMyTurn = false;
+    gameState.awaitingPlay = false;
+    refreshCardInteractivity();
+    clearCardSelection();
+    document.getElementById('trick-area').style.display = 'none';
+    document.getElementById('cards-played').innerHTML = '';
     document.getElementById('current-round').textContent = data.round;
     document.getElementById('cards-this-round').textContent = data.cardsThisRound;
     document.getElementById('total-tricks').textContent = data.cardsThisRound;
@@ -280,6 +387,9 @@ socket.on('player_hand', (data) => {
 
 // Richiesta puntata
 socket.on('request_bet', (data) => {
+    gameState.isMyTurn = false;
+    gameState.awaitingPlay = false;
+    refreshCardInteractivity();
     displayBettingArea(data);
 });
 
@@ -296,6 +406,8 @@ socket.on('betting_complete', (data) => {
 
 // Mano iniziata
 socket.on('trick_started', (data) => {
+    gameState.isMyTurn = false;
+    refreshCardInteractivity();
     document.getElementById('trick-number').textContent = data.trickNumber;
     document.getElementById('trick-area').style.display = 'block';
     document.getElementById('cards-played').innerHTML = '';
@@ -306,11 +418,25 @@ socket.on('trick_started', (data) => {
 
 // Richiesta carta
 socket.on('request_card', (data) => {
-    document.querySelectorAll('#player-hand .card:not(.played)').forEach(c => {
-        c.classList.remove('disabled');
-    });
-    
+    gameState.isMyTurn = true;
+    gameState.awaitingPlay = false;
+    clearCardSelection();
+    refreshCardInteractivity();
     addGameMessage(`${data.playerName}, gioca una carta!`, 'info');
+});
+
+// Richiesta modalità jolly (fallback server)
+socket.on('request_joker_mode', () => {
+    if (gameState.pendingCardIndex === null && gameState.selectedCardElement) {
+        const hand = Array.from(document.querySelectorAll('#player-hand .card:not(.played)'));
+        const index = hand.indexOf(gameState.selectedCardElement);
+        if (index !== -1) {
+            gameState.pendingCardIndex = index;
+        }
+    }
+    gameState.awaitingPlay = true;
+    refreshCardInteractivity();
+    document.getElementById('joker-modal').style.display = 'flex';
 });
 
 // Carta giocata
@@ -325,6 +451,29 @@ socket.on('card_played', (data) => {
         ${createCardHTML(data.card, -1, false)}
     `;
     cardsPlayedDiv.appendChild(playedCardDiv);
+    
+    if (data.playerName === gameState.playerName) {
+        let playedEl = gameState.selectedCardElement;
+        
+        if (!playedEl) {
+            const handCards = document.querySelectorAll('#player-hand .card:not(.played)');
+            handCards.forEach(c => {
+                if (!playedEl && c.dataset.rankName === data.card.rankName && c.dataset.suitName === data.card.suitName) {
+                    playedEl = c;
+                }
+            });
+        }
+        
+        if (playedEl) {
+            playedEl.classList.add('played');
+            playedEl.style.display = 'none';
+        }
+        
+        gameState.awaitingPlay = false;
+        gameState.isMyTurn = false;
+        clearCardSelection();
+        refreshCardInteractivity();
+    }
 });
 
 // Mano vinta
@@ -366,6 +515,10 @@ socket.on('game_ended', (data) => {
     
     addGameMessage(message, 'success');
     
+    gameState.isMyTurn = false;
+    gameState.awaitingPlay = false;
+    refreshCardInteractivity();
+    
     setTimeout(() => {
         if (confirm('Partita terminata! Vuoi tornare alla lobby?')) {
             showScreen('lobby');
@@ -377,11 +530,35 @@ socket.on('game_ended', (data) => {
 // Errore
 socket.on('error', (data) => {
     showNotification(data.message, true);
+    
+    if (gameState.awaitingPlay) {
+        gameState.awaitingPlay = false;
+        clearCardSelection();
+        refreshCardInteractivity();
+    }
 });
 
 // Giocatore disconnesso
 socket.on('player_disconnected', (data) => {
     showNotification(data.message, true);
+});
+
+// Rimozione forzata dalla stanza
+socket.on('kicked', (data) => {
+    showNotification(data.message || 'Sei stato rimosso dalla stanza', true);
+    gameState.roomId = '';
+    gameState.roomName = '';
+    gameState.isAdmin = false;
+    gameState.pendingCardIndex = null;
+    gameState.selectedCardElement = null;
+    gameState.isMyTurn = false;
+    gameState.canPlay = false;
+    gameState.awaitingPlay = false;
+    gameState.waitingForPlayer = null;
+    gameState.playingPhase = false;
+    clearCardSelection();
+    showScreen('lobby');
+    socket.emit('get_rooms');
 });
 
 // Stato gioco
@@ -396,6 +573,11 @@ socket.on('game_state', (state) => {
 function updateRoomState(state) {
     const playersList = document.getElementById('players-list');
     playersList.innerHTML = '';
+
+    const me = state.players.find(p => p.socketId === gameState.playerId);
+    gameState.isAdmin = !!(me && me.isAdmin);
+    document.getElementById('admin-controls').style.display = gameState.isAdmin ? 'block' : 'none';
+    document.getElementById('waiting-message').style.display = gameState.isAdmin ? 'none' : 'block';
     
     state.players.forEach(player => {
         const li = document.createElement('li');
@@ -403,6 +585,15 @@ function updateRoomState(state) {
         const adminBadge = player.isAdmin ? ' 👑' : '';
         li.textContent = `${player.name}${adminBadge}${isMe ? ' (Tu)' : ''}`;
         li.className = isMe ? 'current-player' : '';
+        
+        if (gameState.isAdmin && !isMe) {
+            const kickBtn = document.createElement('button');
+            kickBtn.className = 'btn btn-danger btn-small';
+            kickBtn.textContent = 'Rimuovi';
+            kickBtn.addEventListener('click', () => kickPlayer(player.socketId, player.name));
+            li.appendChild(kickBtn);
+        }
+        
         playersList.appendChild(li);
     });
     
@@ -416,6 +607,17 @@ function updateRoomState(state) {
 function updatePlayersStatus(state) {
     const statusDiv = document.getElementById('players-status');
     statusDiv.innerHTML = '';
+    
+    gameState.waitingForPlayer = state.waitingForPlayer || null;
+    gameState.playingPhase = !!state.playingPhase;
+    const myTurn = gameState.playingPhase && gameState.waitingForPlayer === gameState.playerName;
+    if (myTurn !== gameState.isMyTurn) {
+        gameState.isMyTurn = myTurn;
+        if (!myTurn) {
+            gameState.awaitingPlay = false;
+        }
+        refreshCardInteractivity();
+    }
     
     state.players.forEach(player => {
         const div = document.createElement('div');
@@ -444,8 +646,12 @@ function updatePlayersStatus(state) {
 function displayPlayerHand(data) {
     const handDiv = document.getElementById('player-hand');
     handDiv.innerHTML = '';
+    const othersContainer = document.getElementById('other-players-cards');
+    othersContainer.innerHTML = '';
     
     const specialNote = document.getElementById('special-round-note');
+    gameState.awaitingPlay = false;
+    clearCardSelection();
     
     if (data.specialRound && data.hideOwnCard) {
         specialNote.style.display = 'block';
@@ -453,7 +659,7 @@ function displayPlayerHand(data) {
         
         if (data.otherPlayersCards && data.otherPlayersCards.length > 0) {
             const othersDiv = document.createElement('div');
-            othersDiv.innerHTML = '<h4 style="margin-top: 20px;">Carte degli altri giocatori:</h4>';
+            othersDiv.innerHTML = '<h4>Carte degli altri giocatori:</h4>';
             const othersCards = document.createElement('div');
             othersCards.className = 'cards-container';
             
@@ -468,7 +674,7 @@ function displayPlayerHand(data) {
             });
             
             othersDiv.appendChild(othersCards);
-            handDiv.parentElement.appendChild(othersDiv);
+            othersContainer.appendChild(othersDiv);
         }
     } else {
         specialNote.style.display = 'none';
@@ -477,6 +683,8 @@ function displayPlayerHand(data) {
             handDiv.innerHTML += createCardHTML(card, index, true);
         });
     }
+    
+    refreshCardInteractivity();
 }
 
 function createCardHTML(card, index, clickable) {
@@ -493,7 +701,9 @@ function createCardHTML(card, index, clickable) {
         <div class="card ${suitClass}${jokerClass}" 
              ${onclick}
              data-index="${index}"
-             data-is-joker="${card.isJoker}">
+             data-is-joker="${card.isJoker}"
+             data-rank-name="${card.rankName}"
+             data-suit-name="${card.suitName}">
             <div class="card-suit">${suitSymbol}</div>
             <div class="card-rank">${card.rankName}</div>
             ${card.isJoker ? '<div style="font-size: 0.8em;">JOLLY</div>' : ''}
@@ -563,6 +773,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pulsanti Jolly
     document.getElementById('joker-prende-btn').addEventListener('click', () => selectJokerMode('prende'));
     document.getElementById('joker-lascia-btn').addEventListener('click', () => selectJokerMode('lascia'));
+    
+    // Conferma carta
+    document.getElementById('confirm-card-btn').addEventListener('click', confirmSelectedCard);
+    document.getElementById('cancel-card-btn').addEventListener('click', cancelSelectedCard);
     
     // Mostra schermata home
     showScreen('home');
