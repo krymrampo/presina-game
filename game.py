@@ -102,6 +102,10 @@ class PresinaGame:
             for player in self.players:
                 if self.deck:
                     player.add_card(self.deck.pop())
+
+        # Ordina le mani per valore per una visualizzazione coerente
+        for player in self.players:
+            player.hand.sort(key=lambda c: c.get_value())
     
     def show_all_hands(self):
         """Mostra le carte di tutti i giocatori."""

@@ -201,7 +201,8 @@ class PresinaGameOnline:
                 'bet': p.bet if self.betting_phase or self.playing_phase else None,
                 'tricksWon': p.tricks_won if self.playing_phase else 0,
                 'socketId': p.socket_id,
-                'isAdmin': getattr(p, 'is_admin', False)
+                'isAdmin': getattr(p, 'is_admin', False),
+                'connected': getattr(p, 'connected', True)
             } for p in self.players],
             'gameStarted': self.game_started,
             'currentRound': self.current_round + 1 if self.game_started else 0,
@@ -319,6 +320,10 @@ class PresinaGameOnline:
             for player in self.players:
                 if self.deck:
                     player.add_card(self.deck.pop())
+
+        # Ordina la mano per valore per una visualizzazione coerente
+        for player in self.players:
+            player.hand.sort(key=lambda c: c.get_value())
     
     def start_betting_phase(self):
         """Inizia la fase di puntata."""

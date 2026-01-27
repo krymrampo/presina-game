@@ -92,23 +92,34 @@ function addGameMessage(message, type = 'info') {
     }, 5000);
 }
 
-function ensureTrickDivider(trickNumber) {
+function ensureTrickGroup(trickNumber) {
     if (!trickNumber) {
-        return;
+        return null;
     }
     const cardsPlayedDiv = document.getElementById('cards-played');
     if (!cardsPlayedDiv) {
-        return;
+        return null;
     }
-    const existing = cardsPlayedDiv.querySelector(`.trick-divider[data-trick="${trickNumber}"]`);
-    if (existing) {
-        return;
+    let group = cardsPlayedDiv.querySelector(`.trick-group[data-trick="${trickNumber}"]`);
+    if (group) {
+        return group;
     }
+    group = document.createElement('div');
+    group.className = 'trick-group';
+    group.dataset.trick = String(trickNumber);
+
     const divider = document.createElement('div');
     divider.className = 'trick-divider';
     divider.dataset.trick = String(trickNumber);
     divider.textContent = `Mano ${trickNumber}`;
-    cardsPlayedDiv.appendChild(divider);
+
+    const cardsContainer = document.createElement('div');
+    cardsContainer.className = 'trick-cards';
+
+    group.appendChild(divider);
+    group.appendChild(cardsContainer);
+    cardsPlayedDiv.prepend(group);
+    return group;
 }
 
 function hideCardConfirmation() {
@@ -299,15 +310,24 @@ function makeBet(bet) {
     });
 }
 
-function playCard(cardIndex) {
+function playCard(cardOrIndex) {
     if (!gameState.canPlay || gameState.awaitingPlay) {
         return;
     }
     
     const hand = Array.from(document.querySelectorAll('#player-hand .card:not(.played)'));
-    const card = hand[cardIndex];
+    let card = null;
+    let cardIndex = -1;
+
+    if (typeof cardOrIndex === 'number') {
+        cardIndex = cardOrIndex;
+        card = hand[cardIndex];
+    } else if (cardOrIndex && cardOrIndex.classList) {
+        card = cardOrIndex;
+        cardIndex = hand.indexOf(card);
+    }
     
-    if (!card || card.classList.contains('disabled') || card.classList.contains('played')) {
+    if (!card || cardIndex < 0 || card.classList.contains('disabled') || card.classList.contains('played')) {
         return;
     }
     
@@ -477,7 +497,7 @@ socket.on('trick_started', (data) => {
     gameState.currentTrick = data.trickNumber;
     document.getElementById('trick-number').textContent = data.trickNumber;
     document.getElementById('trick-area').style.display = 'block';
-    ensureTrickDivider(data.trickNumber);
+    ensureTrickGroup(data.trickNumber);
     
     document.getElementById('phase-title').textContent = 'Fase di Gioco';
     document.getElementById('phase-description').textContent = `Mano ${data.trickNumber} di ${data.totalTricks}`;
@@ -510,8 +530,8 @@ socket.on('request_joker_mode', () => {
 socket.on('card_played', (data) => {
     addGameMessage(`${data.playerName} ha giocato ${data.card.rankName} di ${data.card.suitName}`, 'info');
     
-    const cardsPlayedDiv = document.getElementById('cards-played');
-    ensureTrickDivider(gameState.currentTrick);
+    const trickGroup = ensureTrickGroup(gameState.currentTrick);
+    const cardsPlayedDiv = trickGroup ? trickGroup.querySelector('.trick-cards') : document.getElementById('cards-played');
     const playedCardDiv = document.createElement('div');
     playedCardDiv.className = 'played-card';
     playedCardDiv.innerHTML = `
@@ -672,8 +692,13 @@ function updateRoomState(state) {
         const li = document.createElement('li');
         const isMe = player.socketId === gameState.playerId;
         const adminBadge = player.isAdmin ? ' 👑' : '';
-        li.textContent = `${player.name}${adminBadge}${isMe ? ' (Tu)' : ''}`;
+        const isOnline = player.connected !== false;
+        const presenceBadge = isOnline ? ' 🟢 Online' : ' 🔴 Offline';
+        li.textContent = `${player.name}${adminBadge}${isMe ? ' (Tu)' : ''}${presenceBadge}`;
         li.className = isMe ? 'current-player' : '';
+        if (!isOnline) {
+            li.classList.add('offline');
+        }
         
         if (gameState.isAdmin && !isMe) {
             const kickBtn = document.createElement('button');
@@ -715,8 +740,14 @@ function updatePlayersStatus(state) {
         if (state.waitingForPlayer === player.name) {
             div.classList.add('current');
         }
+        const isOnline = player.connected !== false;
+        if (!isOnline) {
+            div.classList.add('offline');
+        }
         
         let html = `<strong>${player.name}</strong><br>`;
+        html += `<span class="player-presence ${isOnline ? 'online' : 'offline'}">` +
+                `${isOnline ? '🟢 Online' : '🔴 Offline'}</span><br>`;
         html += `❤️ ${player.lives} vite<br>`;
         
         if (player.bet !== null && player.bet !== undefined) {
@@ -783,7 +814,7 @@ function createCardHTML(card, index, clickable) {
     
     const suitClass = ['bastoni', 'spade', 'coppe', 'denari'][card.suit];
     const suitSymbol = ['🌲', '⚔️', '🏆', '💰'][card.suit];
-    const onclick = clickable ? `onclick="playCard(${index})"` : '';
+    const onclick = clickable ? 'onclick="playCard(this)"' : '';
     const jokerClass = card.isJoker ? ' joker' : '';
     
     return `
