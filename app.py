@@ -2,7 +2,8 @@
 Server Flask per il gioco Presina multiplayer online.
 """
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
+import os
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import random
 import string
@@ -11,6 +12,7 @@ from game_online import PresinaGameOnline
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'presina_secret_key_2026'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+CARDS_DIR = os.path.join(os.path.dirname(__file__), 'carte_napoletane')
 
 # Dizionario per memorizzare le stanze di gioco
 games = {}
@@ -31,6 +33,12 @@ def find_room_for_sid(sid):
 def index():
     """Pagina principale."""
     return render_template('index.html')
+
+
+@app.route('/cards/<path:filename>')
+def serve_card_image(filename):
+    """Serve le immagini delle carte napoletane."""
+    return send_from_directory(CARDS_DIR, filename)
 
 
 @socketio.on('get_rooms')

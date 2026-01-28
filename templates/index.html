@@ -195,18 +195,23 @@
             <div id="game-messages" class="game-messages"></div>
 
             <!-- Chat di Gioco -->
-            <div id="chat-panel" class="chat-panel">
-                <div class="chat-header">
-                    <span>💬 Chat di Gioco</span>
-                    <button class="chat-toggle" id="chat-toggle-btn" type="button" aria-expanded="true">
-                        Riduci
-                    </button>
+            <div id="chat-wrapper" class="chat-wrapper">
+                <div id="spectator-info" class="spectator-info" style="display: none;">
+                    👀 Spettatori: <span id="spectator-count">0</span>
                 </div>
-                <div class="chat-body">
-                    <div id="chat-messages" class="chat-messages"></div>
-                    <div class="chat-input">
-                        <input type="text" id="chat-input" placeholder="Scrivi un messaggio..." maxlength="200">
-                        <button class="btn btn-primary" id="chat-send-btn">Invia</button>
+                <div id="chat-panel" class="chat-panel">
+                    <div class="chat-header">
+                        <span>💬 Chat di Gioco</span>
+                        <button class="chat-toggle" id="chat-toggle-btn" type="button" aria-expanded="true">
+                            Riduci
+                        </button>
+                    </div>
+                    <div class="chat-body">
+                        <div id="chat-messages" class="chat-messages"></div>
+                        <div class="chat-input">
+                            <input type="text" id="chat-input" placeholder="Scrivi un messaggio..." maxlength="200">
+                            <button class="btn btn-primary" id="chat-send-btn">Invia</button>
+                        </div>
                     </div>
                 </div>
             </div>

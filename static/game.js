@@ -1,5 +1,6 @@
 // Connessione Socket.IO
 const socket = io();
+const CARD_IMAGE_BASE = '/cards';
 
 // Stato del gioco
 let gameState = {
@@ -160,6 +161,21 @@ function addChatMessage(data) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
+function updateSpectatorCount(state) {
+    const info = document.getElementById('spectator-info');
+    const countEl = document.getElementById('spectator-count');
+    if (!info || !countEl) {
+        return;
+    }
+    const count = Number(state && state.spectatorsCount);
+    if (!Number.isFinite(count) || count <= 0) {
+        info.style.display = 'none';
+        return;
+    }
+    countEl.textContent = count;
+    info.style.display = 'block';
+}
+
 function sendChatMessage() {
     const input = document.getElementById('chat-input');
     if (!input) {
@@ -260,6 +276,23 @@ function ensureTrickGroup(trickNumber) {
     group.appendChild(cardsContainer);
     cardsPlayedDiv.prepend(group);
     return group;
+}
+
+function getCardImageUrl(card) {
+    if (!card || card.isHidden) {
+        return null;
+    }
+    const suitMap = ['Bastoni', 'Spade', 'Coppe', 'Ori'];
+    if (card.suit === null || card.suit === undefined) {
+        return null;
+    }
+    const suit = suitMap[Number(card.suit)];
+    const rank = Number(card.rank);
+    if (!suit || Number.isNaN(rank)) {
+        return null;
+    }
+    const number = rank + 1;
+    return `${CARD_IMAGE_BASE}/${suit}_${number}.jpg`;
 }
 
 function hideCardConfirmation() {
@@ -1253,6 +1286,7 @@ function updatePlayersStatus(state) {
     });
 
     updateNextRoundOverlay(state);
+    updateSpectatorCount(state);
 }
 
 function displayPlayerHand(data) {
@@ -1326,6 +1360,22 @@ function createCardHTML(card, index, clickable) {
         }
     }
     
+    const imageUrl = getCardImageUrl(card);
+    if (imageUrl) {
+        return `
+            <div class="card image-card ${suitClass}${jokerClass}" 
+                 ${onclick}
+                 data-index="${index}"
+                 data-is-joker="${card.isJoker}"
+                 data-rank-name="${card.rankName}"
+                 data-suit-name="${card.suitName}">
+                <img src="${imageUrl}" alt="${card.rankName} di ${card.suitName}">
+                ${valueLabel ? `<div class="card-value">${valueLabel}</div>` : ''}
+                ${card.isJoker ? '<div class="card-joker-badge">JOLLY</div>' : ''}
+            </div>
+        `;
+    }
+
     return `
         <div class="card ${suitClass}${jokerClass}" 
              ${onclick}
