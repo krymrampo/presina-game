@@ -370,39 +370,29 @@ function updateSpectatorUI() {
 }
 
 function showNextRoundOverlay(isLastRound = false) {
-    const overlay = document.getElementById('next-round-overlay');
-    if (!overlay) {
+    const panel = document.getElementById('next-round-panel');
+    if (!panel) {
         return;
     }
-    const title = document.getElementById('next-round-title');
-    const note = document.getElementById('next-round-note');
     const status = document.getElementById('next-round-status');
     const btn = document.getElementById('next-round-btn');
 
-    overlay.style.display = 'flex';
-    if (title) {
-        title.textContent = isLastRound ? 'Fine partita' : 'Turno terminato';
-    }
-    if (note) {
-        note.textContent = isLastRound
-            ? 'Premi per vedere la classifica finale.'
-            : 'Premi quando sei pronto a continuare.';
-    }
+    panel.style.display = 'flex';
     if (status) {
         status.textContent = '';
     }
     if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Prossimo turno';
+        btn.textContent = isLastRound ? 'Fine partita' : 'Prossimo turno';
     }
 }
 
 function hideNextRoundOverlay() {
-    const overlay = document.getElementById('next-round-overlay');
-    if (!overlay) {
+    const panel = document.getElementById('next-round-panel');
+    if (!panel) {
         return;
     }
-    overlay.style.display = 'none';
+    panel.style.display = 'none';
 }
 
 function updateNextRoundOverlay(state) {
@@ -1459,13 +1449,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pulsanti Stanza
     document.getElementById('start-game-btn').addEventListener('click', startGame);
     document.getElementById('leave-room-btn').addEventListener('click', leaveRoom);
-    document.getElementById('back-to-lobby-btn').addEventListener('click', showLobbyList);
+    document.getElementById('back-to-lobby-room-btn').addEventListener('click', showLobbyList);
     
     // Pulsanti Regole
     document.getElementById('back-from-rules-btn').addEventListener('click', () => showScreen('home'));
 
     // Pulsante Schermata Finale
-    document.getElementById('back-to-lobby-btn').addEventListener('click', leaveRoom);
+    document.getElementById('back-to-lobby-final-btn').addEventListener('click', leaveRoom);
     
     // Pulsanti Jolly
     document.getElementById('joker-prende-btn').addEventListener('click', () => selectJokerMode('prende'));

@@ -100,7 +100,7 @@
             
             <p id="waiting-message" class="waiting-text">In attesa che l'admin avvii la partita...</p>
             
-            <button class="btn btn-secondary" id="back-to-lobby-btn">
+            <button class="btn btn-secondary" id="back-to-lobby-room-btn">
                 ← Torna alla Lobby
             </button>
 
@@ -179,16 +179,12 @@
                 </div>
             </div>
 
-            <!-- Overlay Fine Turno -->
-            <div id="next-round-overlay" class="next-round-overlay" style="display: none;">
-                <div class="next-round-card">
-                    <h3 id="next-round-title">Turno terminato</h3>
-                    <p id="next-round-note">Premi quando sei pronto a continuare.</p>
-                    <p id="next-round-status" class="next-round-status"></p>
-                    <button class="btn btn-success" id="next-round-btn">
-                        Prossimo turno
-                    </button>
-                </div>
+            <!-- Pulsante Fine Turno -->
+            <div id="next-round-panel" class="next-round-panel" style="display: none;">
+                <button class="btn btn-success" id="next-round-btn">
+                    Prossimo turno
+                </button>
+                <p id="next-round-status" class="next-round-status"></p>
             </div>
 
             <!-- Messaggi di Gioco -->
@@ -300,7 +296,7 @@
             <div class="final-standings">
                 <ol id="final-standings"></ol>
             </div>
-            <button class="btn btn-secondary" id="back-to-lobby-btn">
+            <button class="btn btn-secondary" id="back-to-lobby-final-btn">
                 ← Torna alla Lobby
             </button>
         </div>
