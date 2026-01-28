@@ -896,6 +896,7 @@ socket.on('round_started', (data) => {
     clearCardSelection();
     document.getElementById('trick-area').style.display = 'none';
     document.getElementById('cards-played').innerHTML = '';
+    clearSeatPlays();
     gameState.currentTrick = 0;
     document.getElementById('current-round').textContent = data.round;
     document.getElementById('cards-this-round').textContent = data.cardsThisRound;
@@ -938,7 +939,7 @@ socket.on('trick_started', (data) => {
     gameState.currentTrick = data.trickNumber;
     document.getElementById('trick-number').textContent = data.trickNumber;
     document.getElementById('trick-area').style.display = 'block';
-    ensureTrickGroup(data.trickNumber);
+    clearSeatPlays();
     
     document.getElementById('phase-title').textContent = 'Fase di Gioco';
     document.getElementById('phase-description').textContent = `Mano ${data.trickNumber} di ${data.totalTricks}`;
@@ -971,16 +972,13 @@ socket.on('request_joker_mode', () => {
 // Carta giocata
 socket.on('card_played', (data) => {
     addGameMessage(`${data.playerName} ha giocato ${data.card.rankName} di ${data.card.suitName}`, 'info');
-    
-    const trickGroup = ensureTrickGroup(gameState.currentTrick);
-    const cardsPlayedDiv = trickGroup ? trickGroup.querySelector('.trick-cards') : document.getElementById('cards-played');
-    const playedCardDiv = document.createElement('div');
-    playedCardDiv.className = 'played-card';
-    playedCardDiv.innerHTML = `
-        <div class="player-name">${data.playerName}</div>
-        ${createCardHTML(data.card, -1, false)}
-    `;
-    cardsPlayedDiv.appendChild(playedCardDiv);
+    const seat = findSeatForPlayer(data.playerName);
+    if (seat) {
+        const slot = seat.querySelector('.seat-played');
+        if (slot) {
+            slot.innerHTML = createCardHTML(data.card, -1, false);
+        }
+    }
     
     if (data.playerName === gameState.playerName) {
         let playedEl = gameState.selectedCardElement;
@@ -1267,6 +1265,7 @@ function renderSeatContent(player, state) {
                 ${remainingChip}
             </div>
             ${bettingStatus ? `<div class="seat-status">${bettingStatus}</div>` : ''}
+            <div class="seat-played"></div>
         </div>
     `;
 }
@@ -1278,6 +1277,7 @@ function renderEmptySeat() {
             <div class="seat-meta">
                 <span class="seat-chip">—</span>
             </div>
+            <div class="seat-played"></div>
         </div>
     `;
 }
@@ -1294,6 +1294,7 @@ function updateTableSeats(players, state) {
 
     seats.forEach(seat => {
         seat.className = 'table-seat empty';
+        seat.dataset.playerName = '';
         seat.innerHTML = renderEmptySeat();
     });
 
@@ -1314,7 +1315,39 @@ function updateTableSeats(players, state) {
         if (player.socketId === gameState.playerId) {
             seat.classList.add('is-me');
         }
+        seat.dataset.playerName = player.name;
         seat.innerHTML = renderSeatContent(player, state);
+    });
+}
+
+function findSeatForPlayer(playerName) {
+    const seats = Array.from(document.querySelectorAll('.table-seat'));
+    return seats.find(seat => seat.dataset.playerName === playerName);
+}
+
+function clearSeatPlays() {
+    document.querySelectorAll('.seat-played').forEach(el => {
+        el.innerHTML = '';
+    });
+}
+
+function applyPlayedCardsToSeats(cardsPlayed) {
+    if (!Array.isArray(cardsPlayed)) {
+        return;
+    }
+    cardsPlayed.forEach(entry => {
+        if (!entry || !entry.playerName || !entry.card) {
+            return;
+        }
+        const seat = findSeatForPlayer(entry.playerName);
+        if (!seat) {
+            return;
+        }
+        const slot = seat.querySelector('.seat-played');
+        if (!slot) {
+            return;
+        }
+        slot.innerHTML = createCardHTML(entry.card, -1, false);
     });
 }
 
@@ -1415,6 +1448,8 @@ function updatePlayersStatus(state) {
     const orderedPlayers = orderPlayersForView(players);
     renderPlayersPanel(orderedPlayers, state);
     updateTableSeats(orderedPlayers, state);
+    clearSeatPlays();
+    applyPlayedCardsToSeats(state.cardsPlayed);
 
     updateNextRoundOverlay(state);
     updateSpectatorCount(state);

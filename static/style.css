@@ -459,6 +459,17 @@ h3 {
     font-weight: 600;
 }
 
+.seat-played {
+    margin-top: 8px;
+    display: flex;
+    justify-content: center;
+}
+
+.seat-played .card {
+    width: 62px;
+    height: 86px;
+}
+
 .table-center {
     position: absolute;
     inset: 28%;
@@ -469,25 +480,26 @@ h3 {
 }
 
 .table-trick {
-    background: rgba(255, 255, 255, 0.92);
-    border-radius: 14px;
-    padding: 10px 12px;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
     margin: 0;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+    box-shadow: none;
 }
 
-.table-trick h4 {
-    margin-bottom: 6px;
-    font-size: 0.9em;
-    color: #555;
+.table-trick .trick-info {
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    color: #4b4b4b;
+    font-weight: 700;
     text-align: center;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
 .table-trick .cards-played {
-    align-items: center;
-    gap: 12px;
-    max-height: 220px;
-    overflow-y: auto;
+    display: none;
 }
 
 .table-trick .trick-cards {
@@ -1106,6 +1118,11 @@ h3 {
     .table-trick .card {
         width: 60px;
         height: 84px;
+    }
+
+    .seat-played .card {
+        width: 52px;
+        height: 72px;
     }
     
     .game-messages {
