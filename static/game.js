@@ -292,7 +292,7 @@ function getCardImageUrl(card) {
         return null;
     }
     const number = rank + 1;
-    return `${CARD_IMAGE_BASE}/${suit}_${number}.jpg`;
+    return `${CARD_IMAGE_BASE}/${suit}/${suit}_${number}.jpg`;
 }
 
 function hideCardConfirmation() {
