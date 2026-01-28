@@ -1243,13 +1243,21 @@ function renderSeatContent(player, state) {
     const lives = Number.isFinite(player.lives) ? player.lives : '-';
     const hasBet = player.hasBet === true
         || (player.hasBet === undefined && player.bet !== null && player.bet !== undefined);
-    const showTricks = state.playingPhase && player.tricksWon !== null && player.tricksWon !== undefined;
+    const showTricks = !!state.playingPhase;
+    const showBetChip = !!state.bettingPhase && hasBet;
+    const showBetweenChip = !state.bettingPhase && !state.playingPhase && hasBet;
     const remainingInfo = showTricks && hasBet ? getRemainingInfo(player) : null;
-    const betChip = hasBet ? `<span class="seat-chip">🎯 ${player.bet}</span>` : '';
-    const tricksChip = showTricks ? `<span class="seat-chip">🏆 ${player.tricksWon}</span>` : '';
-    const remainingChip = remainingInfo
-        ? `<span class="seat-chip">${remainingInfo.icon} ${remainingInfo.value}</span>`
-        : '';
+    const chips = [];
+    chips.push(`<span class="seat-chip">❤️ ${lives}</span>`);
+    if (showBetChip || showBetweenChip) {
+        chips.push(`<span class="seat-chip">🎯 ${player.bet}</span>`);
+    }
+    if (showTricks && player.tricksWon !== null && player.tricksWon !== undefined) {
+        chips.push(`<span class="seat-chip">🏆 ${player.tricksWon}</span>`);
+    }
+    if (remainingInfo) {
+        chips.push(`<span class="seat-chip">${remainingInfo.icon} ${remainingInfo.value}</span>`);
+    }
     const bettingStatus = state.bettingPhase && !hasBet ? '⏳ Deve puntare' : '';
 
     return `
@@ -1259,10 +1267,7 @@ function renderSeatContent(player, state) {
                 ${nameLabel}
             </div>
             <div class="seat-meta">
-                <span class="seat-chip">❤️ ${lives}</span>
-                ${betChip}
-                ${tricksChip}
-                ${remainingChip}
+                ${chips.join('')}
             </div>
             ${bettingStatus ? `<div class="seat-status">${bettingStatus}</div>` : ''}
             <div class="seat-played"></div>
