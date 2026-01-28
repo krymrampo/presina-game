@@ -42,6 +42,10 @@ class PresinaGameOnline:
         self.waiting_for_player = None
         self.round_in_progress = False
         self.admin_socket_id = None  # Socket ID dell'admin
+        self.awaiting_next_round = False
+        self.ready_for_next_round = set()
+        self.spectators = {}
+        self.pending_players = {}
     
     def add_player(self, socket_id, name, is_admin=False):
         """Aggiunge un giocatore alla partita."""
@@ -62,6 +66,32 @@ class PresinaGameOnline:
             self.admin_socket_id = socket_id
         
         return True
+
+    def add_spectator(self, socket_id, name):
+        """Aggiunge uno spettatore alla partita."""
+        if socket_id in self.pending_players:
+            del self.pending_players[socket_id]
+        self.spectators[socket_id] = name
+
+    def add_pending_player(self, socket_id, name):
+        """Aggiunge un giocatore in attesa del prossimo turno."""
+        if socket_id in self.spectators:
+            del self.spectators[socket_id]
+        self.pending_players[socket_id] = name
+
+    def has_spectator(self, socket_id):
+        return socket_id in self.spectators
+
+    def has_pending_player(self, socket_id):
+        return socket_id in self.pending_players
+
+    def remove_spectator(self, socket_id):
+        if socket_id in self.spectators:
+            del self.spectators[socket_id]
+
+    def remove_pending_player(self, socket_id):
+        if socket_id in self.pending_players:
+            del self.pending_players[socket_id]
 
     def connected_players(self):
         """Ritorna la lista dei giocatori connessi."""
@@ -105,6 +135,7 @@ class PresinaGameOnline:
                 old_socket_id = player.socket_id
                 if old_socket_id in self.player_ids:
                     del self.player_ids[old_socket_id]
+                self.ready_for_next_round.discard(old_socket_id)
                 
                 # Aggiorna con nuovo socket_id
                 player.socket_id = socket_id
@@ -120,12 +151,14 @@ class PresinaGameOnline:
         if socket_id in self.player_ids:
             player = self.player_ids[socket_id]
             player.connected = False
+            self.ready_for_next_round.discard(socket_id)
             
             # Notifica disconnessione temporanea
             self.socketio.emit('player_disconnected', {
                 'playerName': player.name,
                 'message': f'{player.name} si è disconnesso temporaneamente'
             }, room=self.room_code)
+            self._try_advance_round()
     
     def all_players_disconnected(self):
         """Verifica se tutti i giocatori sono disconnessi."""
@@ -138,6 +171,7 @@ class PresinaGameOnline:
             was_admin = getattr(player, 'is_admin', False)
             self.players.remove(player)
             del self.player_ids[socket_id]
+            self.ready_for_next_round.discard(socket_id)
             
             # Notifica disconnessione
             self.socketio.emit('player_disconnected', {
@@ -153,10 +187,15 @@ class PresinaGameOnline:
                     self.admin_socket_id = self.players[0].socket_id
                 else:
                     self.admin_socket_id = None
+            self._try_advance_round()
     
     def has_player(self, socket_id):
         """Verifica se un giocatore è nella partita."""
         return socket_id in self.player_ids
+
+    def is_full_for_new_players(self):
+        """Verifica se c'è posto per nuovi giocatori (inclusi i pending)."""
+        return (len(self.players) + len(self.pending_players)) >= self.max_players
     
     def is_full(self):
         """Verifica se la partita è piena."""
@@ -213,6 +252,10 @@ class PresinaGameOnline:
             'playingPhase': self.playing_phase,
             'currentTrick': self.current_trick + 1 if self.playing_phase else 0,
             'waitingForPlayer': self.waiting_for_player,
+            'awaitingNextRound': self.awaiting_next_round,
+            'readyForNextRound': list(self.ready_for_next_round),
+            'spectatorsCount': len(self.spectators),
+            'pendingPlayersCount': len(self.pending_players),
             'cardsPlayed': [{
                 'playerName': p.name,
                 'card': self.card_to_dict(c)
@@ -276,6 +319,8 @@ class PresinaGameOnline:
         self.game_started = True
         self.current_round = 0
         self.dealer_index = 0
+        self.awaiting_next_round = False
+        self.ready_for_next_round = set()
         
         self.socketio.emit('game_started', {
             'message': 'La partita è iniziata!'
@@ -290,6 +335,8 @@ class PresinaGameOnline:
             self.end_game()
             return
         
+        self.awaiting_next_round = False
+        self.ready_for_next_round = set()
         self.round_in_progress = True
         cards_this_round = self.CARDS_PER_ROUND[self.current_round]
         
@@ -517,6 +564,8 @@ class PresinaGameOnline:
         """Termina un turno."""
         self.playing_phase = False
         self.round_in_progress = False
+        self.betting_phase = False
+        self.waiting_for_player = None
         
         # Verifica le puntate
         results = []
@@ -536,22 +585,72 @@ class PresinaGameOnline:
             
             results.append(result)
         
+        is_last_round = self.current_round >= 4
         self.socketio.emit('round_ended', {
-            'results': results
+            'results': results,
+            'isLastRound': is_last_round
         }, room=self.room_code)
         
-        # Prossimo turno
+        self.awaiting_next_round = True
+        self.ready_for_next_round = set()
+        self.broadcast_game_state()
+
+    def mark_ready_for_next_round(self, socket_id):
+        """Segna un giocatore come pronto per il prossimo turno."""
+        if not self.awaiting_next_round or socket_id not in self.player_ids:
+            return
+        
+        player = self.player_ids[socket_id]
+        if not getattr(player, 'connected', True):
+            return
+        
+        self.ready_for_next_round.add(socket_id)
+        self.broadcast_game_state()
+        self._try_advance_round()
+
+    def _try_advance_round(self):
+        """Avanza al prossimo turno quando tutti i giocatori connessi sono pronti."""
+        if not self.awaiting_next_round:
+            return
+        
+        connected_ids = {p.socket_id for p in self.connected_players()}
+        if not connected_ids:
+            return
+        
+        if not connected_ids.issubset(self.ready_for_next_round):
+            return
+        
+        if self.pending_players:
+            min_lives = min(p.lives for p in self.players) if self.players else 1
+            for socket_id, name in list(self.pending_players.items()):
+                if socket_id in self.player_ids:
+                    del self.pending_players[socket_id]
+                    continue
+                player = Player(name)
+                player.socket_id = socket_id
+                player.connected = True
+                player.lives = min_lives
+                self.players.append(player)
+                self.player_ids[socket_id] = player
+                del self.pending_players[socket_id]
+
+        self.awaiting_next_round = False
+        self.ready_for_next_round = set()
+        
+        if self.current_round >= 4:
+            self.end_game()
+            return
+        
         self.current_round += 1
         self.dealer_index = (self.dealer_index + 1) % len(self.players)
-        
-        if self.current_round < 5:
-            threading.Timer(5, self.start_round).start()
-        else:
-            self.end_game()
+        self.start_round()
     
     def end_game(self):
         """Termina la partita."""
         self.game_started = False
+        self.awaiting_next_round = False
+        self.ready_for_next_round = set()
+        self.pending_players = {}
         
         # Determina il vincitore
         max_lives = max(p.lives for p in self.players)

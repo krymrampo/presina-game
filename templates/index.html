@@ -119,6 +119,8 @@
                 <p id="phase-description"></p>
             </div>
 
+            <div id="spectator-banner" class="spectator-banner" style="display: none;"></div>
+
             <!-- Area Puntata -->
             <div id="betting-area" class="betting-area" style="display: none;">
                 <p id="bet-instruction"></p>
@@ -168,8 +170,57 @@
                 </div>
             </div>
 
+            <!-- Overlay Fine Turno -->
+            <div id="next-round-overlay" class="next-round-overlay" style="display: none;">
+                <div class="next-round-card">
+                    <h3 id="next-round-title">Turno terminato</h3>
+                    <p id="next-round-note">Premi quando sei pronto a continuare.</p>
+                    <p id="next-round-status" class="next-round-status"></p>
+                    <button class="btn btn-success" id="next-round-btn">
+                        Prossimo turno
+                    </button>
+                </div>
+            </div>
+
             <!-- Messaggi di Gioco -->
             <div id="game-messages" class="game-messages"></div>
+
+            <!-- Chat di Gioco -->
+            <div id="chat-panel" class="chat-panel">
+                <div class="chat-header">
+                    <span>💬 Chat di Gioco</span>
+                    <button class="chat-toggle" id="chat-toggle-btn" type="button" aria-expanded="true">
+                        Riduci
+                    </button>
+                </div>
+                <div class="chat-body">
+                    <div id="chat-messages" class="chat-messages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="chat-input" placeholder="Scrivi un messaggio..." maxlength="200">
+                        <button class="btn btn-primary" id="chat-send-btn">Invia</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modale Partita Iniziata -->
+        <div id="join-started-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Partita già iniziata</h3>
+                <p>Scegli come entrare nella partita.</p>
+                <p><strong>Entra dal prossimo turno:</strong> avrai vite pari al giocatore con meno vite.</p>
+                <div class="button-group">
+                    <button class="btn btn-success" id="join-as-player-btn">
+                        Entra dal prossimo turno
+                    </button>
+                    <button class="btn btn-info" id="join-as-spectator-btn">
+                        Spettatore (solo chat)
+                    </button>
+                </div>
+                <button class="btn btn-secondary" id="cancel-join-started-btn">
+                    Annulla
+                </button>
+            </div>
         </div>
 
         <!-- Schermata Regole -->

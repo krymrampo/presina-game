@@ -79,6 +79,7 @@ def handle_join_room(data):
     """Unisciti a una stanza esistente."""
     room_id = data.get('roomId', '')
     player_name = data.get('playerName', 'Giocatore')
+    join_mode = data.get('joinMode', None)
     
     if room_id not in games:
         emit('error', {'message': 'Stanza non trovata!'})
@@ -87,7 +88,32 @@ def handle_join_room(data):
     game = games[room_id]
     
     if game.has_started():
-        emit('error', {'message': 'La partita è già iniziata!'})
+        if join_mode == 'player':
+            if game.is_full_for_new_players():
+                emit('error', {'message': 'La stanza è piena (max 8 giocatori)!'})
+                return
+            game.add_pending_player(request.sid, player_name)
+            join_room(room_id)
+            min_lives = min((p.lives for p in game.players), default=1)
+            emit('pending_joined', {
+                'roomId': room_id,
+                'roomName': game.room_name,
+                'playerName': player_name,
+                'playerId': request.sid,
+                'minLives': min_lives
+            })
+            emit('game_state', game.get_game_state(), room=request.sid)
+            return
+        # Default spettatore
+        game.add_spectator(request.sid, player_name)
+        join_room(room_id)
+        emit('spectator_joined', {
+            'roomId': room_id,
+            'roomName': game.room_name,
+            'playerName': player_name,
+            'playerId': request.sid
+        })
+        emit('game_state', game.get_game_state(), room=request.sid)
         return
     
     if game.connected_count() >= game.max_players:
@@ -123,14 +149,22 @@ def handle_leave_room(data):
         return
     
     game = games[room_id]
-    game.remove_player(request.sid)
+    if game.has_player(request.sid):
+        game.remove_player(request.sid)
+    elif game.has_pending_player(request.sid):
+        game.remove_pending_player(request.sid)
+    elif game.has_spectator(request.sid):
+        game.remove_spectator(request.sid)
     leave_room(room_id)
     
     # Se la stanza è vuota, eliminala
-    if len(game.players) == 0:
+    if len(game.players) == 0 and len(game.pending_players) == 0:
         del games[room_id]
     else:
-        game.broadcast_room_state()
+        if game.has_started():
+            game.broadcast_game_state()
+        else:
+            game.broadcast_room_state()
     
     # Aggiorna la lobby per tutti
     socketio.emit('rooms_list', get_rooms_list())
@@ -261,6 +295,47 @@ def handle_play_card(data):
     game = games[room_code]
     game.player_play_card(request.sid, card_index, joker_mode)
 
+@socketio.on('chat_message')
+def handle_chat_message(data):
+    """Gestisce i messaggi chat."""
+    room_code = data.get('roomCode') or data.get('roomId')
+    message = (data.get('message') or '').strip()
+
+    if not room_code or room_code not in games or not message:
+        return
+
+    # Limita la lunghezza per evitare spam o payload eccessivi
+    if len(message) > 200:
+        message = message[:200]
+
+    game = games[room_code]
+    player = game.player_ids.get(request.sid)
+    if player:
+        player_name = player.name
+    elif request.sid in game.pending_players:
+        player_name = game.pending_players.get(request.sid, 'Giocatore')
+    else:
+        player_name = game.spectators.get(request.sid, data.get('playerName', 'Giocatore'))
+
+    socketio.emit('chat_message', {
+        'playerName': player_name,
+        'message': message
+    }, room=room_code)
+
+@socketio.on('next_round')
+def handle_next_round(data):
+    """Segna il giocatore come pronto per il prossimo turno."""
+    room_code = data.get('roomCode') or data.get('roomId')
+    
+    if room_code not in games:
+        return
+    
+    game = games[room_code]
+    if not game.has_started():
+        return
+    
+    game.mark_ready_for_next_round(request.sid)
+
 
 @socketio.on('rejoin_game')
 def handle_rejoin_game(data):
@@ -317,6 +392,14 @@ def handle_disconnect():
                 del games[room_code]
             else:
                 game.broadcast_game_state()
+            break
+        if game.has_pending_player(request.sid):
+            game.remove_pending_player(request.sid)
+            leave_room(room_code)
+            break
+        if game.has_spectator(request.sid):
+            game.remove_spectator(request.sid)
+            leave_room(room_code)
             break
 
 

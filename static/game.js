@@ -16,10 +16,17 @@ let gameState = {
     waitingForPlayer: null,
     playingPhase: false,
     currentTrick: 0,
-    turnNotified: false
+    turnNotified: false,
+    awaitingNextRound: false,
+    nextRoundReady: false,
+    chatCollapsed: false,
+    isSpectator: false,
+    pendingJoin: false,
+    pendingMinLives: null
 };
 
 const SESSION_KEY = 'presina_session';
+let joinStartedRoomId = null;
 
 function saveSession() {
     if (!gameState.roomId || !gameState.playerName) {
@@ -91,6 +98,64 @@ function addGameMessage(message, type = 'info') {
     setTimeout(() => {
         msgDiv.remove();
     }, 5000);
+}
+
+function addChatMessage(data) {
+    const messagesDiv = document.getElementById('chat-messages');
+    if (!messagesDiv || !data || !data.message) {
+        return;
+    }
+    const msgDiv = document.createElement('div');
+    const isSelf = data.playerName === gameState.playerName;
+    msgDiv.className = 'chat-message' + (isSelf ? ' self' : '');
+
+    const nameEl = document.createElement('strong');
+    nameEl.textContent = `${data.playerName || 'Giocatore'}: `;
+    const textEl = document.createElement('span');
+    textEl.textContent = data.message;
+
+    msgDiv.appendChild(nameEl);
+    msgDiv.appendChild(textEl);
+    messagesDiv.appendChild(msgDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    if (!input) {
+        return;
+    }
+    const message = input.value.trim();
+    if (!message || !gameState.roomId) {
+        return;
+    }
+    socket.emit('chat_message', {
+        roomId: gameState.roomId,
+        message: message
+    });
+    input.value = '';
+    input.focus();
+}
+
+function setChatCollapsed(collapsed) {
+    const panel = document.getElementById('chat-panel');
+    const btn = document.getElementById('chat-toggle-btn');
+    if (!panel || !btn) {
+        return;
+    }
+    panel.classList.toggle('collapsed', collapsed);
+    gameState.chatCollapsed = collapsed;
+    btn.textContent = collapsed ? 'Apri' : 'Riduci';
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+}
+
+function toggleChatPanel() {
+    const panel = document.getElementById('chat-panel');
+    if (!panel) {
+        return;
+    }
+    const collapsed = !panel.classList.contains('collapsed');
+    setChatCollapsed(collapsed);
 }
 
 function renderFinalScreen(data) {
@@ -199,6 +264,128 @@ function refreshCardInteractivity() {
     }
 }
 
+function updateSpectatorUI() {
+    const banner = document.getElementById('spectator-banner');
+    const handArea = document.getElementById('hand-area');
+    const bettingArea = document.getElementById('betting-area');
+
+    if (gameState.isSpectator || gameState.pendingJoin) {
+        if (banner) {
+            if (gameState.pendingJoin) {
+                const hasLives = gameState.pendingMinLives !== null && gameState.pendingMinLives !== undefined;
+                const livesText = hasLives ? ` (vite: ${gameState.pendingMinLives})` : '';
+                banner.textContent = `Sei in attesa di entrare dal prossimo turno${livesText}.`;
+            } else {
+                banner.textContent = 'Sei spettatore: puoi seguire la partita e usare la chat.';
+            }
+            banner.style.display = 'block';
+        }
+        if (handArea) {
+            handArea.style.display = 'none';
+        }
+        if (bettingArea) {
+            bettingArea.style.display = 'none';
+        }
+    } else {
+        if (banner) {
+            banner.style.display = 'none';
+        }
+        if (handArea) {
+            handArea.style.display = '';
+        }
+    }
+}
+
+function showNextRoundOverlay(isLastRound = false) {
+    const overlay = document.getElementById('next-round-overlay');
+    if (!overlay) {
+        return;
+    }
+    const title = document.getElementById('next-round-title');
+    const note = document.getElementById('next-round-note');
+    const status = document.getElementById('next-round-status');
+    const btn = document.getElementById('next-round-btn');
+
+    overlay.style.display = 'flex';
+    if (title) {
+        title.textContent = isLastRound ? 'Fine partita' : 'Turno terminato';
+    }
+    if (note) {
+        note.textContent = isLastRound
+            ? 'Premi per vedere la classifica finale.'
+            : 'Premi quando sei pronto a continuare.';
+    }
+    if (status) {
+        status.textContent = '';
+    }
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Prossimo turno';
+    }
+}
+
+function hideNextRoundOverlay() {
+    const overlay = document.getElementById('next-round-overlay');
+    if (!overlay) {
+        return;
+    }
+    overlay.style.display = 'none';
+}
+
+function updateNextRoundOverlay(state) {
+    if (gameState.isSpectator || gameState.pendingJoin) {
+        hideNextRoundOverlay();
+        return;
+    }
+    const awaiting = !!(state && state.awaitingNextRound);
+    gameState.awaitingNextRound = awaiting;
+    if (!awaiting) {
+        gameState.nextRoundReady = false;
+        hideNextRoundOverlay();
+        return;
+    }
+
+    const readyList = Array.isArray(state.readyForNextRound) ? state.readyForNextRound : [];
+    const connectedPlayers = Array.isArray(state.players)
+        ? state.players.filter(p => p.connected !== false)
+        : [];
+    const total = connectedPlayers.length;
+    const readyCount = connectedPlayers.filter(p => readyList.includes(p.socketId)).length;
+    const isReady = readyList.includes(gameState.playerId);
+    gameState.nextRoundReady = isReady;
+
+    showNextRoundOverlay(state.currentRound >= state.totalRounds);
+
+    const status = document.getElementById('next-round-status');
+    if (status && total > 0) {
+        status.textContent = `Pronti ${readyCount}/${total}`;
+    }
+
+    const btn = document.getElementById('next-round-btn');
+    if (btn) {
+        btn.disabled = isReady;
+        if (isReady) {
+            btn.textContent = 'In attesa...';
+        } else {
+            btn.textContent = 'Prossimo turno';
+        }
+    }
+}
+
+function requestNextRound() {
+    if (!gameState.roomId || gameState.nextRoundReady) {
+        return;
+    }
+    socket.emit('next_round', {
+        roomId: gameState.roomId
+    });
+    const btn = document.getElementById('next-round-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'In attesa...';
+    }
+}
+
 // ============================================
 // FUNZIONI LOBBY
 // ============================================
@@ -231,11 +418,47 @@ function createRoom() {
     });
 }
 
-function joinRoom(roomId) {
-    socket.emit('join_room', {
+function joinRoom(roomId, joinMode = null) {
+    const payload = {
         roomId: roomId,
         playerName: gameState.playerName
-    });
+    };
+    if (joinMode) {
+        payload.joinMode = joinMode;
+    }
+    socket.emit('join_room', payload);
+}
+
+function openJoinStartedModal(roomId) {
+    joinStartedRoomId = roomId;
+    const modal = document.getElementById('join-started-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function closeJoinStartedModal() {
+    const modal = document.getElementById('join-started-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    joinStartedRoomId = null;
+}
+
+function joinStartedAsPlayer() {
+    if (!joinStartedRoomId) {
+        return;
+    }
+    joinRoom(joinStartedRoomId, 'player');
+    closeJoinStartedModal();
+}
+
+function joinStartedAsSpectator() {
+    if (!joinStartedRoomId) {
+        return;
+    }
+    joinRoom(joinStartedRoomId, 'spectator');
+    closeJoinStartedModal();
 }
 
 function leaveRoom() {
@@ -254,8 +477,18 @@ function leaveRoom() {
     gameState.awaitingPlay = false;
     gameState.waitingForPlayer = null;
     gameState.playingPhase = false;
+    gameState.awaitingNextRound = false;
+    gameState.nextRoundReady = false;
+    gameState.isSpectator = false;
+    gameState.pendingJoin = false;
+    gameState.pendingMinLives = null;
     clearCardSelection();
     clearSession();
+    hideNextRoundOverlay();
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+        chatMessages.innerHTML = '';
+    }
     
     showScreen('lobby');
     socket.emit('get_rooms');
@@ -314,18 +547,28 @@ function renderRoomsList(rooms) {
         const statusClass = room.started ? 'in-game' : 'waiting';
         const statusText = room.started ? '🎮 In Gioco' : '⏳ In Attesa';
         
-        roomCard.innerHTML = `
-            <div class="room-info-card">
-                <h3>${room.name}</h3>
-                <p>👥 ${room.playerCount}/8 giocatori</p>
-                <span class="room-status ${statusClass}">${statusText}</span>
-            </div>
-            <button class="btn btn-primary" ${room.started || room.playerCount >= 8 ? 'disabled' : ''} 
-                    onclick="joinRoom('${room.id}')">
-                ${room.started ? 'Partita in corso' : 'Unisciti'}
-            </button>
+        const info = document.createElement('div');
+        info.className = 'room-info-card';
+        info.innerHTML = `
+            <h3>${room.name}</h3>
+            <p>👥 ${room.playerCount}/8 giocatori</p>
+            <span class="room-status ${statusClass}">${statusText}</span>
         `;
         
+        const button = document.createElement('button');
+        button.className = 'btn btn-primary';
+        if (room.started) {
+            button.textContent = 'Guarda / Entra';
+            button.addEventListener('click', () => openJoinStartedModal(room.id));
+        } else {
+            const isFull = room.playerCount >= 8;
+            button.textContent = isFull ? 'Stanza piena' : 'Unisciti';
+            button.disabled = isFull;
+            button.addEventListener('click', () => joinRoom(room.id));
+        }
+        
+        roomCard.appendChild(info);
+        roomCard.appendChild(button);
         roomsList.appendChild(roomCard);
     });
 }
@@ -447,6 +690,9 @@ socket.on('room_created', (data) => {
     gameState.playerId = data.playerId;
     gameState.isAdmin = true;
     gameState.turnNotified = false;
+    gameState.isSpectator = false;
+    gameState.pendingJoin = false;
+    gameState.pendingMinLives = null;
     saveSession();
     
     document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
@@ -454,6 +700,7 @@ socket.on('room_created', (data) => {
     document.getElementById('waiting-message').style.display = 'none';
     
     showScreen('room');
+    updateSpectatorUI();
     showNotification('Stanza creata!');
 });
 
@@ -464,6 +711,9 @@ socket.on('room_joined', (data) => {
     gameState.playerId = data.playerId;
     gameState.isAdmin = false;
     gameState.turnNotified = false;
+    gameState.isSpectator = false;
+    gameState.pendingJoin = false;
+    gameState.pendingMinLives = null;
     saveSession();
     
     document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
@@ -471,7 +721,42 @@ socket.on('room_joined', (data) => {
     document.getElementById('waiting-message').style.display = 'block';
     
     showScreen('room');
+    updateSpectatorUI();
     showNotification('Ti sei unito alla stanza!');
+});
+
+// Entrato come spettatore
+socket.on('spectator_joined', (data) => {
+    gameState.roomId = data.roomId;
+    gameState.roomName = data.roomName;
+    gameState.playerId = data.playerId;
+    gameState.isAdmin = false;
+    gameState.turnNotified = false;
+    gameState.isSpectator = true;
+    gameState.pendingJoin = false;
+    gameState.pendingMinLives = null;
+    clearSession();
+    hideNextRoundOverlay();
+    updateSpectatorUI();
+    showScreen('game');
+    showNotification('Sei entrato come spettatore');
+});
+
+// Entrato in attesa del prossimo turno
+socket.on('pending_joined', (data) => {
+    gameState.roomId = data.roomId;
+    gameState.roomName = data.roomName;
+    gameState.playerId = data.playerId;
+    gameState.isAdmin = false;
+    gameState.turnNotified = false;
+    gameState.isSpectator = true;
+    gameState.pendingJoin = true;
+    gameState.pendingMinLives = data.minLives !== undefined ? data.minLives : null;
+    clearSession();
+    hideNextRoundOverlay();
+    updateSpectatorUI();
+    showScreen('game');
+    showNotification('Entrerai dal prossimo turno');
 });
 
 // Stato stanza aggiornato
@@ -484,8 +769,12 @@ socket.on('game_started', (data) => {
     gameState.isMyTurn = false;
     gameState.turnNotified = false;
     gameState.awaitingPlay = false;
+    gameState.awaitingNextRound = false;
+    gameState.nextRoundReady = false;
+    hideNextRoundOverlay();
     refreshCardInteractivity();
     showScreen('game');
+    updateSpectatorUI();
     showNotification('La partita è iniziata!');
 });
 
@@ -494,6 +783,9 @@ socket.on('round_started', (data) => {
     gameState.isMyTurn = false;
     gameState.turnNotified = false;
     gameState.awaitingPlay = false;
+    gameState.awaitingNextRound = false;
+    gameState.nextRoundReady = false;
+    hideNextRoundOverlay();
     refreshCardInteractivity();
     clearCardSelection();
     document.getElementById('trick-area').style.display = 'none';
@@ -504,6 +796,7 @@ socket.on('round_started', (data) => {
     document.getElementById('total-tricks').textContent = data.cardsThisRound;
     
     addGameMessage(`Turno ${data.round} iniziato - ${data.cardsThisRound} carte`, 'info');
+    updateSpectatorUI();
 });
 
 // Mano del giocatore
@@ -616,6 +909,10 @@ socket.on('trick_won', (data) => {
 // Turno terminato
 socket.on('round_ended', (data) => {
     document.getElementById('trick-area').style.display = 'none';
+    gameState.isMyTurn = false;
+    gameState.turnNotified = false;
+    gameState.awaitingPlay = false;
+    refreshCardInteractivity();
     
     let message = 'Risultati del turno:\n\n';
     data.results.forEach(r => {
@@ -624,6 +921,9 @@ socket.on('round_ended', (data) => {
     });
     
     addGameMessage(message, 'info');
+    if (!gameState.isSpectator && !gameState.pendingJoin) {
+        showNextRoundOverlay(!!data.isLastRound);
+    }
 });
 
 // Partita terminata
@@ -646,10 +946,18 @@ socket.on('game_ended', (data) => {
     gameState.isMyTurn = false;
     gameState.turnNotified = false;
     gameState.awaitingPlay = false;
+    gameState.awaitingNextRound = false;
+    gameState.nextRoundReady = false;
+    hideNextRoundOverlay();
     refreshCardInteractivity();
 
     renderFinalScreen(data);
     showScreen('final');
+});
+
+// Messaggi chat
+socket.on('chat_message', (data) => {
+    addChatMessage(data);
 });
 
 // Errore
@@ -682,8 +990,18 @@ socket.on('kicked', (data) => {
     gameState.awaitingPlay = false;
     gameState.waitingForPlayer = null;
     gameState.playingPhase = false;
+    gameState.awaitingNextRound = false;
+    gameState.nextRoundReady = false;
+    gameState.isSpectator = false;
+    gameState.pendingJoin = false;
+    gameState.pendingMinLives = null;
     clearCardSelection();
     clearSession();
+    hideNextRoundOverlay();
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+        chatMessages.innerHTML = '';
+    }
     showScreen('lobby');
     socket.emit('get_rooms');
 });
@@ -704,6 +1022,7 @@ socket.on('rejoin_success', (data) => {
     document.getElementById('waiting-message').style.display = gameState.isAdmin ? 'none' : 'block';
 
     showScreen(data.gameStarted ? 'game' : 'room');
+    updateSpectatorUI();
     showNotification('Sei rientrato nella partita!');
 });
 
@@ -766,6 +1085,32 @@ function updatePlayersStatus(state) {
     
     gameState.waitingForPlayer = state.waitingForPlayer || null;
     gameState.playingPhase = !!state.playingPhase;
+    if (state.currentRound) {
+        const roundEl = document.getElementById('current-round');
+        if (roundEl) {
+            roundEl.textContent = state.currentRound;
+        }
+    }
+    if (state.cardsThisRound) {
+        const cardsEl = document.getElementById('cards-this-round');
+        const totalEl = document.getElementById('total-tricks');
+        if (cardsEl) {
+            cardsEl.textContent = state.cardsThisRound;
+        }
+        if (totalEl) {
+            totalEl.textContent = state.cardsThisRound;
+        }
+    }
+    const meInPlayers = Array.isArray(state.players)
+        ? state.players.some(p => p.socketId === gameState.playerId)
+        : false;
+    if (meInPlayers && (gameState.isSpectator || gameState.pendingJoin)) {
+        gameState.isSpectator = false;
+        gameState.pendingJoin = false;
+        gameState.pendingMinLives = null;
+        saveSession();
+        updateSpectatorUI();
+    }
     const myTurn = gameState.playingPhase && gameState.waitingForPlayer === gameState.playerName;
     if (myTurn !== gameState.isMyTurn) {
         gameState.isMyTurn = myTurn;
@@ -815,6 +1160,8 @@ function updatePlayersStatus(state) {
         div.innerHTML = html;
         statusDiv.appendChild(div);
     });
+
+    updateNextRoundOverlay(state);
 }
 
 function displayPlayerHand(data) {
@@ -954,6 +1301,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cancel-create-btn').addEventListener('click', () => {
         document.getElementById('create-room-modal').style.display = 'none';
     });
+
+    // Modale Partita Iniziata
+    document.getElementById('join-as-player-btn').addEventListener('click', joinStartedAsPlayer);
+    document.getElementById('join-as-spectator-btn').addEventListener('click', joinStartedAsSpectator);
+    document.getElementById('cancel-join-started-btn').addEventListener('click', closeJoinStartedModal);
     
     // Pulsanti Stanza
     document.getElementById('start-game-btn').addEventListener('click', startGame);
@@ -972,6 +1324,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Conferma carta
     document.getElementById('confirm-card-btn').addEventListener('click', confirmSelectedCard);
     document.getElementById('cancel-card-btn').addEventListener('click', cancelSelectedCard);
+
+    // Pulsante Prossimo Turno
+    document.getElementById('next-round-btn').addEventListener('click', requestNextRound);
+
+    // Chat
+    document.getElementById('chat-send-btn').addEventListener('click', sendChatMessage);
+    document.getElementById('chat-input').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendChatMessage();
+        }
+    });
+    document.getElementById('chat-toggle-btn').addEventListener('click', toggleChatPanel);
     
     // Mostra schermata home
     showScreen('home');

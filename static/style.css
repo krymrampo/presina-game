@@ -276,6 +276,17 @@ h3 {
     margin-bottom: 20px;
 }
 
+.spectator-banner {
+    background: #fff3cd;
+    color: #856404;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #ffeeba;
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
 .betting-area {
     text-align: center;
     padding: 20px;
@@ -542,13 +553,55 @@ h3 {
     text-align: center;
 }
 
+.next-round-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 900;
+}
+
+.next-round-card {
+    background: white;
+    padding: 30px;
+    border-radius: 18px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+.next-round-card h3 {
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.next-round-card p {
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.next-round-status {
+    font-weight: 600;
+    color: #764ba2;
+    margin-bottom: 20px;
+}
+
 .game-messages {
     position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 600px;
-    width: 90%;
+    top: 120px;
+    right: 20px;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    max-width: 320px;
+    width: 320px;
+    pointer-events: none;
 }
 
 .game-message {
@@ -652,6 +705,107 @@ h3 {
     border-bottom: none;
 }
 
+.chat-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 320px;
+    max-height: 60vh;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 901;
+}
+
+.chat-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.chat-toggle {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.chat-toggle:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.chat-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 12px;
+    background: #f8f9fa;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-message {
+    background: white;
+    border-radius: 10px;
+    padding: 8px 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    font-size: 0.95em;
+}
+
+.chat-message.self {
+    border-left: 4px solid #28a745;
+}
+
+.chat-message strong {
+    color: #667eea;
+}
+
+.chat-input {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+    border-top: 1px solid #e2e6ea;
+    background: white;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.chat-input input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.chat-panel.collapsed {
+    max-height: none;
+}
+
+.chat-panel.collapsed .chat-body {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 20px;
@@ -672,6 +826,23 @@ h3 {
     
     #players-status {
         flex-direction: column;
+    }
+    
+    .game-messages {
+        top: auto;
+        right: auto;
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%);
+        max-width: 600px;
+        width: 90%;
+    }
+
+    .chat-panel {
+        position: static;
+        width: 100%;
+        max-height: 260px;
+        margin-top: 15px;
     }
 }
 
