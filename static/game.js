@@ -22,7 +22,9 @@ let gameState = {
     chatCollapsed: false,
     isSpectator: false,
     pendingJoin: false,
-    pendingMinLives: null
+    pendingMinLives: null,
+    browsingLobby: false,
+    gameStarted: false
 };
 
 const SESSION_KEY = 'presina_session';
@@ -75,6 +77,44 @@ function attemptRejoin() {
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId + '-screen').classList.add('active');
+}
+
+function updateLobbyControls() {
+    const banner = document.getElementById('active-room-banner');
+    const returnBtn = document.getElementById('return-to-room-btn');
+    const createBtn = document.getElementById('create-room-btn');
+    const hasRoom = !!gameState.roomId;
+
+    if (banner) {
+        if (hasRoom) {
+            banner.textContent = 'Sei già in una stanza. Per crearne o entrare in un\'altra devi prima chiuderla.';
+            banner.style.display = 'block';
+        } else {
+            banner.style.display = 'none';
+        }
+    }
+    if (returnBtn) {
+        returnBtn.style.display = hasRoom ? 'block' : 'none';
+    }
+    if (createBtn) {
+        createBtn.disabled = hasRoom;
+    }
+}
+
+function showLobbyList() {
+    gameState.browsingLobby = true;
+    showScreen('lobby');
+    socket.emit('get_rooms');
+    updateLobbyControls();
+}
+
+function returnToMyRoom() {
+    if (!gameState.roomId) {
+        return;
+    }
+    gameState.browsingLobby = false;
+    showScreen(gameState.gameStarted ? 'game' : 'room');
+    updateLobbyControls();
 }
 
 function showNotification(message, isError = false) {
@@ -333,7 +373,7 @@ function hideNextRoundOverlay() {
 }
 
 function updateNextRoundOverlay(state) {
-    if (gameState.isSpectator || gameState.pendingJoin) {
+    if (gameState.isSpectator || gameState.pendingJoin || gameState.browsingLobby) {
         hideNextRoundOverlay();
         return;
     }
@@ -397,13 +437,19 @@ function enterLobby() {
         return;
     }
     gameState.playerName = playerName;
+    gameState.browsingLobby = false;
     showScreen('lobby');
     
     // Richiedi lista stanze
     socket.emit('get_rooms');
+    updateLobbyControls();
 }
 
 function createRoom() {
+    if (gameState.roomId) {
+        showNotification('Sei già in una stanza. Chiudila prima di crearne un\'altra.', true);
+        return;
+    }
     const roomName = document.getElementById('room-name').value.trim();
     if (!roomName) {
         showNotification('Inserisci un nome per la stanza!', true);
@@ -419,6 +465,14 @@ function createRoom() {
 }
 
 function joinRoom(roomId, joinMode = null) {
+    if (gameState.roomId) {
+        if (roomId === gameState.roomId) {
+            returnToMyRoom();
+        } else {
+            showNotification('Sei già in una stanza. Chiudila prima di entrare in un\'altra.', true);
+        }
+        return;
+    }
     const payload = {
         roomId: roomId,
         playerName: gameState.playerName
@@ -430,6 +484,10 @@ function joinRoom(roomId, joinMode = null) {
 }
 
 function openJoinStartedModal(roomId) {
+    if (gameState.roomId) {
+        showNotification('Sei già in una stanza. Chiudila prima di entrare in un\'altra.', true);
+        return;
+    }
     joinStartedRoomId = roomId;
     const modal = document.getElementById('join-started-modal');
     if (modal) {
@@ -482,6 +540,8 @@ function leaveRoom() {
     gameState.isSpectator = false;
     gameState.pendingJoin = false;
     gameState.pendingMinLives = null;
+    gameState.browsingLobby = false;
+    gameState.gameStarted = false;
     clearCardSelection();
     clearSession();
     hideNextRoundOverlay();
@@ -492,6 +552,7 @@ function leaveRoom() {
     
     showScreen('lobby');
     socket.emit('get_rooms');
+    updateLobbyControls();
 }
 
 function startGame() {
@@ -546,25 +607,35 @@ function renderRoomsList(rooms) {
         
         const statusClass = room.started ? 'in-game' : 'waiting';
         const statusText = room.started ? '🎮 In Gioco' : '⏳ In Attesa';
+        const hasRoom = !!gameState.roomId;
+        const isOwnRoom = hasRoom && room.id === gameState.roomId;
         
         const info = document.createElement('div');
         info.className = 'room-info-card';
         info.innerHTML = `
-            <h3>${room.name}</h3>
+            <h3>${room.name}${isOwnRoom ? ' (La tua stanza)' : ''}</h3>
             <p>👥 ${room.playerCount}/8 giocatori</p>
             <span class="room-status ${statusClass}">${statusText}</span>
         `;
         
         const button = document.createElement('button');
         button.className = 'btn btn-primary';
-        if (room.started) {
-            button.textContent = 'Guarda / Entra';
-            button.addEventListener('click', () => openJoinStartedModal(room.id));
+        if (isOwnRoom) {
+            button.textContent = 'Rientra';
+            button.addEventListener('click', returnToMyRoom);
+        } else if (room.started) {
+            button.textContent = hasRoom ? 'Già in una stanza' : 'Guarda / Entra';
+            button.disabled = hasRoom;
+            if (!hasRoom) {
+                button.addEventListener('click', () => openJoinStartedModal(room.id));
+            }
         } else {
             const isFull = room.playerCount >= 8;
-            button.textContent = isFull ? 'Stanza piena' : 'Unisciti';
-            button.disabled = isFull;
-            button.addEventListener('click', () => joinRoom(room.id));
+            button.textContent = hasRoom ? 'Già in una stanza' : (isFull ? 'Stanza piena' : 'Unisciti');
+            button.disabled = hasRoom || isFull;
+            if (!hasRoom && !isFull) {
+                button.addEventListener('click', () => joinRoom(room.id));
+            }
         }
         
         roomCard.appendChild(info);
@@ -681,6 +752,7 @@ function selectJokerMode(mode) {
 // Lista stanze
 socket.on('rooms_list', (rooms) => {
     renderRoomsList(rooms);
+    updateLobbyControls();
 });
 
 // Stanza creata
@@ -693,6 +765,8 @@ socket.on('room_created', (data) => {
     gameState.isSpectator = false;
     gameState.pendingJoin = false;
     gameState.pendingMinLives = null;
+    gameState.browsingLobby = false;
+    gameState.gameStarted = false;
     saveSession();
     
     document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
@@ -714,6 +788,8 @@ socket.on('room_joined', (data) => {
     gameState.isSpectator = false;
     gameState.pendingJoin = false;
     gameState.pendingMinLives = null;
+    gameState.browsingLobby = false;
+    gameState.gameStarted = false;
     saveSession();
     
     document.getElementById('room-title').textContent = '🏠 ' + data.roomName;
@@ -735,6 +811,8 @@ socket.on('spectator_joined', (data) => {
     gameState.isSpectator = true;
     gameState.pendingJoin = false;
     gameState.pendingMinLives = null;
+    gameState.browsingLobby = false;
+    gameState.gameStarted = true;
     clearSession();
     hideNextRoundOverlay();
     updateSpectatorUI();
@@ -752,6 +830,8 @@ socket.on('pending_joined', (data) => {
     gameState.isSpectator = true;
     gameState.pendingJoin = true;
     gameState.pendingMinLives = data.minLives !== undefined ? data.minLives : null;
+    gameState.browsingLobby = false;
+    gameState.gameStarted = true;
     clearSession();
     hideNextRoundOverlay();
     updateSpectatorUI();
@@ -771,9 +851,12 @@ socket.on('game_started', (data) => {
     gameState.awaitingPlay = false;
     gameState.awaitingNextRound = false;
     gameState.nextRoundReady = false;
+    gameState.gameStarted = true;
     hideNextRoundOverlay();
     refreshCardInteractivity();
-    showScreen('game');
+    if (!gameState.browsingLobby) {
+        showScreen('game');
+    }
     updateSpectatorUI();
     showNotification('La partita è iniziata!');
 });
@@ -921,7 +1004,7 @@ socket.on('round_ended', (data) => {
     });
     
     addGameMessage(message, 'info');
-    if (!gameState.isSpectator && !gameState.pendingJoin) {
+    if (!gameState.isSpectator && !gameState.pendingJoin && !gameState.browsingLobby) {
         showNextRoundOverlay(!!data.isLastRound);
     }
 });
@@ -1004,6 +1087,7 @@ socket.on('kicked', (data) => {
     }
     showScreen('lobby');
     socket.emit('get_rooms');
+    updateLobbyControls();
 });
 
 // Rientro dopo refresh
@@ -1015,6 +1099,8 @@ socket.on('rejoin_success', (data) => {
     gameState.playerName = data.playerName || gameState.playerName;
     gameState.isAdmin = !!data.isAdmin;
     gameState.turnNotified = false;
+    gameState.browsingLobby = false;
+    gameState.gameStarted = !!data.gameStarted;
     saveSession();
 
     document.getElementById('room-title').textContent = '🏠 ' + gameState.roomName;
@@ -1046,6 +1132,7 @@ function updateRoomState(state) {
 
     const me = state.players.find(p => p.socketId === gameState.playerId);
     gameState.isAdmin = !!(me && me.isAdmin);
+    gameState.gameStarted = !!state.gameStarted;
     document.getElementById('admin-controls').style.display = gameState.isAdmin ? 'block' : 'none';
     document.getElementById('waiting-message').style.display = gameState.isAdmin ? 'none' : 'block';
     
@@ -1074,15 +1161,19 @@ function updateRoomState(state) {
     
     // Se la partita è iniziata, vai alla schermata gioco
     if (state.gameStarted) {
-        showScreen('game');
+        if (!gameState.browsingLobby) {
+            showScreen('game');
+        }
         updatePlayersStatus(state);
     }
+    updateLobbyControls();
 }
 
 function updatePlayersStatus(state) {
     const statusDiv = document.getElementById('players-status');
     statusDiv.innerHTML = '';
     
+    gameState.gameStarted = !!state.gameStarted;
     gameState.waitingForPlayer = state.waitingForPlayer || null;
     gameState.playingPhase = !!state.playingPhase;
     if (state.currentRound) {
@@ -1291,10 +1382,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Pulsanti Lobby
     document.getElementById('create-room-btn').addEventListener('click', () => {
+        if (gameState.roomId) {
+            showNotification('Sei già in una stanza. Chiudila prima di crearne un\'altra.', true);
+            return;
+        }
         document.getElementById('create-room-modal').style.display = 'flex';
     });
-    document.getElementById('back-home-btn').addEventListener('click', () => showScreen('home'));
+    document.getElementById('back-home-btn').addEventListener('click', () => {
+        gameState.browsingLobby = false;
+        showScreen('home');
+    });
     document.getElementById('search-room').addEventListener('input', filterRooms);
+    document.getElementById('return-to-room-btn').addEventListener('click', returnToMyRoom);
     
     // Modale Crea Stanza
     document.getElementById('confirm-create-btn').addEventListener('click', createRoom);
@@ -1310,6 +1409,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pulsanti Stanza
     document.getElementById('start-game-btn').addEventListener('click', startGame);
     document.getElementById('leave-room-btn').addEventListener('click', leaveRoom);
+    document.getElementById('back-to-lobby-btn').addEventListener('click', showLobbyList);
     
     // Pulsanti Regole
     document.getElementById('back-from-rules-btn').addEventListener('click', () => showScreen('home'));

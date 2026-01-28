@@ -19,6 +19,13 @@ def generate_room_code():
     """Genera un codice stanza casuale."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
+def find_room_for_sid(sid):
+    """Trova la stanza associata a un socket_id."""
+    for room_id, game in games.items():
+        if game.has_player(sid) or game.has_pending_player(sid) or game.has_spectator(sid):
+            return room_id
+    return None
+
 
 @app.route('/')
 def index():
@@ -46,6 +53,11 @@ def handle_create_room(data):
     """Crea una nuova stanza pubblica."""
     player_name = data.get('playerName', 'Giocatore')
     room_name = data.get('roomName', 'Stanza senza nome')
+    
+    existing_room = find_room_for_sid(request.sid)
+    if existing_room:
+        emit('error', {'message': 'Sei già in una stanza. Chiudila prima di crearne un\'altra.'})
+        return
     
     # Genera codice stanza unico
     room_code = generate_room_code()
@@ -80,6 +92,14 @@ def handle_join_room(data):
     room_id = data.get('roomId', '')
     player_name = data.get('playerName', 'Giocatore')
     join_mode = data.get('joinMode', None)
+
+    existing_room = find_room_for_sid(request.sid)
+    if existing_room:
+        if existing_room == room_id:
+            emit('error', {'message': 'Sei già in questa stanza.'})
+        else:
+            emit('error', {'message': 'Sei già in una stanza. Chiudila prima di entrare in un\'altra.'})
+        return
     
     if room_id not in games:
         emit('error', {'message': 'Stanza non trovata!'})

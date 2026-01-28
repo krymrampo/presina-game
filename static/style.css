@@ -209,6 +209,21 @@ h3 {
     animation: pulse 2s infinite;
 }
 
+.active-room-banner {
+    background: #e7f3ff;
+    color: #0b4f8a;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #cfe2ff;
+    text-align: center;
+    font-weight: 600;
+    margin: 15px 0;
+}
+
+#back-to-lobby-btn {
+    margin-bottom: 10px;
+}
+
 @keyframes pulse {
     0%, 100% {
         opacity: 1;
