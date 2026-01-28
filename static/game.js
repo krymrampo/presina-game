@@ -1192,10 +1192,182 @@ function updateRoomState(state) {
     updateLobbyControls();
 }
 
-function updatePlayersStatus(state) {
+function orderPlayersForView(players) {
+    const ordered = Array.isArray(players) ? players.slice() : [];
+    if (ordered.length === 0) {
+        return ordered;
+    }
+    let startIndex = ordered.findIndex(p => p.socketId === gameState.playerId);
+    if (startIndex === -1 && gameState.playerName) {
+        startIndex = ordered.findIndex(p => p.name === gameState.playerName);
+    }
+    if (startIndex <= 0) {
+        return ordered;
+    }
+    return ordered.slice(startIndex).concat(ordered.slice(0, startIndex));
+}
+
+function getSeatSlots(count) {
+    const slots = [];
+    const used = new Set();
+    if (!count) {
+        return slots;
+    }
+    for (let i = 0; i < count; i += 1) {
+        let slot = Math.round((i * 8) / count) % 8;
+        while (used.has(slot)) {
+            slot = (slot + 1) % 8;
+        }
+        slots.push(slot);
+        used.add(slot);
+    }
+    return slots;
+}
+
+function getRemainingInfo(player) {
+    const bet = Number(player && player.bet);
+    const tricks = Number(player && player.tricksWon);
+    if (!Number.isFinite(bet) || !Number.isFinite(tricks)) {
+        return null;
+    }
+    const diff = bet - tricks;
+    if (diff >= 0) {
+        return { label: 'Da fare', value: diff, icon: '⏳' };
+    }
+    return { label: 'Sforate', value: Math.abs(diff), icon: '⚠️' };
+}
+
+function renderSeatContent(player, state) {
+    const isOnline = player.connected !== false;
+    const presenceClass = isOnline ? 'online' : 'offline';
+    const isMe = player.socketId === gameState.playerId;
+    const nameLabel = `${player.name}${isMe ? ' (Tu)' : ''}`;
+    const lives = Number.isFinite(player.lives) ? player.lives : '-';
+    const hasBet = player.hasBet === true
+        || (player.hasBet === undefined && player.bet !== null && player.bet !== undefined);
+    const showTricks = state.playingPhase && player.tricksWon !== null && player.tricksWon !== undefined;
+    const remainingInfo = showTricks && hasBet ? getRemainingInfo(player) : null;
+    const betChip = hasBet ? `<span class="seat-chip">🎯 ${player.bet}</span>` : '';
+    const tricksChip = showTricks ? `<span class="seat-chip">🏆 ${player.tricksWon}</span>` : '';
+    const remainingChip = remainingInfo
+        ? `<span class="seat-chip">${remainingInfo.icon} ${remainingInfo.value}</span>`
+        : '';
+    const bettingStatus = state.bettingPhase && !hasBet ? '⏳ Deve puntare' : '';
+
+    return `
+        <div class="seat-card">
+            <div class="seat-name">
+                <span class="presence-dot ${presenceClass}"></span>
+                ${nameLabel}
+            </div>
+            <div class="seat-meta">
+                <span class="seat-chip">❤️ ${lives}</span>
+                ${betChip}
+                ${tricksChip}
+                ${remainingChip}
+            </div>
+            ${bettingStatus ? `<div class="seat-status">${bettingStatus}</div>` : ''}
+        </div>
+    `;
+}
+
+function renderEmptySeat() {
+    return `
+        <div class="seat-card">
+            <div class="seat-name">Posto libero</div>
+            <div class="seat-meta">
+                <span class="seat-chip">—</span>
+            </div>
+        </div>
+    `;
+}
+
+function updateTableSeats(players, state) {
+    const seats = Array.from(document.querySelectorAll('.table-seat'));
+    if (seats.length === 0) {
+        return;
+    }
+    const seatMap = new Map();
+    seats.forEach(seat => {
+        seatMap.set(Number(seat.dataset.seat), seat);
+    });
+
+    seats.forEach(seat => {
+        seat.className = 'table-seat empty';
+        seat.innerHTML = renderEmptySeat();
+    });
+
+    const slots = getSeatSlots(players.length);
+    players.forEach((player, index) => {
+        const seatIndex = slots[index];
+        const seat = seatMap.get(seatIndex);
+        if (!seat) {
+            return;
+        }
+        seat.className = 'table-seat';
+        if (state.waitingForPlayer === player.name) {
+            seat.classList.add('current');
+        }
+        if (player.connected === false) {
+            seat.classList.add('offline');
+        }
+        if (player.socketId === gameState.playerId) {
+            seat.classList.add('is-me');
+        }
+        seat.innerHTML = renderSeatContent(player, state);
+    });
+}
+
+function renderPlayersPanel(players, state) {
     const statusDiv = document.getElementById('players-status');
+    if (!statusDiv) {
+        return;
+    }
     statusDiv.innerHTML = '';
-    
+
+    players.forEach(player => {
+        const div = document.createElement('div');
+        div.className = 'player-status';
+        
+        if (state.waitingForPlayer === player.name) {
+            div.classList.add('current');
+        }
+        const isOnline = player.connected !== false;
+        if (!isOnline) {
+            div.classList.add('offline');
+        }
+        
+        let html = `<strong>${player.name}</strong><br>`;
+        html += `<span class="player-presence ${isOnline ? 'online' : 'offline'}">` +
+                `${isOnline ? '🟢 Online' : '🔴 Offline'}</span><br>`;
+        html += `❤️ ${player.lives} vite<br>`;
+        
+        const hasBet = player.hasBet === true
+            || (player.hasBet === undefined && player.bet !== null && player.bet !== undefined);
+        if (state.bettingPhase) {
+            if (hasBet) {
+                html += `🎯 Puntata: ${player.bet}<br>`;
+            } else {
+                html += `⏳ Deve puntare<br>`;
+            }
+        } else if (hasBet) {
+            html += `🎯 Puntata: ${player.bet}<br>`;
+        }
+        
+        if (state.playingPhase && player.tricksWon !== undefined && player.tricksWon !== null) {
+            html += `🏆 Prese: ${player.tricksWon}<br>`;
+            const remainingInfo = hasBet ? getRemainingInfo(player) : null;
+            if (remainingInfo) {
+                html += `${remainingInfo.icon} ${remainingInfo.label}: ${remainingInfo.value}<br>`;
+            }
+        }
+        
+        div.innerHTML = html;
+        statusDiv.appendChild(div);
+    });
+}
+
+function updatePlayersStatus(state) {
     gameState.gameStarted = !!state.gameStarted;
     gameState.waitingForPlayer = state.waitingForPlayer || null;
     gameState.playingPhase = !!state.playingPhase;
@@ -1239,41 +1411,10 @@ function updatePlayersStatus(state) {
         refreshCardInteractivity();
     }
     
-    state.players.forEach(player => {
-        const div = document.createElement('div');
-        div.className = 'player-status';
-        
-        if (state.waitingForPlayer === player.name) {
-            div.classList.add('current');
-        }
-        const isOnline = player.connected !== false;
-        if (!isOnline) {
-            div.classList.add('offline');
-        }
-        
-        let html = `<strong>${player.name}</strong><br>`;
-        html += `<span class="player-presence ${isOnline ? 'online' : 'offline'}">` +
-                `${isOnline ? '🟢 Online' : '🔴 Offline'}</span><br>`;
-        html += `❤️ ${player.lives} vite<br>`;
-        
-        const hasBet = !!player.hasBet;
-        if (state.bettingPhase) {
-            if (hasBet) {
-                html += `🎯 Puntata: ${player.bet}<br>`;
-            } else {
-                html += `⏳ Deve puntare<br>`;
-            }
-        } else if (hasBet && player.bet !== null && player.bet !== undefined) {
-            html += `🎯 Puntata: ${player.bet}<br>`;
-        }
-        
-        if (state.playingPhase && player.tricksWon !== undefined) {
-            html += `🏆 Prese: ${player.tricksWon}`;
-        }
-        
-        div.innerHTML = html;
-        statusDiv.appendChild(div);
-    });
+    const players = Array.isArray(state.players) ? state.players : [];
+    const orderedPlayers = orderPlayersForView(players);
+    renderPlayersPanel(orderedPlayers, state);
+    updateTableSeats(orderedPlayers, state);
 
     updateNextRoundOverlay(state);
     updateSpectatorCount(state);
