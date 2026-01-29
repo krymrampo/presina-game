@@ -1240,23 +1240,17 @@ function renderSeatContent(player, state) {
     const presenceClass = isOnline ? 'online' : 'offline';
     const isMe = player.socketId === gameState.playerId;
     const nameLabel = `${player.name}${isMe ? ' (Tu)' : ''}`;
-    const lives = Number.isFinite(player.lives) ? player.lives : '-';
     const hasBet = player.hasBet === true
         || (player.hasBet === undefined && player.bet !== null && player.bet !== undefined);
     const showTricks = !!state.playingPhase;
     const showBetChip = !!state.bettingPhase && hasBet;
     const showBetweenChip = !state.bettingPhase && !state.playingPhase && hasBet;
-    const remainingInfo = showTricks && hasBet ? getRemainingInfo(player) : null;
     const chips = [];
-    chips.push(`<span class="seat-chip">❤️ ${lives}</span>`);
     if (showBetChip || showBetweenChip) {
         chips.push(`<span class="seat-chip">🎯 ${player.bet}</span>`);
     }
     if (showTricks && player.tricksWon !== null && player.tricksWon !== undefined) {
         chips.push(`<span class="seat-chip">🏆 ${player.tricksWon}</span>`);
-    }
-    if (remainingInfo) {
-        chips.push(`<span class="seat-chip">${remainingInfo.icon} ${remainingInfo.value}</span>`);
     }
     const bettingStatus = state.bettingPhase && !hasBet ? '⏳ Deve puntare' : '';
 
@@ -1270,8 +1264,8 @@ function renderSeatContent(player, state) {
                 ${chips.join('')}
             </div>
             ${bettingStatus ? `<div class="seat-status">${bettingStatus}</div>` : ''}
-            <div class="seat-played"></div>
         </div>
+        <div class="seat-played"></div>
     `;
 }
 
@@ -1282,8 +1276,8 @@ function renderEmptySeat() {
             <div class="seat-meta">
                 <span class="seat-chip">—</span>
             </div>
-            <div class="seat-played"></div>
         </div>
+        <div class="seat-played"></div>
     `;
 }
 

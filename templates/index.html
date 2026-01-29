@@ -111,67 +111,72 @@
 
         <!-- Schermata Gioco -->
         <div id="game-screen" class="screen">
-            <div class="game-header">
-                <div class="round-info">
-                    <h3>Turno <span id="current-round">1</span>/5</h3>
-                    <p><span id="cards-this-round">5</span> carte</p>
+            <div class="game-header compact">
+                <div class="round-phase-bar">
+                    <div class="round-info">
+                        <h3>Turno <span id="current-round">1</span>/5</h3>
+                        <p><span id="cards-this-round">5</span> carte</p>
+                    </div>
+                    <div class="game-phase compact">
+                        <h3 id="phase-title">Fase di Puntata</h3>
+                        <p id="phase-description"></p>
+                    </div>
                 </div>
-            </div>
-
-            <div class="game-phase">
-                <h3 id="phase-title">Fase di Puntata</h3>
-                <p id="phase-description"></p>
             </div>
 
             <div id="spectator-banner" class="spectator-banner" style="display: none;"></div>
 
-            <!-- Tavolo di gioco -->
-            <div class="table-area">
-                <div class="table-surface">
-                    <div class="table-ring">
-                        <div class="table-seat" data-seat="0"></div>
-                        <div class="table-seat" data-seat="1"></div>
-                        <div class="table-seat" data-seat="2"></div>
-                        <div class="table-seat" data-seat="3"></div>
-                        <div class="table-seat" data-seat="4"></div>
-                        <div class="table-seat" data-seat="5"></div>
-                        <div class="table-seat" data-seat="6"></div>
-                        <div class="table-seat" data-seat="7"></div>
+            <div class="game-layout">
+                <!-- Area Mano del Giocatore -->
+                <div id="hand-area" class="hand-area">
+                    <h4>Le tue carte:</h4>
+                    <div id="player-hand" class="cards-container"></div>
+                    <div id="card-confirmation" class="card-confirmation" style="display: none;">
+                        <span id="selected-card-label"></span>
+                        <button class="btn btn-success" id="confirm-card-btn">
+                            ✅ Conferma
+                        </button>
+                        <button class="btn btn-secondary" id="cancel-card-btn">
+                            ✖ Annulla
+                        </button>
                     </div>
-                    <div class="table-center">
-                        <div id="trick-area" class="trick-area table-trick" style="display: none;">
-                            <div class="trick-info">
-                                Mano <span id="trick-number">1</span>/<span id="total-tricks">5</span>
+                    <p id="special-round-note" class="special-note" style="display: none;">
+                        🎭 Turno speciale: Questa è la tua carta, ma non puoi vederla!
+                    </p>
+                    <div id="other-players-cards" class="other-players-cards"></div>
+                </div>
+
+                <div class="game-main">
+                    <!-- Tavolo di gioco -->
+                    <div class="table-area">
+                        <div class="table-surface">
+                            <div class="table-ring">
+                                <div class="table-seat" data-seat="0"></div>
+                                <div class="table-seat" data-seat="1"></div>
+                                <div class="table-seat" data-seat="2"></div>
+                                <div class="table-seat" data-seat="3"></div>
+                                <div class="table-seat" data-seat="4"></div>
+                                <div class="table-seat" data-seat="5"></div>
+                                <div class="table-seat" data-seat="6"></div>
+                                <div class="table-seat" data-seat="7"></div>
                             </div>
-                            <div id="cards-played" class="cards-played"></div>
+                            <div class="table-center">
+                                <div id="trick-area" class="trick-area table-trick" style="display: none;">
+                                    <div class="trick-info">
+                                        Mano <span id="trick-number">1</span>/<span id="total-tricks">5</span>
+                                    </div>
+                                    <div id="cards-played" class="cards-played"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Area Puntata -->
-            <div id="betting-area" class="betting-area" style="display: none;">
-                <p id="bet-instruction"></p>
-                <div class="bet-buttons" id="bet-buttons"></div>
-            </div>
-
-            <!-- Area Mano del Giocatore -->
-            <div id="hand-area" class="hand-area">
-                <h4>Le tue carte:</h4>
-                <div id="player-hand" class="cards-container"></div>
-                <div id="card-confirmation" class="card-confirmation" style="display: none;">
-                    <span id="selected-card-label"></span>
-                    <button class="btn btn-success" id="confirm-card-btn">
-                        ✅ Conferma
-                    </button>
-                    <button class="btn btn-secondary" id="cancel-card-btn">
-                        ✖ Annulla
-                    </button>
+                    <!-- Area Puntata -->
+                    <div id="betting-area" class="betting-area" style="display: none;">
+                        <p id="bet-instruction"></p>
+                        <div class="bet-buttons" id="bet-buttons"></div>
+                    </div>
                 </div>
-                <p id="special-round-note" class="special-note" style="display: none;">
-                    🎭 Turno speciale: Questa è la tua carta, ma non puoi vederla!
-                </p>
-                <div id="other-players-cards" class="other-players-cards"></div>
             </div>
 
             <!-- Modale Jolly -->

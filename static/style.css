@@ -246,9 +246,30 @@ h3 {
     justify-content: center;
 }
 
+.game-header.compact {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+}
+
+.round-phase-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
 .round-info {
-    text-align: center;
-    margin-bottom: 15px;
+    text-align: left;
+    margin-bottom: 0;
+}
+
+.round-info h3 {
+    margin-bottom: 4px;
+}
+
+.round-info p {
+    margin: 0;
+    color: #555;
 }
 
 .players-info {
@@ -297,6 +318,24 @@ h3 {
     border-radius: 15px;
     text-align: center;
     margin-bottom: 20px;
+}
+
+.game-phase.compact {
+    flex: 1;
+    padding: 10px 14px;
+    margin-bottom: 0;
+    text-align: left;
+}
+
+.game-phase.compact h3 {
+    margin-bottom: 4px;
+    font-size: 1.05em;
+}
+
+.game-phase.compact p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.95em;
 }
 
 .spectator-banner {
@@ -352,8 +391,8 @@ h3 {
 
 .table-surface {
     position: relative;
-    width: min(100%, 680px);
-    aspect-ratio: 1 / 1;
+    width: min(100%, 760px);
+    aspect-ratio: 3 / 2;
     margin: 0 auto;
     --seat-width: clamp(110px, 18vw, 170px);
     overflow: visible;
@@ -380,16 +419,20 @@ h3 {
     position: absolute;
     width: var(--seat-width);
     transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
-.table-seat[data-seat="0"] { left: 50%; top: 96%; }
-.table-seat[data-seat="1"] { left: 79%; top: 86%; }
-.table-seat[data-seat="2"] { left: 90%; top: 50%; }
-.table-seat[data-seat="3"] { left: 79%; top: 14%; }
-.table-seat[data-seat="4"] { left: 50%; top: 4%; }
-.table-seat[data-seat="5"] { left: 21%; top: 14%; }
-.table-seat[data-seat="6"] { left: 10%; top: 50%; }
-.table-seat[data-seat="7"] { left: 21%; top: 86%; }
+.table-seat[data-seat="0"] { left: 50%; top: 92%; }
+.table-seat[data-seat="1"] { left: 80%; top: 82%; }
+.table-seat[data-seat="2"] { left: 92%; top: 50%; }
+.table-seat[data-seat="3"] { left: 80%; top: 18%; }
+.table-seat[data-seat="4"] { left: 50%; top: 8%; }
+.table-seat[data-seat="5"] { left: 20%; top: 18%; }
+.table-seat[data-seat="6"] { left: 8%; top: 50%; }
+.table-seat[data-seat="7"] { left: 20%; top: 82%; }
 
 .seat-card {
     background: rgba(255, 255, 255, 0.95);
@@ -475,7 +518,7 @@ h3 {
 
 .table-center {
     position: absolute;
-    inset: 28%;
+    inset: 30% 32%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -558,9 +601,34 @@ h3 {
     cursor: not-allowed;
 }
 
+.game-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.game-main {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 .hand-area {
     margin-top: 10px;
     margin-bottom: 20px;
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 15px;
+    position: sticky;
+    top: 110px;
+    align-self: start;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+}
+
+.hand-area h4 {
+    margin-bottom: 8px;
 }
 
 .cards-container {
@@ -569,6 +637,11 @@ h3 {
     gap: 15px;
     justify-content: center;
     margin-top: 15px;
+}
+
+.hand-area .cards-container {
+    justify-content: flex-start;
+    margin-top: 10px;
 }
 
 .card-confirmation {
@@ -878,8 +951,10 @@ h3 {
 
 .notification {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: auto;
+    right: auto;
+    bottom: 90px;
+    left: 20px;
     background: #28a745;
     color: white;
     padding: 15px 25px;
@@ -897,7 +972,7 @@ h3 {
 @keyframes slideIn {
     from {
         opacity: 0;
-        transform: translateX(100px);
+        transform: translateX(-100px);
     }
     to {
         opacity: 1;
@@ -1094,6 +1169,20 @@ h3 {
         width: 80px;
         height: 112px;
     }
+
+    .game-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .hand-area {
+        position: static;
+        max-height: none;
+    }
+
+    .round-phase-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
     
     #players-status {
         flex-direction: column;
@@ -1115,7 +1204,7 @@ h3 {
     }
 
     .table-center {
-        inset: 32% 22%;
+        inset: 34% 28%;
     }
 
     .table-trick .card {
