@@ -12,7 +12,8 @@ const SocketClient = {
         if (this.socket && this.connected) return;
         
         this.socket = io({
-            transports: ['websocket', 'polling']
+            transports: ['polling'],
+            upgrade: false
         });
         
         this.setupEventHandlers();

@@ -23,7 +23,7 @@ app.config.from_object(get_config())
 socketio = SocketIO(
     app, 
     cors_allowed_origins=app.config.get('CORS_ALLOWED_ORIGINS', '*'),
-    async_mode='eventlet'
+    async_mode='threading'
 )
 
 # Register socket events
