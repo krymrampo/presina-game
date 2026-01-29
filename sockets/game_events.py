@@ -49,6 +49,7 @@ def register_game_events(socketio):
             return
         
         room.game.start_game()
+        room.game.auto_advance_offline()
         
         # Send game state to all players
         for pid, player in room.game.players.items():
@@ -99,6 +100,8 @@ def register_game_events(socketio):
         if not success:
             emit('error', {'message': message})
             return
+
+        room.game.auto_advance_offline()
         
         # Send updated game state to all players
         _broadcast_game_state(socketio, room)
@@ -139,9 +142,11 @@ def register_game_events(socketio):
         if not success:
             emit('error', {'message': message})
             return
+
+        room.game.auto_advance_offline()
         
         # Check if waiting for jolly choice
-        if room.game.phase == GamePhase.WAITING_JOLLY:
+        if room.game.phase == GamePhase.WAITING_JOLLY and room.game.pending_jolly_player == player_id:
             emit('jolly_choice_required', {
                 'message': 'Scegli: prende o lascia?'
             })
@@ -161,6 +166,11 @@ def register_game_events(socketio):
         if not player_id or not choice:
             emit('error', {'message': 'Dati mancanti'})
             return
+
+        # Verify player identity
+        if not _verify_player_socket(player_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
+            return
         
         room = room_manager.get_player_room(player_id)
         if not room:
@@ -172,6 +182,8 @@ def register_game_events(socketio):
         if not success:
             emit('error', {'message': message})
             return
+
+        room.game.auto_advance_offline()
         
         # Send updated game state to all players
         _broadcast_game_state(socketio, room)
@@ -187,6 +199,11 @@ def register_game_events(socketio):
         if not player_id:
             emit('error', {'message': 'ID giocatore mancante'})
             return
+
+        # Verify player identity
+        if not _verify_player_socket(player_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
+            return
         
         room = room_manager.get_player_room(player_id)
         if not room:
@@ -198,6 +215,8 @@ def register_game_events(socketio):
         if not success:
             emit('error', {'message': message})
             return
+
+        room.game.auto_advance_offline()
         
         # Send updated game state to all players
         _broadcast_game_state(socketio, room)
@@ -218,6 +237,11 @@ def register_game_events(socketio):
         
         if not player_id:
             emit('error', {'message': 'ID giocatore mancante'})
+            return
+
+        # Verify player identity
+        if not _verify_player_socket(player_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
         room = room_manager.get_player_room(player_id)

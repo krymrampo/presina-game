@@ -79,6 +79,8 @@ class RoomManager:
             The created room
         """
         room_id = str(uuid.uuid4())[:8]
+        while room_id in self.rooms:
+            room_id = str(uuid.uuid4())[:8]
         room = Room(room_id=room_id, name=name, admin_id=admin_player.player_id)
         
         # Add admin to the room
@@ -128,6 +130,10 @@ class RoomManager:
         room = self.get_room(room_id)
         if not room:
             return False, "Stanza non trovata"
+
+        # Disallow joining finished games
+        if room.game.phase == GamePhase.GAME_OVER:
+            return False, "Partita finita"
         
         # Check if player is already in another room
         if player.player_id in self.player_rooms:
@@ -137,6 +143,10 @@ class RoomManager:
         
         # Check if game is in progress
         if room.game.phase != GamePhase.WAITING:
+            # If we're already in the last turn, no next turn to join
+            last_turn_index = len(PresinaGameOnline.CARDS_PER_TURN) - 1
+            if room.game.current_turn >= last_turn_index:
+                return False, "Non puoi entrare nell'ultimo turno"
             # Join as spectator or for next turn
             if room.player_count >= PresinaGameOnline.MAX_PLAYERS:
                 return False, "Stanza piena"
@@ -177,12 +187,32 @@ class RoomManager:
         if not room:
             del self.player_rooms[player_id]
             return True, "Uscito dalla stanza"
+
+        # If game is over, allow a full leave and cleanup
+        if room.game.phase == GamePhase.GAME_OVER:
+            if player_id in room.game.players:
+                del room.game.players[player_id]
+                if player_id in room.game.player_order:
+                    room.game.player_order.remove(player_id)
+
+            if player_id in self.player_rooms:
+                del self.player_rooms[player_id]
+
+            # Handle admin reassignment or room deletion
+            if len(room.game.players) == 0:
+                self.delete_room(room_id)
+            elif room.admin_id == player_id:
+                room.admin_id = list(room.game.players.keys())[0]
+
+            return True, "Uscito dalla stanza"
         
         # If game is in progress, mark as offline instead of removing
         if room.game.phase != GamePhase.WAITING:
             player = room.game.get_player(player_id)
             if player:
                 player.is_online = False
+            # Try to auto-advance if an offline player is blocking
+            room.game.auto_advance_offline()
             # Don't remove from player_rooms so they can rejoin
             return True, "Disconnesso dalla partita"
         
@@ -288,6 +318,7 @@ class RoomManager:
                 player = room.game.get_player(player_id)
                 if player:
                     player.is_online = False
+                    room.game.auto_advance_offline()
                 
                 # Handle admin reassignment if admin disconnects
                 if room.admin_id == player_id:

@@ -158,6 +158,78 @@ class PresinaGameOnline:
         
         self.phase = GamePhase.BETTING
         self._add_message('system', f"Turno {self.current_turn + 1}: {cards_this_turn} carte")
+
+    def auto_advance_offline(self):
+        """Auto-play for offline players to avoid blocking the game."""
+        safety = 0
+        while safety < 200:
+            safety += 1
+
+            if self.phase == GamePhase.BETTING:
+                current = self.get_current_better()
+                if not current or current.is_online:
+                    break
+
+                bet = self._choose_auto_bet()
+                success, _ = self.make_bet(current.player_id, bet)
+                if not success:
+                    break
+                continue
+
+            if self.phase == GamePhase.WAITING_JOLLY:
+                player_id = self.pending_jolly_player
+                if not player_id:
+                    self.phase = GamePhase.PLAYING
+                    continue
+
+                player = self.get_player(player_id)
+                if player and not player.is_online:
+                    success, _ = self._handle_jolly_choice(player_id, 'lascia')
+                    if not success:
+                        break
+                    continue
+                break
+
+            if self.phase == GamePhase.PLAYING:
+                current = self.get_current_player()
+                if not current or current.is_online:
+                    break
+
+                card = self._choose_auto_card(current)
+                if not card:
+                    break
+
+                if card.is_jolly:
+                    success, _ = self.play_card(current.player_id, card.suit, card.value, 'lascia')
+                else:
+                    success, _ = self.play_card(current.player_id, card.suit, card.value)
+
+                if not success:
+                    break
+                continue
+
+            break
+
+    def _choose_auto_bet(self) -> int:
+        """Choose a safe automatic bet for offline players."""
+        cards_this_turn = self.CARDS_PER_TURN[self.current_turn]
+        forbidden = self.get_forbidden_bet()
+        for bet in range(cards_this_turn + 1):
+            if forbidden is None or bet != forbidden:
+                return bet
+        return 0
+
+    def _choose_auto_card(self, player: Player) -> Optional[Card]:
+        """Choose a low-strength card for offline auto-play."""
+        if not player.hand:
+            return None
+
+        def strength(card: Card) -> int:
+            if card.is_jolly:
+                return -1
+            return card.get_strength()
+
+        return min(player.hand, key=strength)
     
     # ==================== Betting Phase ====================
     
@@ -314,14 +386,22 @@ class PresinaGameOnline:
             return False, "Scegli 'prende' o 'lascia'"
         
         player = self.get_player(player_id)
+        if not player:
+            return False, "Giocatore non trovato"
+
         # Find the jolly in hand
+        found = False
         for card in player.hand:
             if card.is_jolly:
                 card.jolly_choice = choice
                 player.play_card(card)
                 self.cards_on_table.append((player_id, card))
                 self._add_message('play', f"{player.name} gioca {card.display_name} ({choice})")
+                found = True
                 break
+
+        if not found:
+            return False, "Jolly non trovato"
         
         self.pending_jolly_player = None
         self.phase = GamePhase.PLAYING
