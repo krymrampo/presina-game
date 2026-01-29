@@ -1,6 +1,6 @@
 :root {
     --chat-height: 460px;
-    --hand-panel-width: 260px;
+    --hand-panel-width: 300px;
     --hand-panel-height: 320px;
 }
 
@@ -401,15 +401,15 @@ h3 {
 }
 
 .table-area {
-    margin: 20px 0 30px;
+    margin: 10px 0;
     display: flex;
     justify-content: center;
 }
 
 .table-surface {
     position: relative;
-    width: min(100%, 760px);
-    aspect-ratio: 3 / 2;
+    width: min(100%, 700px);
+    aspect-ratio: 1 / 1;
     margin: 0 auto;
     --seat-width: clamp(110px, 18vw, 170px);
     overflow: visible;
@@ -529,8 +529,8 @@ h3 {
 }
 
 .seat-played .card {
-    width: 62px;
-    height: 86px;
+    width: 56px;
+    height: 80px;
 }
 
 .table-center {
@@ -579,8 +579,8 @@ h3 {
 }
 
 .table-trick .card {
-    width: 70px;
-    height: 98px;
+    width: 62px;
+    height: 88px;
 }
 
 .betting-area {
@@ -633,6 +633,7 @@ h3 {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    align-items: center;
 }
 
 .hand-area {
@@ -695,8 +696,8 @@ h3 {
 }
 
 .card {
-    width: 100px;
-    height: 140px;
+    width: 88px;
+    height: 124px;
     background: white;
     border: 3px solid #333;
     border-radius: 10px;
@@ -1199,8 +1200,8 @@ h3 {
     }
     
     .card {
-        width: 80px;
-        height: 112px;
+        width: 72px;
+        height: 100px;
     }
 
     .game-layout {
@@ -1247,13 +1248,13 @@ h3 {
     }
 
     .table-trick .card {
-        width: 60px;
-        height: 84px;
+        width: 54px;
+        height: 76px;
     }
 
     .seat-played .card {
-        width: 52px;
-        height: 72px;
+        width: 48px;
+        height: 68px;
     }
     
     .game-messages {
