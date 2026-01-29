@@ -1,0 +1,252 @@
+"""
+Lobby Socket.IO events.
+"""
+from flask import request
+from flask_socketio import emit, join_room, leave_room
+
+from game.player import Player
+from rooms.room_manager import room_manager
+
+
+def register_lobby_events(socketio):
+    """Register all lobby-related socket events."""
+    
+    @socketio.on('connect')
+    def handle_connect():
+        """Handle new connection."""
+        print(f"Client connected: {request.sid}")
+    
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        """Handle disconnection."""
+        print(f"Client disconnected: {request.sid}")
+        room_manager.unregister_socket(request.sid)
+        
+        # Notify room if player was in one
+        player_id = room_manager.get_player_by_sid(request.sid)
+        if player_id:
+            room = room_manager.get_player_room(player_id)
+            if room:
+                emit('player_disconnected', {
+                    'player_id': player_id
+                }, room=room.room_id)
+                emit('room_update', room.to_dict(), room=room.room_id)
+    
+    @socketio.on('register_player')
+    def handle_register(data):
+        """
+        Register a player.
+        Data: { player_id, name }
+        """
+        player_id = data.get('player_id')
+        name = data.get('name', 'Anonimo')
+        
+        if not player_id:
+            emit('error', {'message': 'ID giocatore mancante'})
+            return
+        
+        room_manager.register_socket(request.sid, player_id)
+        emit('registered', {'player_id': player_id, 'name': name})
+    
+    @socketio.on('list_rooms')
+    def handle_list_rooms():
+        """Get list of public rooms."""
+        rooms = room_manager.get_public_rooms()
+        emit('rooms_list', {'rooms': [r.to_dict() for r in rooms]})
+    
+    @socketio.on('search_rooms')
+    def handle_search_rooms(data):
+        """
+        Search rooms by name.
+        Data: { query }
+        """
+        query = data.get('query', '')
+        rooms = room_manager.search_rooms(query)
+        emit('rooms_list', {'rooms': [r.to_dict() for r in rooms]})
+    
+    @socketio.on('create_room')
+    def handle_create_room(data):
+        """
+        Create a new room.
+        Data: { player_id, player_name, room_name }
+        """
+        player_id = data.get('player_id')
+        player_name = data.get('player_name', 'Anonimo')
+        room_name = data.get('room_name', 'Nuova stanza')
+        
+        if not player_id:
+            emit('error', {'message': 'ID giocatore mancante'})
+            return
+        
+        # Check if already in a room
+        existing_room = room_manager.get_player_room(player_id)
+        if existing_room:
+            emit('error', {'message': 'Sei già in una stanza'})
+            return
+        
+        # Create player and room
+        player = Player(player_id, player_name, request.sid)
+        room = room_manager.create_room(room_name, player)
+        
+        # Join socket room
+        join_room(room.room_id)
+        
+        emit('room_created', {
+            'room': room.to_dict(),
+            'game_state': room.game.get_state_for_player(player_id)
+        })
+        
+        # Broadcast updated room list
+        socketio.emit('rooms_list', {
+            'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
+        })
+    
+    @socketio.on('join_room')
+    def handle_join_room(data):
+        """
+        Join an existing room.
+        Data: { player_id, player_name, room_id }
+        """
+        player_id = data.get('player_id')
+        player_name = data.get('player_name', 'Anonimo')
+        room_id = data.get('room_id')
+        
+        if not player_id or not room_id:
+            emit('error', {'message': 'Dati mancanti'})
+            return
+        
+        # Create player
+        player = Player(player_id, player_name, request.sid)
+        
+        success, message = room_manager.join_room(room_id, player)
+        
+        if not success:
+            emit('error', {'message': message})
+            return
+        
+        room = room_manager.get_room(room_id)
+        
+        # Join socket room
+        join_room(room_id)
+        room_manager.register_socket(request.sid, player_id)
+        
+        emit('room_joined', {
+            'room': room.to_dict(),
+            'game_state': room.game.get_state_for_player(player_id),
+            'message': message
+        })
+        
+        # Notify other players
+        emit('player_joined', {
+            'player_id': player_id,
+            'player_name': player_name,
+            'game_state': room.game.get_state_for_player(player_id)
+        }, room=room_id, include_self=False)
+        
+        # Broadcast updated room list
+        socketio.emit('rooms_list', {
+            'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
+        })
+    
+    @socketio.on('leave_room')
+    def handle_leave_room(data):
+        """
+        Leave current room.
+        Data: { player_id }
+        """
+        player_id = data.get('player_id')
+        
+        if not player_id:
+            emit('error', {'message': 'ID giocatore mancante'})
+            return
+        
+        room = room_manager.get_player_room(player_id)
+        room_id = room.room_id if room else None
+        
+        success, message = room_manager.leave_room(player_id)
+        
+        if room_id:
+            leave_room(room_id)
+            
+            # Notify other players
+            room = room_manager.get_room(room_id)
+            if room:
+                emit('player_left', {
+                    'player_id': player_id,
+                    'game_state': room.game.get_state_for_player(None)
+                }, room=room_id)
+        
+        emit('left_room', {'message': message})
+        
+        # Broadcast updated room list
+        socketio.emit('rooms_list', {
+            'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
+        })
+    
+    @socketio.on('kick_player')
+    def handle_kick_player(data):
+        """
+        Kick a player (admin only).
+        Data: { admin_id, player_id }
+        """
+        admin_id = data.get('admin_id')
+        player_id = data.get('player_id')
+        
+        if not admin_id or not player_id:
+            emit('error', {'message': 'Dati mancanti'})
+            return
+        
+        room = room_manager.get_player_room(admin_id)
+        if not room:
+            emit('error', {'message': 'Non sei in nessuna stanza'})
+            return
+        
+        player = room.game.get_player(player_id)
+        player_sid = player.sid if player else None
+        
+        success, message = room_manager.kick_player(admin_id, player_id)
+        
+        if not success:
+            emit('error', {'message': message})
+            return
+        
+        # Notify kicked player
+        if player_sid:
+            socketio.emit('kicked', {'message': 'Sei stato rimosso dalla stanza'}, room=player_sid)
+        
+        # Notify room
+        emit('player_kicked', {
+            'player_id': player_id,
+            'game_state': room.game.get_state_for_player(admin_id)
+        }, room=room.room_id)
+    
+    @socketio.on('rejoin_game')
+    def handle_rejoin(data):
+        """
+        Rejoin a game after disconnect.
+        Data: { player_id }
+        """
+        player_id = data.get('player_id')
+        
+        if not player_id:
+            emit('error', {'message': 'ID giocatore mancante'})
+            return
+        
+        success, message, room = room_manager.rejoin_room(player_id, request.sid)
+        
+        if not success:
+            emit('rejoin_failed', {'message': message})
+            return
+        
+        room_manager.register_socket(request.sid, player_id)
+        join_room(room.room_id)
+        
+        emit('rejoin_success', {
+            'room': room.to_dict(),
+            'game_state': room.game.get_state_for_player(player_id)
+        })
+        
+        # Notify other players
+        emit('player_reconnected', {
+            'player_id': player_id
+        }, room=room.room_id, include_self=False)

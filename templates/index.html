@@ -3,333 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Presina - Gioco Online</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <title>Presina - Gioco di Carte Online</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Schermata Home -->
+    <div id="app">
+        <!-- HOME SCREEN -->
         <div id="home-screen" class="screen active">
-            <h1>🎴 PRESINA 🎴</h1>
-            <p class="subtitle">Il gioco della puntata perfetta!</p>
-            
-            <div class="menu">
+            <div class="home-container">
+                <h1 class="title">🃏 Presina</h1>
+                <p class="subtitle">Il gioco di carte napoletano online</p>
+                
                 <div class="input-group">
                     <label for="player-name">Il tuo nome:</label>
-                    <input type="text" id="player-name" placeholder="Inserisci il tuo nome" maxlength="20">
-                </div>
-                
-                <button class="btn btn-primary btn-large" id="enter-lobby-btn">
-                    🚪 Entra nella Lobby
-                </button>
-                
-                <button class="btn btn-info" id="show-rules-btn">
-                    📖 Regole del Gioco
-                </button>
-            </div>
-        </div>
-
-        <!-- Schermata Lobby (lista stanze) -->
-        <div id="lobby-screen" class="screen">
-            <h2>🎮 Stanze Disponibili</h2>
-            
-            <div class="lobby-header">
-                <div class="search-box">
-                    <input type="text" id="search-room" placeholder="🔍 Cerca stanza per nome...">
-                </div>
-                
-                <button class="btn btn-success" id="create-room-btn">
-                    ➕ Crea Nuova Stanza
-                </button>
-            </div>
-            
-            <div id="rooms-list" class="rooms-list">
-                <p class="no-rooms">Nessuna stanza disponibile. Creane una!</p>
-            </div>
-
-            <div id="active-room-banner" class="active-room-banner" style="display: none;"></div>
-            <button class="btn btn-secondary" id="return-to-room-btn" style="display: none;">
-                ↩ Torna alla tua stanza
-            </button>
-            
-            <button class="btn btn-secondary" id="back-home-btn">
-                ← Torna alla Home
-            </button>
-        </div>
-
-        <!-- Modale Crea Stanza -->
-        <div id="create-room-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <h3>Crea una Nuova Stanza</h3>
-                
-                <div class="input-group">
-                    <label for="room-name">Nome della stanza:</label>
-                    <input type="text" id="room-name" placeholder="Es: Partita con amici" maxlength="30">
+                    <input type="text" id="player-name" maxlength="20" placeholder="Inserisci il tuo nome...">
                 </div>
                 
                 <div class="button-group">
-                    <button class="btn btn-success" id="confirm-create-btn">
-                        Crea Stanza
-                    </button>
-                    <button class="btn btn-secondary" id="cancel-create-btn">
-                        Annulla
-                    </button>
+                    <button id="btn-enter-lobby" class="btn btn-primary">Entra nella Lobby</button>
+                    <button id="btn-rules" class="btn btn-secondary">📖 Regole</button>
                 </div>
             </div>
         </div>
 
-        <!-- Schermata Stanza (waiting room) -->
-        <div id="room-screen" class="screen">
-            <h2 id="room-title">Stanza</h2>
-            
-            <div class="room-info">
-                <p>Giocatori in attesa:</p>
-            </div>
-            
-            <div class="players-waiting">
-                <ul id="players-list"></ul>
-            </div>
-            
-            <div id="admin-controls" style="display: none;">
-                <button class="btn btn-success btn-large" id="start-game-btn">
-                    🚀 INIZIA PARTITA
-                </button>
-                <p class="hint">Minimo 2 giocatori per iniziare</p>
-            </div>
-            
-            <p id="waiting-message" class="waiting-text">In attesa che l'admin avvii la partita...</p>
-            
-            <button class="btn btn-secondary" id="back-to-lobby-room-btn">
-                ← Torna alla Lobby
-            </button>
-
-            <button class="btn btn-danger" id="leave-room-btn">
-                🚪 Abbandona
-            </button>
-        </div>
-
-        <!-- Schermata Gioco -->
-        <div id="game-screen" class="screen">
-            <div class="game-header compact">
-                <div class="round-phase-bar">
-                    <div class="round-info">
-                        <h3>Turno <span id="current-round">1</span>/5</h3>
-                        <p><span id="cards-this-round">5</span> carte</p>
-                    </div>
-                    <div class="game-phase compact">
-                        <h3 id="phase-title">Fase di Puntata</h3>
-                        <p id="phase-description"></p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="spectator-banner" class="spectator-banner" style="display: none;"></div>
-
-            <div class="game-layout">
-                <!-- Area Mano del Giocatore -->
-                <div id="hand-area" class="hand-area">
-                    <h4>Le tue carte:</h4>
-                    <div id="player-hand" class="cards-container"></div>
-                    <div id="card-confirmation" class="card-confirmation" style="display: none;">
-                        <span id="selected-card-label"></span>
-                        <button class="btn btn-success" id="confirm-card-btn">
-                            ✅ Conferma
-                        </button>
-                        <button class="btn btn-secondary" id="cancel-card-btn">
-                            ✖ Annulla
-                        </button>
-                    </div>
-                    <p id="special-round-note" class="special-note" style="display: none;">
-                        🎭 Turno speciale: Questa è la tua carta, ma non puoi vederla!
-                    </p>
-                    <div id="other-players-cards" class="other-players-cards"></div>
-                </div>
-
-                <div class="game-main">
-                    <!-- Tavolo di gioco -->
-                    <div class="table-area">
-                        <div class="table-surface">
-                            <div class="table-ring">
-                                <div class="table-seat" data-seat="0"></div>
-                                <div class="table-seat" data-seat="1"></div>
-                                <div class="table-seat" data-seat="2"></div>
-                                <div class="table-seat" data-seat="3"></div>
-                                <div class="table-seat" data-seat="4"></div>
-                                <div class="table-seat" data-seat="5"></div>
-                                <div class="table-seat" data-seat="6"></div>
-                                <div class="table-seat" data-seat="7"></div>
-                            </div>
-                            <div class="table-center">
-                                <div id="trick-area" class="trick-area table-trick" style="display: none;">
-                                    <div class="trick-info">
-                                        Mano <span id="trick-number">1</span>/<span id="total-tricks">5</span>
-                                    </div>
-                                    <div id="cards-played" class="cards-played"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Area Puntata -->
-                    <div id="betting-area" class="betting-area" style="display: none;">
-                        <p id="bet-instruction"></p>
-                        <div class="bet-buttons" id="bet-buttons"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modale Jolly -->
-            <div id="joker-modal" class="modal" style="display: none;">
-                <div class="modal-content">
-                    <h3>Asso di Denari - Jolly!</h3>
-                    <p>Scegli come giocare il jolly:</p>
-                    <div class="button-group">
-                        <button class="btn btn-success" id="joker-prende-btn">
-                            🔝 PRENDE<br>
-                            <small>(Più del Re di Denari)</small>
-                        </button>
-                        <button class="btn btn-danger" id="joker-lascia-btn">
-                            ⬇️ LASCIA<br>
-                            <small>(Meno dell'Asso di Bastoni)</small>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pulsante Fine Turno -->
-            <div id="next-round-panel" class="next-round-panel" style="display: none;">
-                <button class="btn btn-success" id="next-round-btn">
-                    Prossimo turno
-                </button>
-                <p id="next-round-status" class="next-round-status"></p>
-            </div>
-
-            <!-- Messaggi di Gioco -->
-            <div id="game-messages" class="game-messages"></div>
-
-            <!-- Pannello Stato Giocatori -->
-            <div id="player-panel" class="player-panel">
-                <div class="player-panel-header">
-                    <span>Giocatori</span>
-                </div>
-                <div id="players-status" class="players-status-panel"></div>
-                <div id="spectator-info" class="spectator-info" style="display: none;">
-                    👀 Spettatori: <span id="spectator-count">0</span>
-                </div>
-            </div>
-
-            <!-- Chat di Gioco -->
-            <div id="chat-wrapper" class="chat-wrapper">
-                <div id="chat-panel" class="chat-panel">
-                    <div class="chat-header">
-                        <span>💬 Chat di Gioco</span>
-                        <button class="chat-toggle" id="chat-toggle-btn" type="button" aria-expanded="true">
-                            Riduci
-                        </button>
-                    </div>
-                    <div class="chat-body">
-                        <div id="chat-messages" class="chat-messages"></div>
-                        <div class="chat-input">
-                            <input type="text" id="chat-input" placeholder="Scrivi un messaggio..." maxlength="200">
-                            <button class="btn btn-primary" id="chat-send-btn">Invia</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modale Partita Iniziata -->
-        <div id="join-started-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <h3>Partita già iniziata</h3>
-                <p>Scegli come entrare nella partita.</p>
-                <p><strong>Entra dal prossimo turno:</strong> avrai vite pari al giocatore con meno vite.</p>
-                <div class="button-group">
-                    <button class="btn btn-success" id="join-as-player-btn">
-                        Entra dal prossimo turno
-                    </button>
-                    <button class="btn btn-info" id="join-as-spectator-btn">
-                        Spettatore (solo chat)
-                    </button>
-                </div>
-                <button class="btn btn-secondary" id="cancel-join-started-btn">
-                    Annulla
-                </button>
-            </div>
-        </div>
-
-        <!-- Schermata Regole -->
+        <!-- RULES SCREEN -->
         <div id="rules-screen" class="screen">
-            <h2>📖 Regole del Gioco</h2>
-            <div class="rules-content">
-                <h3>Obiettivo</h3>
-                <p>Sopravvivere con il maggior numero di vite attraverso 5 turni di gioco.</p>
+            <div class="rules-container">
+                <h2>📖 Regole di Presina</h2>
+                <div class="rules-content">
+                    <h3>Obiettivo</h3>
+                    <p>Indovinare quante mani vincerai in ogni turno. Chi indovina non perde vite, chi sbaglia perde 1 vita.</p>
+                    
+                    <h3>Setup</h3>
+                    <ul>
+                        <li>2-8 giocatori, ognuno parte con 5 vite</li>
+                        <li>Si giocano 5 turni con 5, 4, 3, 2, 1 carte</li>
+                        <li>Mazzo: 40 carte napoletane (Bastoni, Spade, Coppe, Ori)</li>
+                    </ul>
+                    
+                    <h3>Forza delle carte</h3>
+                    <p>Ordine semi: Bastoni &lt; Spade &lt; Coppe &lt; Ori</p>
+                    <p>Ordine valori: Asso &lt; 2 &lt; ... &lt; 7 &lt; Fante &lt; Cavallo &lt; Re</p>
+                    
+                    <h3>Turno Speciale (1 carta)</h3>
+                    <p>Nel turno con 1 carta, vedi le carte degli altri ma NON la tua!</p>
+                    
+                    <h3>Puntata</h3>
+                    <p>L'ultimo giocatore a puntare NON può scegliere il numero che renderebbe la somma totale uguale alle carte in gioco.</p>
+                    
+                    <h3>Il Jolly (Asso di Ori)</h3>
+                    <ul>
+                        <li><strong>Prende:</strong> diventa la carta più forte (sopra il Re di Ori)</li>
+                        <li><strong>Lascia:</strong> diventa la carta più debole (sotto l'Asso di Bastoni)</li>
+                    </ul>
+                    
+                    <h3>Vittoria</h3>
+                    <p>Dopo 5 turni, vince chi ha più vite!</p>
+                </div>
+                <button id="btn-back-home" class="btn btn-secondary">← Torna alla Home</button>
+            </div>
+        </div>
 
-                <h3>Setup</h3>
-                <ul>
-                    <li>Da 2 a 8 giocatori</li>
-                    <li>Ogni giocatore inizia con 5 vite</li>
-                    <li>Mazzo di carte da briscola (40 carte)</li>
-                </ul>
-
-                <h3>Turni</h3>
-                <ul>
-                    <li>Turno 1: 5 carte</li>
-                    <li>Turno 2: 4 carte</li>
-                    <li>Turno 3: 3 carte</li>
-                    <li>Turno 4: 2 carte</li>
-                    <li>Turno 5: 1 carta (speciale - vedi le carte altrui ma non la tua!)</li>
-                </ul>
-
-                <h3>Ordine delle Carte</h3>
-                <p>Dalla più debole alla più forte:</p>
-                <p><strong>Bastoni</strong> → <strong>Spade</strong> → <strong>Coppe</strong> → <strong>Denari</strong></p>
-                <p>Asso < 2 < 3 < 4 < 5 < 6 < 7 < Fante < Cavallo < Re</p>
-
-                <h3>Fase di Puntata</h3>
-                <ul>
-                    <li>Ogni giocatore punta quante mani riuscirà a vincere nel turno</li>
-                    <li>⚠️ L'ultimo giocatore NON può dire un numero che faccia tornare i conti!</li>
-                </ul>
-
-                <h3>Jolly - Asso di Denari</h3>
-                <p>Quando giochi l'Asso di Denari puoi scegliere:</p>
-                <ul>
-                    <li><strong>PRENDE</strong>: Vale più del Re di Denari (carta più forte)</li>
-                    <li><strong>LASCIA</strong>: Vale meno dell'Asso di Bastoni (carta più debole)</li>
-                </ul>
-
-                <h3>Fine Turno</h3>
-                <ul>
-                    <li>✅ Se indovini esattamente quante mani prendi: mantieni le vite</li>
-                    <li>❌ Se sbagli: perdi 1 vita</li>
-                </ul>
-
-                <h3>Vincitore</h3>
-                <p>Chi ha più vite alla fine dei 5 turni vince!</p>
+        <!-- LOBBY SCREEN -->
+        <div id="lobby-screen" class="screen">
+            <div class="lobby-container">
+                <div class="lobby-header">
+                    <h2>🏠 Lobby</h2>
+                    <span id="player-name-display" class="player-badge"></span>
+                </div>
+                
+                <div id="existing-room-banner" class="banner hidden">
+                    <span>Sei già in una stanza!</span>
+                    <button id="btn-rejoin" class="btn btn-small">Rientra</button>
+                </div>
+                
+                <div class="lobby-actions">
+                    <div class="search-box">
+                        <input type="text" id="room-search" placeholder="Cerca stanza...">
+                        <button id="btn-search" class="btn btn-small">🔍</button>
+                    </div>
+                    <button id="btn-create-room" class="btn btn-primary">+ Crea Stanza</button>
+                </div>
+                
+                <div id="rooms-list" class="rooms-list">
+                    <p class="empty-message">Nessuna stanza disponibile. Creane una!</p>
+                </div>
+                
+                <button id="btn-back-home-lobby" class="btn btn-secondary">← Torna alla Home</button>
             </div>
             
-            <button class="btn btn-secondary" id="back-from-rules-btn">
-                ← Indietro
-            </button>
-        </div>
-
-        <!-- Schermata Finale -->
-        <div id="final-screen" class="screen">
-            <h2>🏆 Classifica Finale</h2>
-            <p id="final-summary" class="final-summary"></p>
-            <div class="final-standings">
-                <ol id="final-standings"></ol>
+            <!-- Create Room Modal -->
+            <div id="create-room-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>Crea Nuova Stanza</h3>
+                    <div class="input-group">
+                        <label for="room-name">Nome stanza:</label>
+                        <input type="text" id="room-name" maxlength="30" placeholder="Nome della stanza...">
+                    </div>
+                    <div class="button-group">
+                        <button id="btn-confirm-create" class="btn btn-primary">Crea</button>
+                        <button id="btn-cancel-create" class="btn btn-secondary">Annulla</button>
+                    </div>
+                </div>
             </div>
-            <button class="btn btn-secondary" id="back-to-lobby-final-btn">
-                ← Torna alla Lobby
-            </button>
         </div>
+
+        <!-- WAITING ROOM SCREEN -->
+        <div id="waiting-room-screen" class="screen">
+            <div class="waiting-container">
+                <div class="room-header">
+                    <h2 id="room-title">Stanza</h2>
+                    <span id="room-status" class="status-badge">In attesa</span>
+                </div>
+                
+                <div id="waiting-players" class="players-grid">
+                    <!-- Players will be rendered here -->
+                </div>
+                
+                <div id="admin-controls" class="admin-controls hidden">
+                    <button id="btn-start-game" class="btn btn-primary btn-large">▶ Avvia Partita</button>
+                    <p class="hint">Servono almeno 2 giocatori</p>
+                </div>
+                
+                <div class="waiting-actions">
+                    <button id="btn-leave-room" class="btn btn-secondary">🚪 Abbandona</button>
+                </div>
+                
+                <!-- Chat in waiting room -->
+                <div class="waiting-chat">
+                    <div id="waiting-chat-messages" class="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="waiting-chat-input" maxlength="200" placeholder="Scrivi un messaggio...">
+                        <button id="btn-send-waiting-chat" class="btn btn-small">Invia</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div id="game-screen" class="screen">
+            <div class="game-container">
+                <!-- Header -->
+                <div class="game-header">
+                    <div class="turn-info">
+                        <span id="turn-number">Turno 1/5</span>
+                        <span id="cards-info">5 carte</span>
+                    </div>
+                    <div id="phase-indicator" class="phase-indicator">Puntate</div>
+                </div>
+                
+                <!-- Spectator/Join Banner -->
+                <div id="spectator-banner" class="banner hidden">
+                    <span>👁️ Sei spettatore. Giocherai dal prossimo turno.</span>
+                </div>
+                
+                <!-- Main Game Area -->
+                <div class="game-main">
+                    <!-- Left Panel: Hand -->
+                    <div class="hand-panel">
+                        <h3>Le tue carte</h3>
+                        <div id="player-hand" class="hand-area">
+                            <!-- Cards will be rendered here -->
+                        </div>
+                        <div id="special-turn-note" class="special-note hidden">
+                            ⚠️ Turno speciale: vedi le carte degli altri, non le tue!
+                        </div>
+                        <div id="others-cards" class="others-cards hidden">
+                            <!-- Other players' cards in special turn -->
+                        </div>
+                        <div id="card-confirm" class="card-confirm hidden">
+                            <p>Conferma carta: <span id="selected-card-name"></span></p>
+                            <button id="btn-confirm-card" class="btn btn-primary">✓ Gioca</button>
+                            <button id="btn-cancel-card" class="btn btn-secondary">✗ Annulla</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Center: Table -->
+                    <div class="table-area">
+                        <div id="table-center" class="table-center">
+                            <div id="played-cards" class="played-cards">
+                                <!-- Played cards go here -->
+                            </div>
+                            <div id="trick-info" class="trick-info">Mano 1</div>
+                        </div>
+                        
+                        <!-- Player positions around table -->
+                        <div id="table-positions" class="table-positions">
+                            <!-- 8 player slots rendered by JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Right Panel: Players Info -->
+                    <div class="players-panel">
+                        <h3>Giocatori</h3>
+                        <div id="players-info" class="players-info">
+                            <!-- Player info cards -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Betting Area -->
+                <div id="betting-area" class="betting-area hidden">
+                    <h3>Fai la tua puntata</h3>
+                    <div id="bet-buttons" class="bet-buttons">
+                        <!-- Bet buttons rendered by JS -->
+                    </div>
+                    <p id="forbidden-bet-note" class="forbidden-note hidden"></p>
+                </div>
+                
+                <!-- Jolly Choice -->
+                <div id="jolly-choice" class="jolly-choice hidden">
+                    <h3>🃏 Hai giocato l'Asso di Ori!</h3>
+                    <p>Scegli come usarlo:</p>
+                    <div class="jolly-buttons">
+                        <button id="btn-jolly-prende" class="btn btn-primary">💪 Prende (Più Forte)</button>
+                        <button id="btn-jolly-lascia" class="btn btn-secondary">🪶 Lascia (Più Debole)</button>
+                    </div>
+                </div>
+                
+                <!-- Turn Results -->
+                <div id="turn-results" class="turn-results hidden">
+                    <h3>Risultati del Turno</h3>
+                    <div id="results-list" class="results-list"></div>
+                    <button id="btn-next-turn" class="btn btn-primary">Prossimo Turno</button>
+                    <div id="ready-count" class="ready-count">Pronti: 0/0</div>
+                </div>
+                
+                <!-- Game Messages -->
+                <div class="game-messages">
+                    <div id="messages-list" class="messages-list"></div>
+                </div>
+                
+                <!-- Chat -->
+                <div class="game-chat" id="game-chat">
+                    <div class="chat-header" id="chat-toggle">
+                        💬 Chat <span id="chat-badge" class="chat-badge hidden">!</span>
+                    </div>
+                    <div class="chat-body" id="chat-body">
+                        <div id="chat-messages" class="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input" maxlength="200" placeholder="Messaggio...">
+                            <button id="btn-send-chat" class="btn btn-small">→</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME OVER SCREEN -->
+        <div id="game-over-screen" class="screen">
+            <div class="game-over-container">
+                <h2>🏆 Partita Terminata!</h2>
+                <div id="final-standings" class="standings">
+                    <!-- Final standings -->
+                </div>
+                <button id="btn-back-lobby" class="btn btn-primary">Torna alla Lobby</button>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div id="notifications" class="notifications"></div>
     </div>
-
-    <div id="notification" class="notification"></div>
-
-    <script src="{{ url_for('static', filename='game.js') }}"></script>
+    
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/socket_client.js"></script>
+    <script src="/static/js/game_ui.js"></script>
+    <script src="/static/js/chat.js"></script>
 </body>
 </html>

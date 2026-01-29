@@ -1,0 +1,54 @@
+PRESINA - Sintesi del codice
+
+Panoramica
+- Progetto con due modalita: gioco CLI (console) e gioco online via Flask + Socket.IO.
+- Logica condivisa in classi Card/Player e in PresinaGame (CLI) / PresinaGameOnline (web).
+- Frontend web in templates/index.html con CSS e JS in static/.
+
+Funzionalita principali (online)
+- Home -> Lobby con lista stanze pubbliche, ricerca per nome e creazione stanza.
+- Stanze con max 8 giocatori. Admin puo avviare la partita e rimuovere altri giocatori prima dell avvio.
+- In partita: puntate, giocate, turni, gestione jolly, risultati di fine turno, classifica finale.
+- Spettatori: se la partita e gia iniziata, si puo entrare come spettatore (solo chat) o come giocatore dal turno successivo.
+- Join dal turno successivo: il nuovo giocatore entra con vite uguali al minimo tra i giocatori attivi.
+- Rejoin dopo refresh: sessione salvata in sessionStorage, riconnessione via evento rejoin_game.
+- Chat in stanza con limite 200 caratteri e badge per messaggi propri.
+- Gestione disconnessioni: il giocatore viene marcato offline, non rimosso (a partita iniziata); admin riassegnato se necessario.
+- Avanzamento al turno successivo solo quando tutti i giocatori connessi sono pronti.
+
+Regole del gioco (da codice)
+- Giocatori: 2-8, ognuno parte con 5 vite.
+- Mazzo: 40 carte da briscola (semi: Bastoni, Spade, Coppe, Denari; valori: Asso, 2, 3, 4, 5, 6, 7, Fante, Cavallo, Re).
+- Ordine di forza: si usa un valore assoluto suit*10 + rank; quindi Bastoni < Spade < Coppe < Denari e Asso < ... < Re.
+- Turni: 5 turni con 5, 4, 3, 2, 1 carte.
+- Turno speciale (1 carta): ogni giocatore vede le carte degli altri ma non la propria.
+- Puntata: ogni giocatore dichiara quante mani pensa di vincere; l ultimo a puntare non puo scegliere il numero che rende la somma totale uguale alle carte in gioco.
+- Giocata: il primo a puntare inizia la prima mano; la carta piu alta vince la mano; il vincitore inizia la mano successiva.
+- Jolly: Asso di Denari. Il giocatore sceglie:
+  - prende: carta piu forte di tutte (valore 40, sopra il Re di Denari)
+  - lascia: carta piu debole di tutte (valore -1, sotto l Asso di Bastoni)
+- Fine turno: se la puntata e corretta non perdi vite; se sbagli perdi 1 vita (a prescindere dallo scarto).
+- Vincitore: dopo 5 turni, vince chi ha piu vite (possibile pareggio).
+
+Layout e flusso UI (web)
+Schermate principali
+- Home: titolo, input nome, pulsante per entrare in lobby e pulsante regole.
+- Lobby: elenco stanze con stato (in attesa / in gioco), ricerca, pulsante crea stanza, banner se gia in una stanza.
+- Stanza (waiting room): lista giocatori con stato online/offline, controlli admin (start/kick), pulsanti torna/abbandona.
+- Regole: testo statico delle regole.
+- Partita: layout con area tavolo e pannelli laterali.
+- Fine partita: classifica finale e ritorno in lobby.
+
+Elementi chiave della schermata Partita
+- Header compatto in alto: info turno/carte e fase (puntata/gioco).
+- Banner spettatore o join pending con i nomi.
+- Hand area fissa a sinistra: carte del giocatore, conferma carta, nota turno speciale, carte degli altri nel turno da 1 carta.
+- Tavolo centrale: 8 posti disposti in cerchio con nome, stato, puntata/trick; al centro area carte giocate con indicazione mano.
+- Area puntata sotto il tavolo: bottoni 0..N, con bottone proibito per ultimo giocatore.
+- Pannello giocatori a destra (fixed): vite, puntata, prese, stato online/offline, evidenzia turno corrente.
+- Chat in basso a destra con toggle riduci/apri.
+- Pannello Prossimo turno in basso a sinistra con conteggio pronti.
+- Notifiche e messaggi gioco a sinistra, sopra il pannello mano.
+
+Note deploy (da repo)
+- Server Flask avviabile con gunicorn (Procfile/render.yaml) e dipendenze in requirements.txt.
