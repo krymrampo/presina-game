@@ -939,6 +939,7 @@ socket.on('trick_started', (data) => {
     gameState.currentTrick = data.trickNumber;
     document.getElementById('trick-number').textContent = data.trickNumber;
     document.getElementById('trick-area').style.display = 'block';
+    document.getElementById('cards-played').innerHTML = '';
     clearSeatPlays();
     
     document.getElementById('phase-title').textContent = 'Fase di Gioco';
@@ -972,12 +973,12 @@ socket.on('request_joker_mode', () => {
 // Carta giocata
 socket.on('card_played', (data) => {
     addGameMessage(`${data.playerName} ha giocato ${data.card.rankName} di ${data.card.suitName}`, 'info');
-    const seat = findSeatForPlayer(data.playerName);
-    if (seat) {
-        const slot = seat.querySelector('.seat-played');
-        if (slot) {
-            slot.innerHTML = createCardHTML(data.card, -1, false);
-        }
+    const cardsPlayedDiv = document.getElementById('cards-played');
+    if (cardsPlayedDiv) {
+        const playedCardDiv = document.createElement('div');
+        playedCardDiv.className = 'played-card';
+        playedCardDiv.innerHTML = createCardHTML(data.card, -1, false);
+        cardsPlayedDiv.appendChild(playedCardDiv);
     }
     
     if (data.playerName === gameState.playerName) {

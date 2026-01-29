@@ -1,5 +1,7 @@
 :root {
     --chat-height: 460px;
+    --hand-panel-width: 260px;
+    --hand-panel-height: 320px;
 }
 
 * {
@@ -36,6 +38,10 @@ body {
 .screen.active {
     display: block;
     animation: fadeIn 0.3s ease-in;
+}
+
+#game-screen {
+    padding-left: calc(var(--hand-panel-width) + 40px);
 }
 
 @keyframes fadeIn {
@@ -79,6 +85,17 @@ h3 {
 .menu {
     max-width: 400px;
     margin: 0 auto;
+}
+
+#home-screen .menu .btn {
+    width: min(100%, 260px);
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}
+
+#home-screen .menu .btn + .btn {
+    margin-top: 16px;
 }
 
 .input-group {
@@ -545,7 +562,11 @@ h3 {
 }
 
 .table-trick .cards-played {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 10px;
 }
 
 .table-trick .trick-cards {
@@ -603,7 +624,7 @@ h3 {
 
 .game-layout {
     display: grid;
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 1fr;
     gap: 20px;
     align-items: start;
 }
@@ -615,16 +636,17 @@ h3 {
 }
 
 .hand-area {
-    margin-top: 10px;
-    margin-bottom: 20px;
+    margin: 0;
     background: #f8f9fa;
     padding: 16px;
     border-radius: 15px;
-    position: sticky;
-    top: 110px;
-    align-self: start;
-    max-height: calc(100vh - 160px);
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: var(--hand-panel-width);
+    max-height: var(--hand-panel-height);
     overflow-y: auto;
+    z-index: 901;
 }
 
 .hand-area h4 {
@@ -654,6 +676,17 @@ h3 {
     background: #f8f9fa;
     border-radius: 10px;
     border: 1px solid #e2e6ea;
+}
+
+#card-confirmation {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1002;
+    width: min(360px, 90vw);
+    margin-top: 0;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
 }
 
 #selected-card-label {
@@ -919,7 +952,7 @@ h3 {
 
 .game-messages {
     position: fixed;
-    top: 120px;
+    top: calc(20px + var(--hand-panel-height) + 20px);
     left: 20px;
     right: auto;
     bottom: auto;
@@ -1174,9 +1207,15 @@ h3 {
         grid-template-columns: 1fr;
     }
 
+    #game-screen {
+        padding-left: 0;
+    }
+
     .hand-area {
         position: static;
+        width: auto;
         max-height: none;
+        margin-bottom: 20px;
     }
 
     .round-phase-bar {
