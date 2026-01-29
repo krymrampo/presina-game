@@ -2,7 +2,9 @@
 Presina - Main Flask application.
 """
 import logging
+from urllib.parse import parse_qs
 from flask import Flask, render_template, send_from_directory
+from werkzeug.wrappers import Response
 from flask_socketio import SocketIO
 
 from config import get_config
@@ -19,12 +21,30 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config.from_object(get_config())
 
+# Block websocket transport for Engine.IO to avoid gunicorn gthread errors.
+class _BlockWebSocketTransport:
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        if path.startswith('/socket.io'):
+            qs = parse_qs(environ.get('QUERY_STRING', ''))
+            if qs.get('transport', [''])[0] == 'websocket':
+                res = Response('WebSocket disabled', status=400)
+                return res(environ, start_response)
+        return self.wsgi_app(environ, start_response)
+
 # Create Socket.IO instance
 socketio = SocketIO(
     app, 
     cors_allowed_origins=app.config.get('CORS_ALLOWED_ORIGINS', '*'),
-    async_mode='threading'
+    async_mode='threading',
+    allow_upgrades=False,
+    transports=['polling']
 )
+
+app.wsgi_app = _BlockWebSocketTransport(app.wsgi_app)
 
 # Register socket events
 register_lobby_events(socketio)
