@@ -217,6 +217,12 @@ const SocketClient = {
             player_id: playerId
         });
     },
+
+    addDummyPlayer() {
+        this.socket.emit('add_dummy_player', {
+            admin_id: App.playerId
+        });
+    },
     
     rejoinGame() {
         this.socket.emit('rejoin_game', {

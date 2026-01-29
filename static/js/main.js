@@ -31,6 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     setupEventListeners();
+
+    const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    if (!isLocalhost) {
+        const dummyBtn = document.getElementById('btn-add-dummy');
+        if (dummyBtn) dummyBtn.classList.add('hidden');
+    }
 });
 
 function generatePlayerId() {
@@ -84,6 +90,7 @@ function setupEventListeners() {
     // Waiting room
     document.getElementById('btn-leave-room').addEventListener('click', leaveRoom);
     document.getElementById('btn-start-game').addEventListener('click', startGame);
+    document.getElementById('btn-add-dummy').addEventListener('click', addDummyPlayer);
     
     // Waiting chat
     document.getElementById('btn-send-waiting-chat').addEventListener('click', sendWaitingChatMessage);
@@ -181,6 +188,10 @@ function kickPlayer(playerId) {
 
 function startGame() {
     SocketClient.startGame();
+}
+
+function addDummyPlayer() {
+    SocketClient.addDummyPlayer();
 }
 
 // ==================== Room UI Updates ====================

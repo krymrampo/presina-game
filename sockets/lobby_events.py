@@ -2,10 +2,12 @@
 Lobby Socket.IO events.
 """
 import logging
-from flask import request
+import uuid
+from flask import request, current_app
 from flask_socketio import emit, join_room, leave_room
 
 from game.player import Player
+from game.presina_game import GamePhase
 from rooms.room_manager import room_manager
 
 logger = logging.getLogger(__name__)
@@ -349,3 +351,68 @@ def register_lobby_events(socketio):
         emit('player_reconnected', {
             'player_id': player_id
         }, room=room.room_id, include_self=False)
+
+    @socketio.on('add_dummy_player')
+    def handle_add_dummy_player(data):
+        """
+        Add a dummy (offline) player to the current room for local testing.
+        Data: { admin_id, name? }
+        """
+        admin_id = data.get('admin_id')
+        desired_name = data.get('name')
+
+        if not admin_id:
+            emit('error', {'message': 'ID admin mancante'})
+            return
+
+        if not current_app.config.get('ENABLE_DUMMY_PLAYERS', False):
+            emit('error', {'message': 'Opzione non disponibile in questo ambiente'})
+            return
+
+        if not _ensure_player_socket(admin_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
+            return
+
+        room = room_manager.get_player_room(admin_id)
+        if not room:
+            emit('error', {'message': 'Non sei in nessuna stanza'})
+            return
+
+        if room.admin_id != admin_id:
+            emit('error', {'message': 'Solo l\'admin può aggiungere giocatori fittizi'})
+            return
+
+        if room.game.phase != GamePhase.WAITING:
+            emit('error', {'message': 'Puoi aggiungere giocatori fittizi solo in attesa'})
+            return
+
+        if room.player_count >= room.game.MAX_PLAYERS:
+            emit('error', {'message': 'Stanza piena'})
+            return
+
+        # Generate a unique dummy player
+        existing_bots = [p for p in room.game.players.values() if p.name.lower().startswith('bot')]
+        bot_number = len(existing_bots) + 1
+        bot_name = desired_name.strip()[:MAX_NAME_LENGTH] if isinstance(desired_name, str) and desired_name.strip() else f"Bot {bot_number}"
+        bot_id = f"bot_{uuid.uuid4().hex[:8]}"
+
+        bot_player = Player(bot_id, bot_name, sid=None)
+        bot_player.is_online = False
+
+        if not room.game.add_player(bot_player):
+            emit('error', {'message': 'Impossibile aggiungere il giocatore fittizio'})
+            return
+
+        room_manager.player_rooms[bot_id] = room.room_id
+
+        _emit_room_state(
+            socketio,
+            room,
+            'player_joined',
+            extra={'player_id': bot_id, 'player_name': bot_name},
+            exclude_player_id=None
+        )
+
+        socketio.emit('rooms_list', {
+            'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
+        })
