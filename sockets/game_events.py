@@ -7,6 +7,13 @@ from flask_socketio import emit
 from rooms.room_manager import room_manager
 from game.presina_game import GamePhase
 
+def _verify_player_socket(player_id: str, sid: str) -> bool:
+    """
+    Verify that the player_id is associated with the given socket SID.
+    This prevents players from impersonating others.
+    """
+    registered_player = room_manager.get_player_by_sid(sid)
+    return registered_player == player_id
 
 def register_game_events(socketio):
     """Register all game-related socket events."""
@@ -21,6 +28,11 @@ def register_game_events(socketio):
         
         if not player_id:
             emit('error', {'message': 'ID giocatore mancante'})
+            return
+        
+        # Verify player identity
+        if not _verify_player_socket(player_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
         room = room_manager.get_player_room(player_id)
@@ -63,12 +75,26 @@ def register_game_events(socketio):
             emit('error', {'message': 'Dati mancanti'})
             return
         
+        # Verify player identity
+        if not _verify_player_socket(player_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
+            return
+        
         room = room_manager.get_player_room(player_id)
         if not room:
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
         
-        success, message = room.game.make_bet(player_id, int(bet))
+        try:
+            bet_value = int(bet)
+            if bet_value < 0:
+                emit('error', {'message': 'La puntata non può essere negativa'})
+                return
+        except (ValueError, TypeError):
+            emit('error', {'message': 'Puntata non valida'})
+            return
+        
+        success, message = room.game.make_bet(player_id, bet_value)
         
         if not success:
             emit('error', {'message': message})
@@ -92,12 +118,23 @@ def register_game_events(socketio):
             emit('error', {'message': 'Dati mancanti'})
             return
         
+        # Verify player identity
+        if not _verify_player_socket(player_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
+            return
+        
         room = room_manager.get_player_room(player_id)
         if not room:
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
         
-        success, message = room.game.play_card(player_id, suit, int(value), jolly_choice)
+        try:
+            card_value = int(value)
+        except (ValueError, TypeError):
+            emit('error', {'message': 'Valore carta non valido'})
+            return
+        
+        success, message = room.game.play_card(player_id, suit, card_value, jolly_choice)
         
         if not success:
             emit('error', {'message': message})

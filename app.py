@@ -1,11 +1,19 @@
 """
 Presina - Main Flask application.
 """
+import logging
 from flask import Flask, render_template, send_from_directory
 from flask_socketio import SocketIO
 
 from config import get_config
 from sockets import register_lobby_events, register_game_events, register_chat_events
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__)
@@ -47,6 +55,6 @@ def serve_static(filepath):
 # ==================== Main ====================
 
 if __name__ == '__main__':
-    print("Starting Presina server...")
-    print("Open http://localhost:5000 in your browser")
+    logger.info("Starting Presina server...")
+    logger.info("Open http://localhost:5000 in your browser")
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)

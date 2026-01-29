@@ -6,7 +6,8 @@ import os
 
 class Config:
     """Base configuration."""
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'presina-secret-key-change-in-production')
+    _default_secret = 'presina-dev-key-not-for-production'
+    SECRET_KEY = os.environ.get('SECRET_KEY', _default_secret)
     DEBUG = False
     TESTING = False
     
@@ -16,6 +17,8 @@ class Config:
     # Game settings
     MAX_ROOMS = 100
     MAX_CHAT_MESSAGES = 100
+    MAX_NAME_LENGTH = 30
+    MAX_ROOM_NAME_LENGTH = 50
 
 
 class DevelopmentConfig(Config):
@@ -26,8 +29,17 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
-    # In production, set proper CORS origins
-    CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', '*')
+    
+    # In production, require SECRET_KEY from environment
+    @property
+    def SECRET_KEY(self):
+        key = os.environ.get('SECRET_KEY')
+        if not key:
+            raise ValueError('SECRET_KEY must be set in production environment')
+        return key
+    
+    # In production, set proper CORS origins (do not allow all)
+    CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ORIGINS', None)
 
 
 class TestingConfig(Config):

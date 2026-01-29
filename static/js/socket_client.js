@@ -150,6 +150,10 @@ const SocketClient = {
                     showScreen('game');
                 }
                 GameUI.updateGameScreen(data.game_state);
+                // Clear card selection after successful state update
+                if (typeof clearCardSelection === 'function') {
+                    clearCardSelection();
+                }
             }
         });
         

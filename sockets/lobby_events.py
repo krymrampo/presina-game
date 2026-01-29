@@ -1,12 +1,41 @@
 """
 Lobby Socket.IO events.
 """
+import logging
 from flask import request
 from flask_socketio import emit, join_room, leave_room
 
 from game.player import Player
 from rooms.room_manager import room_manager
 
+logger = logging.getLogger(__name__)
+
+# Validation constants
+MAX_NAME_LENGTH = 30
+MAX_ROOM_NAME_LENGTH = 50
+
+
+def _validate_name(name: str, max_length: int = MAX_NAME_LENGTH) -> str:
+    """Validate and sanitize a name. Returns sanitized name or raises ValueError."""
+    if not name or not isinstance(name, str):
+        raise ValueError('Nome non valido')
+    
+    # Strip and limit length
+    name = name.strip()[:max_length]
+    
+    if not name:
+        raise ValueError('Il nome non può essere vuoto')
+    
+    return name
+
+
+def _verify_player_socket(player_id: str, sid: str) -> bool:
+    """
+    Verify that the player_id is associated with the given socket SID.
+    This prevents players from impersonating others.
+    """
+    registered_player = room_manager.get_player_by_sid(sid)
+    return registered_player == player_id
 
 def register_lobby_events(socketio):
     """Register all lobby-related socket events."""
@@ -14,23 +43,26 @@ def register_lobby_events(socketio):
     @socketio.on('connect')
     def handle_connect():
         """Handle new connection."""
-        print(f"Client connected: {request.sid}")
+        logger.info(f"Client connected: {request.sid}")
     
     @socketio.on('disconnect')
     def handle_disconnect():
         """Handle disconnection."""
-        print(f"Client disconnected: {request.sid}")
+        logger.info(f"Client disconnected: {request.sid}")
+        
+        # Get player_id BEFORE unregistering (otherwise it's deleted)
+        player_id = room_manager.get_player_by_sid(request.sid)
+        room = room_manager.get_player_room(player_id) if player_id else None
+        
+        # Now unregister the socket
         room_manager.unregister_socket(request.sid)
         
         # Notify room if player was in one
-        player_id = room_manager.get_player_by_sid(request.sid)
-        if player_id:
-            room = room_manager.get_player_room(player_id)
-            if room:
-                emit('player_disconnected', {
-                    'player_id': player_id
-                }, room=room.room_id)
-                emit('room_update', room.to_dict(), room=room.room_id)
+        if player_id and room:
+            socketio.emit('player_disconnected', {
+                'player_id': player_id
+            }, room=room.room_id)
+            socketio.emit('room_update', room.to_dict(), room=room.room_id)
     
     @socketio.on('register_player')
     def handle_register(data):
@@ -78,6 +110,14 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'ID giocatore mancante'})
             return
         
+        # Validate names
+        try:
+            player_name = _validate_name(player_name, MAX_NAME_LENGTH)
+            room_name = _validate_name(room_name, MAX_ROOM_NAME_LENGTH)
+        except ValueError as e:
+            emit('error', {'message': str(e)})
+            return
+        
         # Check if already in a room
         existing_room = room_manager.get_player_room(player_id)
         if existing_room:
@@ -113,6 +153,13 @@ def register_lobby_events(socketio):
         
         if not player_id or not room_id:
             emit('error', {'message': 'Dati mancanti'})
+            return
+        
+        # Validate player name
+        try:
+            player_name = _validate_name(player_name, MAX_NAME_LENGTH)
+        except ValueError as e:
+            emit('error', {'message': str(e)})
             return
         
         # Create player

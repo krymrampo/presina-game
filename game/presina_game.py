@@ -170,14 +170,12 @@ class PresinaGameOnline:
         if not active:
             return None
         
-        # Find next player who hasn't bet yet
-        for i in range(len(active)):
-            idx = (self.first_better_index + len(self.bets_made)) % len(active)
-            player = active[idx]
-            if player.bet is None:
-                return player
+        # The next better is at index: first_better_index + number of bets already made
+        if len(self.bets_made) >= len(active):
+            return None  # All players have bet
         
-        return None
+        idx = (self.first_better_index + len(self.bets_made)) % len(active)
+        return active[idx]
     
     def get_forbidden_bet(self) -> Optional[int]:
         """

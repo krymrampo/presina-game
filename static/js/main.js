@@ -164,6 +164,12 @@ function joinRoom(roomId) {
 }
 
 function leaveRoom() {
+    // Ask confirmation if game is in progress
+    if (App.gameState && App.gameState.phase !== 'waiting' && App.gameState.phase !== 'game_over') {
+        if (!confirm('Sei sicuro di voler abbandonare la partita in corso?')) {
+            return;
+        }
+    }
     SocketClient.leaveRoom();
     showScreen('lobby');
     SocketClient.listRooms();
@@ -259,15 +265,34 @@ function selectCard(suit, value, displayName) {
 function confirmCard() {
     if (!App.selectedCard) return;
     
+    // Disable button while waiting for server response
+    const confirmBtn = document.getElementById('btn-confirm-card');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Giocando...';
+    
     SocketClient.playCard(App.selectedCard.suit, App.selectedCard.value);
-    App.selectedCard = null;
-    document.getElementById('card-confirm').classList.add('hidden');
+    // Don't clear selection yet - wait for server response
+    // App.selectedCard will be cleared on successful game_state update
 }
 
 function cancelCard() {
     App.selectedCard = null;
     document.querySelectorAll('.hand-area .card').forEach(c => c.classList.remove('selected'));
     document.getElementById('card-confirm').classList.add('hidden');
+    // Reset button state
+    const confirmBtn = document.getElementById('btn-confirm-card');
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Gioca';
+}
+
+// Called after successful card play to reset UI
+function clearCardSelection() {
+    App.selectedCard = null;
+    document.querySelectorAll('.hand-area .card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('card-confirm').classList.add('hidden');
+    const confirmBtn = document.getElementById('btn-confirm-card');
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Gioca';
 }
 
 function makeBet(bet) {
@@ -348,3 +373,4 @@ window.makeBet = makeBet;
 window.joinRoom = joinRoom;
 window.kickPlayer = kickPlayer;
 window.escapeHtml = escapeHtml;
+window.clearCardSelection = clearCardSelection;
