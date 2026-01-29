@@ -54,8 +54,10 @@ def register_game_events(socketio):
         # Send game state to all players
         for pid, player in room.game.players.items():
             if player.sid:
+                state = room.game.get_state_for_player(pid)
+                state['admin_id'] = room.admin_id
                 socketio.emit('game_started', {
-                    'game_state': room.game.get_state_for_player(pid)
+                    'game_state': state
                 }, room=player.sid)
         
         # Broadcast updated room list
@@ -188,10 +190,35 @@ def register_game_events(socketio):
         # Send updated game state to all players
         _broadcast_game_state(socketio, room)
     
+    @socketio.on('advance_trick')
+    def handle_advance_trick(data):
+        """
+        Advance from TRICK_COMPLETE phase after 3 second display.
+        Data: { player_id }
+        """
+        player_id = data.get('player_id')
+        
+        if not player_id:
+            return
+        
+        room = room_manager.get_player_room(player_id)
+        if not room:
+            return
+        
+        # Only process if in TRICK_COMPLETE phase
+        if room.game.phase != GamePhase.TRICK_COMPLETE:
+            return
+        
+        success, message = room.game.advance_from_trick_complete()
+        
+        if success:
+            room.game.auto_advance_offline()
+            _broadcast_game_state(socketio, room)
+    
     @socketio.on('ready_next_turn')
     def handle_ready_next_turn(data):
         """
-        Mark player as ready for next turn.
+        Admin advances to next turn.
         Data: { player_id }
         """
         player_id = data.get('player_id')
@@ -210,7 +237,10 @@ def register_game_events(socketio):
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
         
-        success, message = room.game.ready_for_next_turn(player_id)
+        # Check if player is admin
+        is_admin = room.admin_id == player_id
+        
+        success, message = room.game.ready_for_next_turn(player_id, is_admin)
         
         if not success:
             emit('error', {'message': message})
@@ -258,6 +288,8 @@ def _broadcast_game_state(socketio, room):
     """Broadcast game state to all players in a room."""
     for pid, player in room.game.players.items():
         if player.sid and player.is_online:
+            state = room.game.get_state_for_player(pid)
+            state['admin_id'] = room.admin_id
             socketio.emit('game_state', {
-                'game_state': room.game.get_state_for_player(pid)
+                'game_state': state
             }, room=player.sid)

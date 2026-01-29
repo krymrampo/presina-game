@@ -58,7 +58,9 @@ def _emit_room_state(socketio, room, event: str, extra: dict = None, exclude_pla
         if exclude_player_id and pid == exclude_player_id:
             continue
         if player.sid and player.is_online:
-            payload = {'game_state': room.game.get_state_for_player(pid)}
+            state = room.game.get_state_for_player(pid)
+            state['admin_id'] = room.admin_id
+            payload = {'game_state': state}
             if extra:
                 payload.update(extra)
             socketio.emit(event, payload, room=player.sid)
@@ -161,9 +163,11 @@ def register_lobby_events(socketio):
         # Join socket room
         join_room(room.room_id)
         
+        state = room.game.get_state_for_player(player_id)
+        state['admin_id'] = room.admin_id
         emit('room_created', {
             'room': room.to_dict(),
-            'game_state': room.game.get_state_for_player(player_id)
+            'game_state': state
         })
         
         # Broadcast updated room list
@@ -211,9 +215,11 @@ def register_lobby_events(socketio):
         join_room(room_id)
         room_manager.register_socket(request.sid, player_id)
         
+        state = room.game.get_state_for_player(player_id)
+        state['admin_id'] = room.admin_id
         emit('room_joined', {
             'room': room.to_dict(),
-            'game_state': room.game.get_state_for_player(player_id),
+            'game_state': state,
             'message': message
         })
         
@@ -342,9 +348,11 @@ def register_lobby_events(socketio):
         room_manager.register_socket(request.sid, player_id)
         join_room(room.room_id)
         
+        state = room.game.get_state_for_player(player_id)
+        state['admin_id'] = room.admin_id
         emit('rejoin_success', {
             'room': room.to_dict(),
-            'game_state': room.game.get_state_for_player(player_id)
+            'game_state': state
         })
         
         # Notify other players

@@ -15,7 +15,6 @@ const GameUI = {
         this.updateBettingArea(gameState);
         this.updateJollyChoice(gameState);
         this.updateTurnResults(gameState);
-        this.updateMessages(gameState);
     },
     
     // ==================== Header ====================
@@ -34,6 +33,10 @@ const GameUI = {
             case 'playing':
             case 'waiting_jolly':
                 phaseIndicator.textContent = '🃏 Gioco';
+                phaseIndicator.classList.add('phase-playing');
+                break;
+            case 'trick_complete':
+                phaseIndicator.textContent = '✨ Mano completata';
                 phaseIndicator.classList.add('phase-playing');
                 break;
             case 'turn_results':
@@ -143,12 +146,28 @@ const GameUI = {
         // Player positions around table
         const positions = document.getElementById('table-positions');
         const activePlayers = gameState.players.filter(p => !p.is_spectator);
+        const numPlayers = activePlayers.length;
         
+        // Find my index in active players
+        const myIndex = activePlayers.findIndex(p => p.player_id === App.playerId);
+        
+        // Calculate positions so that I am always at position 0 (bottom center)
         positions.innerHTML = activePlayers.map((player, index) => {
             const isCurrent = player.player_id === gameState.current_player_id || 
                              player.player_id === gameState.current_better_id;
             const isOffline = !player.is_online;
             const isMe = player.player_id === App.playerId;
+            
+            // Calculate relative position: offset so "me" is at position 0
+            let relativePos;
+            if (myIndex >= 0) {
+                relativePos = (index - myIndex + numPlayers) % numPlayers;
+            } else {
+                relativePos = index;
+            }
+            
+            // Map to visual positions based on number of players
+            const posIndex = this.getTablePosition(relativePos, numPlayers);
             
             let betInfo = '';
             if (player.bet !== null) {
@@ -158,12 +177,30 @@ const GameUI = {
             }
             
             return `
-                <div class="table-position pos-${index} ${isCurrent ? 'current-turn' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''}">
+                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''}">
                     <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}</div>
                     <div class="player-bet">${betInfo}</div>
                 </div>
             `;
         }).join('');
+    },
+    
+    // Get the visual table position based on relative position and player count
+    getTablePosition(relativePos, numPlayers) {
+        // Position mappings for different player counts
+        // Position 0 = bottom center (me), then clockwise
+        const positionMaps = {
+            2: [0, 3],           // bottom, top
+            3: [0, 2, 5],        // bottom, top-left, top-right
+            4: [0, 1, 3, 6],     // bottom, left, top, right
+            5: [0, 1, 3, 4, 6],  // bottom, bottom-left, top-left, top-right, bottom-right
+            6: [0, 1, 2, 4, 5, 6], // all except top positions
+            7: [0, 1, 2, 3, 4, 5, 6], // all positions
+            8: [0, 1, 2, 3, 4, 5, 6, 7] // all + center (shouldn't happen)
+        };
+        
+        const map = positionMaps[numPlayers] || positionMaps[8];
+        return map[relativePos] !== undefined ? map[relativePos] : relativePos;
     },
     
     // ==================== Players Panel ====================
@@ -269,20 +306,19 @@ const GameUI = {
             `;
         }).join('');
         
-        // Ready count
-        const readyPlayers = gameState.players.filter(p => p.ready_for_next_turn && p.is_online && !p.is_spectator);
-        const totalOnline = gameState.players.filter(p => p.is_online && !p.is_spectator).length;
-        document.getElementById('ready-count').textContent = `Pronti: ${readyPlayers.length}/${totalOnline}`;
-        
-        // Update button
-        const myPlayer = gameState.players.find(p => p.player_id === App.playerId);
+        // Only show button for admin
+        const isAdmin = gameState.admin_id === App.playerId;
         const btn = document.getElementById('btn-next-turn');
-        if (myPlayer && myPlayer.ready_for_next_turn) {
-            btn.disabled = true;
-            btn.textContent = 'In attesa degli altri...';
-        } else {
+        const readyCount = document.getElementById('ready-count');
+        
+        if (isAdmin) {
+            btn.classList.remove('hidden');
             btn.disabled = false;
             btn.textContent = 'Prossimo Turno';
+            readyCount.textContent = 'Sei l\'admin: clicca per proseguire';
+        } else {
+            btn.classList.add('hidden');
+            readyCount.textContent = 'In attesa dell\'admin...';
         }
     },
     

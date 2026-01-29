@@ -64,13 +64,13 @@ const Chat = {
     
     toggle() {
         this.isOpen = !this.isOpen;
-        const chatBody = document.getElementById('chat-body');
+        const chatContainer = document.getElementById('game-chat');
         
         if (this.isOpen) {
-            chatBody.classList.remove('collapsed');
+            chatContainer.classList.remove('collapsed');
             document.getElementById('chat-badge').classList.add('hidden');
         } else {
-            chatBody.classList.add('collapsed');
+            chatContainer.classList.add('collapsed');
         }
     },
     

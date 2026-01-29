@@ -682,20 +682,54 @@ input[type="text"]::placeholder {
 
 .hand-area {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
 }
 
-.card {
-    width: 90px;
-    height: 135px;
-    border-radius: 10px;
+.hand-area .card {
+    width: 60px;
+    height: 90px;
+    border-radius: 6px;
     cursor: pointer;
     transition: var(--transition);
     box-shadow: var(--shadow);
     background-size: cover;
     background-position: center;
-    border: 3px solid transparent;
+    border: 2px solid transparent;
+    position: relative;
+}
+
+.hand-area .card:hover {
+    transform: scale(1.1) translateY(-5px);
+    border-color: var(--accent);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+    z-index: 10;
+}
+
+.hand-area .card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px var(--primary);
+    transform: scale(1.1) translateY(-8px);
+}
+
+.hand-area .card.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    filter: grayscale(50%);
+}
+
+.card {
+    width: 70px;
+    height: 105px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+    background-size: cover;
+    background-position: center;
+    border: 2px solid transparent;
     position: relative;
 }
 
@@ -745,11 +779,28 @@ input[type="text"]::placeholder {
 }
 
 .card-confirm {
-    background: rgba(99, 102, 241, 0.15);
-    padding: 18px;
-    border-radius: var(--border-radius);
-    margin-top: 18px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    padding: 28px 36px;
+    border-radius: var(--border-radius-lg);
     border: 2px solid var(--primary);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    text-align: center;
+    animation: scaleIn 0.2s ease;
+}
+
+.card-confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 199;
 }
 
 .card-confirm p {
@@ -771,33 +822,56 @@ input[type="text"]::placeholder {
     justify-content: center;
     padding: 24px;
     position: relative;
-    background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.08) 0%, transparent 60%);
+    min-height: 400px;
 }
 
 .table-center {
     position: relative;
-    width: 240px;
-    height: 180px;
+    width: 320px;
+    height: 240px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.2) 0%, transparent 70%);
-    border-radius: 50%;
+    background: linear-gradient(145deg, #2d5a3d 0%, #1a3d2a 100%);
+    border-radius: 120px / 90px;
+    box-shadow: 
+        inset 0 4px 20px rgba(0, 0, 0, 0.3),
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        0 0 0 8px rgba(101, 67, 33, 0.6),
+        0 0 0 12px rgba(139, 90, 43, 0.4);
+    border: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.table-center::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    height: 85%;
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 100px / 70px;
+    pointer-events: none;
 }
 
 .played-cards {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
     justify-content: center;
-    max-width: 340px;
+    max-width: 280px;
+    padding: 10px;
+    position: relative;
+    z-index: 2;
 }
 
 .played-cards .card {
-    width: 70px;
-    height: 105px;
+    width: 75px;
+    height: 112px;
     animation: cardDrop 0.4s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 @keyframes cardDrop {
@@ -807,14 +881,16 @@ input[type="text"]::placeholder {
 
 .trick-info {
     position: absolute;
-    bottom: -36px;
-    background: var(--bg-card);
+    bottom: -44px;
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-light) 100%);
     color: var(--text-primary);
-    padding: 8px 18px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    border: 1px solid var(--border-color);
+    padding: 10px 24px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 700;
+    border: 2px solid var(--primary-light);
+    box-shadow: var(--shadow);
+    z-index: 5;
 }
 
 /* Table Positions */
@@ -834,14 +910,14 @@ input[type="text"]::placeholder {
     pointer-events: auto;
 }
 
-.table-position.pos-0 { top: 82%; left: 50%; transform: translate(-50%, -50%); }
-.table-position.pos-1 { top: 72%; left: 14%; transform: translate(-50%, -50%); }
-.table-position.pos-2 { top: 30%; left: 8%; transform: translate(-50%, -50%); }
-.table-position.pos-3 { top: 8%; left: 28%; transform: translate(-50%, -50%); }
-.table-position.pos-4 { top: 8%; left: 72%; transform: translate(-50%, -50%); }
-.table-position.pos-5 { top: 30%; left: 92%; transform: translate(-50%, -50%); }
-.table-position.pos-6 { top: 72%; left: 86%; transform: translate(-50%, -50%); }
-.table-position.pos-7 { top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; }
+.table-position.pos-0 { top: 88%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
+.table-position.pos-1 { top: 70%; left: 15%; transform: translate(-50%, -50%); }  /* Bottom left */
+.table-position.pos-2 { top: 35%; left: 5%; transform: translate(-50%, -50%); }   /* Left */
+.table-position.pos-3 { top: 5%; left: 30%; transform: translate(-50%, -50%); }   /* Top left */
+.table-position.pos-4 { top: 5%; left: 70%; transform: translate(-50%, -50%); }   /* Top right */
+.table-position.pos-5 { top: 35%; left: 95%; transform: translate(-50%, -50%); }  /* Right */
+.table-position.pos-6 { top: 70%; left: 85%; transform: translate(-50%, -50%); }  /* Bottom right */
+.table-position.pos-7 { top: 5%; left: 50%; transform: translate(-50%, -50%); }   /* Top center */
 
 .table-position .player-name {
     font-size: 13px;
@@ -1088,13 +1164,19 @@ input[type="text"]::placeholder {
 
 /* Game Messages */
 .game-messages {
-    position: fixed;
-    left: 290px;
-    bottom: 90px;
-    width: 320px;
-    max-height: 220px;
+    position: absolute;
+    left: 300px;
+    top: 80px;
+    width: 280px;
+    max-height: 180px;
     overflow-y: auto;
     padding: 12px;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.game-messages .game-message {
+    pointer-events: auto;
 }
 
 .messages-list {
@@ -1146,21 +1228,41 @@ input[type="text"]::placeholder {
     z-index: 50;
     border: 1px solid var(--border-color);
     overflow: hidden;
+    transition: var(--transition);
+}
+
+.game-chat.collapsed {
+    width: auto;
+}
+
+.game-chat.collapsed .chat-body {
+    display: none;
 }
 
 .chat-header {
     padding: 14px 18px;
-    background: var(--bg-medium);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-weight: 600;
     transition: var(--transition);
+    gap: 12px;
 }
 
 .chat-header:hover {
-    background: var(--bg-card-hover);
+    filter: brightness(1.1);
+}
+
+.chat-toggle-icon {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.game-chat.collapsed .chat-toggle-icon {
+    transform: rotate(180deg);
 }
 
 .chat-badge {
@@ -1170,16 +1272,18 @@ input[type="text"]::placeholder {
     border-radius: 12px;
     font-size: 12px;
     font-weight: 700;
+    animation: pulse-badge 1.5s infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
 }
 
 .chat-body {
     display: flex;
     flex-direction: column;
     height: 280px;
-}
-
-.chat-body.collapsed {
-    display: none;
 }
 
 .chat-messages {
@@ -1290,48 +1394,6 @@ input[type="text"]::placeholder {
     font-size: 1.3rem;
 }
 
-/* ==================== Notifications ==================== */
-.notifications {
-    position: fixed;
-    top: 24px;
-    right: 24px;
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.notification {
-    background: var(--bg-card);
-    padding: 18px 24px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-lg);
-    animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 380px;
-    border: 1px solid var(--border-color);
-    font-weight: 500;
-}
-
-.notification.error {
-    border-left: 4px solid var(--danger);
-    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, var(--bg-card) 30%);
-}
-
-.notification.success {
-    border-left: 4px solid var(--success);
-    background: linear-gradient(90deg, rgba(34, 197, 94, 0.1) 0%, var(--bg-card) 30%);
-}
-
-.notification.info {
-    border-left: 4px solid var(--accent);
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, var(--bg-card) 30%);
-}
-
-@keyframes slideIn {
-    from { transform: translateX(120%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
 /* ==================== Spectator Banner ==================== */
 #spectator-banner {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
@@ -1394,12 +1456,18 @@ input[type="text"]::placeholder {
     .game-messages {
         left: 12px;
         width: calc(100% - 24px);
-        bottom: 100px;
+        top: auto;
+        bottom: 340px;
+        max-height: 120px;
     }
     
     .game-chat {
         width: calc(100% - 48px);
         right: 24px;
+    }
+    
+    .game-chat.collapsed {
+        width: auto;
     }
 }
 

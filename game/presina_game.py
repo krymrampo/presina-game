@@ -23,6 +23,7 @@ class GamePhase(Enum):
     BETTING = "betting"           # Players making bets
     PLAYING = "playing"           # Playing cards
     WAITING_JOLLY = "waiting_jolly"  # Waiting for jolly choice
+    TRICK_COMPLETE = "trick_complete" # Trick just resolved, showing cards for 3 sec
     TURN_RESULTS = "turn_results"    # Showing turn results
     GAME_OVER = "game_over"       # Game finished
 
@@ -47,7 +48,10 @@ class PresinaGameOnline:
         
         self.bets_made: List[str] = []        # player_ids in betting order
         self.cards_on_table: List[Tuple[str, Card]] = []  # (player_id, card)
+        self.last_trick_cards: List[Tuple[str, Card]] = []  # Cards from last completed trick
         self.pending_jolly_player: Optional[str] = None   # Waiting for jolly choice
+        self.trick_winner_id: Optional[str] = None        # Winner of last completed trick
+        self.is_last_trick_of_turn: bool = False          # Was this the last trick of the turn?
         
         self.turn_results: List[dict] = []    # Results for current turn
         self.game_results: List[dict] = []    # Final standings
@@ -428,21 +432,38 @@ class PresinaGameOnline:
         winner.win_trick()
         self._add_message('trick', f"{winner.name} vince la mano con {winner_card.display_name}")
         
-        # Clear table
-        self.cards_on_table = []
+        # Save winner and check if this is the last trick
+        self.trick_winner_id = winner_id
+        cards_this_turn = self.CARDS_PER_TURN[self.current_turn]
+        self.is_last_trick_of_turn = (self.current_trick + 1) >= cards_this_turn
+        
+        # Enter TRICK_COMPLETE phase - cards stay visible for 3 seconds
+        self.phase = GamePhase.TRICK_COMPLETE
+    
+    def advance_from_trick_complete(self) -> Tuple[bool, str]:
+        """Advance from TRICK_COMPLETE phase after 3 second delay."""
+        if self.phase != GamePhase.TRICK_COMPLETE:
+            return False, "Non è il momento"
+        
         self.current_trick += 1
         
         # Set winner as next trick starter
-        active = self.get_active_players()
-        for i, p in enumerate(active):
-            if p.player_id == winner_id:
-                self.trick_starter_index = i
-                break
+        if self.trick_winner_id:
+            active = self.get_active_players()
+            for i, p in enumerate(active):
+                if p.player_id == self.trick_winner_id:
+                    self.trick_starter_index = i
+                    break
         
-        # Check if turn is over
-        cards_this_turn = self.CARDS_PER_TURN[self.current_turn]
-        if self.current_trick >= cards_this_turn:
+        if self.is_last_trick_of_turn:
+            # Last trick of turn - go to turn results
             self._end_turn()
+            return True, "Fine del turno"
+        else:
+            # More tricks to play - clear table and continue
+            self.cards_on_table = []
+            self.phase = GamePhase.PLAYING
+            return True, "Prossima mano"
     
     def _end_turn(self):
         """End the current turn and calculate results."""
@@ -472,8 +493,8 @@ class PresinaGameOnline:
         if self.current_turn >= 4 or len(active) <= 1:
             self._end_game()
     
-    def ready_for_next_turn(self, player_id: str) -> Tuple[bool, str]:
-        """Mark a player as ready for the next turn."""
+    def ready_for_next_turn(self, player_id: str, is_admin: bool = False) -> Tuple[bool, str]:
+        """Mark ready or advance to next turn (admin only advances)."""
         if self.phase != GamePhase.TURN_RESULTS:
             return False, "Non è il momento"
         
@@ -481,20 +502,22 @@ class PresinaGameOnline:
         if not player:
             return False, "Giocatore non trovato"
         
-        player.ready_for_next_turn = True
+        # Only admin can advance to next turn
+        if not is_admin:
+            return False, "Solo l'admin può passare al prossimo turno"
         
-        # Check if all online active players are ready
-        online_active = self.get_online_active_players()
-        all_ready = all(p.ready_for_next_turn for p in online_active)
+        # Clear cards from table
+        self.cards_on_table = []
+        self.last_trick_cards = []
         
-        if all_ready and online_active:
-            self.current_turn += 1
-            if self.current_turn < 5:
-                self._start_turn()
-            else:
-                self._end_game()
+        # Admin advances the turn
+        self.current_turn += 1
+        if self.current_turn < 5:
+            self._start_turn()
+        else:
+            self._end_game()
         
-        return True, "Pronto per il prossimo turno"
+        return True, "Prossimo turno avviato"
     
     def _end_game(self):
         """End the game and calculate final standings."""

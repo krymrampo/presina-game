@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presina - Gioco di Carte Online</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260129">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260129g">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
@@ -173,11 +173,6 @@
                         <div id="others-cards" class="others-cards hidden">
                             <!-- Other players' cards in special turn -->
                         </div>
-                        <div id="card-confirm" class="card-confirm hidden">
-                            <p>Conferma carta: <span id="selected-card-name"></span></p>
-                            <button id="btn-confirm-card" class="btn btn-primary">✓ Gioca</button>
-                            <button id="btn-cancel-card" class="btn btn-secondary">✗ Annulla</button>
-                        </div>
                     </div>
                     
                     <!-- Center: Table -->
@@ -231,15 +226,21 @@
                     <div id="ready-count" class="ready-count">Pronti: 0/0</div>
                 </div>
                 
-                <!-- Game Messages -->
-                <div class="game-messages">
-                    <div id="messages-list" class="messages-list"></div>
+                <!-- Card Confirm Popup -->
+                <div id="card-confirm-overlay" class="card-confirm-overlay hidden"></div>
+                <div id="card-confirm" class="card-confirm hidden">
+                    <p>Conferma carta: <span id="selected-card-name"></span></p>
+                    <div class="button-group">
+                        <button id="btn-confirm-card" class="btn btn-primary">✓ Gioca</button>
+                        <button id="btn-cancel-card" class="btn btn-secondary">✗ Annulla</button>
+                    </div>
                 </div>
                 
                 <!-- Chat -->
                 <div class="game-chat" id="game-chat">
                     <div class="chat-header" id="chat-toggle">
-                        💬 Chat <span id="chat-badge" class="chat-badge hidden">!</span>
+                        <span>💬 Chat <span id="chat-badge" class="chat-badge hidden">!</span></span>
+                        <span class="chat-toggle-icon">▼</span>
                     </div>
                     <div class="chat-body" id="chat-body">
                         <div id="chat-messages" class="chat-messages"></div>
@@ -262,14 +263,11 @@
                 <button id="btn-back-lobby" class="btn btn-primary">Torna alla Lobby</button>
             </div>
         </div>
-
-        <!-- Notifications -->
-        <div id="notifications" class="notifications"></div>
     </div>
     
-    <script src="/static/js/main.js?v=20260129"></script>
-    <script src="/static/js/socket_client.js?v=20260129"></script>
-    <script src="/static/js/game_ui.js?v=20260129"></script>
-    <script src="/static/js/chat.js?v=20260129"></script>
+    <script src="/static/js/main.js?v=20260129g"></script>
+    <script src="/static/js/socket_client.js?v=20260129g"></script>
+    <script src="/static/js/game_ui.js?v=20260129g"></script>
+    <script src="/static/js/chat.js?v=20260129g"></script>
 </body>
 </html>

@@ -11,7 +11,8 @@ const App = {
     currentRoom: null,
     gameState: null,
     isAdmin: false,
-    selectedCard: null
+    selectedCard: null,
+    trickAdvanceScheduled: false
 };
 
 // ==================== Initialization ====================
@@ -120,7 +121,7 @@ function setupEventListeners() {
 function enterLobby() {
     const name = document.getElementById('player-name').value.trim();
     if (!name) {
-        showNotification('Inserisci il tuo nome', 'error');
+        alert('Inserisci il tuo nome');
         return;
     }
     
@@ -149,7 +150,7 @@ function hideCreateRoomModal() {
 function createRoom() {
     const roomName = document.getElementById('room-name').value.trim();
     if (!roomName) {
-        showNotification('Inserisci un nome per la stanza', 'error');
+        alert('Inserisci un nome per la stanza');
         return;
     }
     
@@ -270,6 +271,7 @@ function selectCard(suit, value, displayName) {
     event.target.classList.add('selected');
     
     document.getElementById('selected-card-name').textContent = displayName;
+    document.getElementById('card-confirm-overlay').classList.remove('hidden');
     document.getElementById('card-confirm').classList.remove('hidden');
 }
 
@@ -289,21 +291,23 @@ function confirmCard() {
 function cancelCard() {
     App.selectedCard = null;
     document.querySelectorAll('.hand-area .card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('card-confirm-overlay').classList.add('hidden');
     document.getElementById('card-confirm').classList.add('hidden');
     // Reset button state
     const confirmBtn = document.getElementById('btn-confirm-card');
     confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Gioca';
+    confirmBtn.textContent = '✓ Gioca';
 }
 
 // Called after successful card play to reset UI
 function clearCardSelection() {
     App.selectedCard = null;
     document.querySelectorAll('.hand-area .card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('card-confirm-overlay').classList.add('hidden');
     document.getElementById('card-confirm').classList.add('hidden');
     const confirmBtn = document.getElementById('btn-confirm-card');
     confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Gioca';
+    confirmBtn.textContent = '✓ Gioca';
 }
 
 function makeBet(bet) {
@@ -331,9 +335,7 @@ function backToLobby() {
 
 // ==================== Chat Functions ====================
 function toggleChat() {
-    const chatBody = document.getElementById('chat-body');
-    chatBody.classList.toggle('collapsed');
-    document.getElementById('chat-badge').classList.add('hidden');
+    Chat.toggle();
 }
 
 function sendChatMessage() {
@@ -361,22 +363,9 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showNotification(message, type = 'info') {
-    const container = document.getElementById('notifications');
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    container.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.remove();
-    }, 4000);
-}
-
 // Export for use in other modules
 window.App = App;
 window.showScreen = showScreen;
-window.showNotification = showNotification;
 window.updateRoomsList = updateRoomsList;
 window.updateWaitingRoom = updateWaitingRoom;
 window.selectCard = selectCard;

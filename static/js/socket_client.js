@@ -31,12 +31,10 @@ const SocketClient = {
         socket.on('disconnect', () => {
             console.log('Disconnected from server');
             this.connected = false;
-            showNotification('Connessione persa. Riconnessione...', 'error');
         });
         
         socket.on('error', (data) => {
             console.error('Socket error:', data);
-            showNotification(data.message || 'Errore', 'error');
         });
         
         // Registration
@@ -54,7 +52,6 @@ const SocketClient = {
             App.gameState = data.game_state;
             showScreen('waiting-room');
             updateWaitingRoom(data.game_state);
-            showNotification('Stanza creata!', 'success');
         });
         
         socket.on('room_joined', (data) => {
@@ -68,14 +65,12 @@ const SocketClient = {
                 showScreen('game');
                 GameUI.updateGameScreen(data.game_state);
             }
-            showNotification(data.message, 'success');
         });
         
         socket.on('player_joined', (data) => {
             if (App.currentScreen === 'waiting-room') {
                 updateWaitingRoom(data.game_state);
             }
-            showNotification(`${data.player_name} è entrato`, 'info');
         });
         
         socket.on('player_left', (data) => {
@@ -91,7 +86,6 @@ const SocketClient = {
         });
         
         socket.on('kicked', (data) => {
-            showNotification(data.message, 'error');
             App.currentRoom = null;
             showScreen('lobby');
             this.listRooms();
@@ -106,7 +100,7 @@ const SocketClient = {
         });
         
         socket.on('player_reconnected', (data) => {
-            showNotification('Un giocatore si è riconnesso', 'info');
+            // Player reconnected - UI updates via game_state
         });
         
         // Rejoin events
@@ -121,11 +115,9 @@ const SocketClient = {
                 showScreen('game');
                 GameUI.updateGameScreen(data.game_state);
             }
-            showNotification('Riconnesso alla partita!', 'success');
         });
         
         socket.on('rejoin_failed', (data) => {
-            showNotification(data.message, 'error');
             document.getElementById('existing-room-banner').classList.add('hidden');
         });
         
@@ -134,7 +126,6 @@ const SocketClient = {
             App.gameState = data.game_state;
             showScreen('game');
             GameUI.updateGameScreen(data.game_state);
-            showNotification('La partita è iniziata!', 'success');
         });
         
         socket.on('game_state', (data) => {
@@ -146,6 +137,24 @@ const SocketClient = {
             } else if (data.game_state.phase === 'waiting') {
                 showScreen('waiting-room');
                 updateWaitingRoom(data.game_state);
+            } else if (data.game_state.phase === 'trick_complete') {
+                // Trick just completed - show cards for 3 seconds then advance
+                if (App.currentScreen !== 'game') {
+                    showScreen('game');
+                }
+                GameUI.updateGameScreen(data.game_state);
+                // Clear card selection
+                if (typeof clearCardSelection === 'function') {
+                    clearCardSelection();
+                }
+                // After 3 seconds, advance (only one client needs to trigger this)
+                if (!App.trickAdvanceScheduled) {
+                    App.trickAdvanceScheduled = true;
+                    setTimeout(() => {
+                        App.trickAdvanceScheduled = false;
+                        SocketClient.advanceTrick();
+                    }, 3000);
+                }
             } else {
                 if (App.currentScreen !== 'game') {
                     showScreen('game');
@@ -159,6 +168,10 @@ const SocketClient = {
         });
         
         socket.on('jolly_choice_required', (data) => {
+            // Clear card selection popup before showing jolly choice
+            if (typeof clearCardSelection === 'function') {
+                clearCardSelection();
+            }
             document.getElementById('jolly-choice').classList.remove('hidden');
         });
         
@@ -262,6 +275,12 @@ const SocketClient = {
     
     readyNextTurn() {
         this.socket.emit('ready_next_turn', {
+            player_id: App.playerId
+        });
+    },
+    
+    advanceTrick() {
+        this.socket.emit('advance_trick', {
             player_id: App.playerId
         });
     },
