@@ -528,6 +528,8 @@ class PresinaGameOnline:
             # More tricks to play - clear table and continue
             self.cards_on_table = []
             self.phase = GamePhase.PLAYING
+            # Reset timer for the first player of the new trick
+            self._start_phase_timer(self.PLAYING_TIME_LIMIT)
             return True, "Prossima mano"
     
     def _end_turn(self):
