@@ -689,9 +689,9 @@ input[type="text"]::placeholder {
 }
 
 .hand-area .card {
-    width: 60px;
-    height: 90px;
-    border-radius: 6px;
+    width: 75px;
+    height: 112px;
+    border-radius: 8px;
     cursor: pointer;
     transition: var(--transition);
     box-shadow: var(--shadow);
@@ -827,20 +827,20 @@ input[type="text"]::placeholder {
 
 .table-center {
     position: relative;
-    width: 320px;
-    height: 240px;
+    width: 450px;
+    height: 340px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: linear-gradient(145deg, #2d5a3d 0%, #1a3d2a 100%);
-    border-radius: 120px / 90px;
+    border-radius: 225px / 170px;
     box-shadow: 
-        inset 0 4px 20px rgba(0, 0, 0, 0.3),
-        0 8px 32px rgba(0, 0, 0, 0.2),
-        0 0 0 8px rgba(101, 67, 33, 0.6),
-        0 0 0 12px rgba(139, 90, 43, 0.4);
-    border: 3px solid rgba(255, 255, 255, 0.1);
+        inset 0 4px 30px rgba(0, 0, 0, 0.4),
+        0 12px 40px rgba(0, 0, 0, 0.3),
+        0 0 0 10px rgba(101, 67, 33, 0.7),
+        0 0 0 16px rgba(139, 90, 43, 0.5);
+    border: 4px solid rgba(255, 255, 255, 0.1);
 }
 
 .table-center::before {
@@ -849,34 +849,88 @@ input[type="text"]::placeholder {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 90%;
-    height: 85%;
+    width: 88%;
+    height: 82%;
     border: 2px dashed rgba(255, 255, 255, 0.15);
-    border-radius: 100px / 70px;
+    border-radius: 190px / 140px;
     pointer-events: none;
 }
 
 .played-cards {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    justify-content: center;
-    max-width: 280px;
-    padding: 10px;
-    position: relative;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
     z-index: 2;
+    pointer-events: none;
 }
 
-.played-cards .card {
-    width: 75px;
-    height: 112px;
-    animation: cardDrop 0.4s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+.played-card-position {
+    position: absolute;
+    width: 80px;
+    height: 120px;
+    animation: cardPlay 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    transition: transform 0.3s ease;
 }
 
-@keyframes cardDrop {
-    from { transform: translateY(-30px) rotate(-10deg); opacity: 0; }
-    to { transform: translateY(0) rotate(0); opacity: 1; }
+.played-card-position:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+/* Card positions around the table - facing center */
+.played-card-position.pos-0 { 
+    bottom: -60px; 
+    left: 50%; 
+    transform: translateX(-50%) rotate(0deg);
+}
+.played-card-position.pos-1 { 
+    bottom: 10%; 
+    left: -30px; 
+    transform: rotate(45deg);
+}
+.played-card-position.pos-2 { 
+    top: 50%; 
+    left: -50px; 
+    transform: translateY(-50%) rotate(90deg);
+}
+.played-card-position.pos-3 { 
+    top: -30px; 
+    left: 15%; 
+    transform: rotate(135deg);
+}
+.played-card-position.pos-4 { 
+    top: -30px; 
+    right: 15%; 
+    transform: rotate(225deg);
+}
+.played-card-position.pos-5 { 
+    top: 50%; 
+    right: -50px; 
+    transform: translateY(-50%) rotate(270deg);
+}
+.played-card-position.pos-6 { 
+    bottom: 10%; 
+    right: -30px; 
+    transform: rotate(315deg);
+}
+.played-card-position.pos-7 { 
+    top: -60px; 
+    left: 50%; 
+    transform: translateX(-50%) rotate(180deg);
+}
+
+@keyframes cardPlay {
+    0% { 
+        transform: scale(0.5) translateY(-100px) rotate(-20deg); 
+        opacity: 0; 
+    }
+    100% { 
+        opacity: 1; 
+    }
 }
 
 .trick-info {
@@ -910,14 +964,14 @@ input[type="text"]::placeholder {
     pointer-events: auto;
 }
 
-.table-position.pos-0 { top: 88%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
-.table-position.pos-1 { top: 70%; left: 15%; transform: translate(-50%, -50%); }  /* Bottom left */
-.table-position.pos-2 { top: 35%; left: 5%; transform: translate(-50%, -50%); }   /* Left */
-.table-position.pos-3 { top: 5%; left: 30%; transform: translate(-50%, -50%); }   /* Top left */
-.table-position.pos-4 { top: 5%; left: 70%; transform: translate(-50%, -50%); }   /* Top right */
-.table-position.pos-5 { top: 35%; left: 95%; transform: translate(-50%, -50%); }  /* Right */
-.table-position.pos-6 { top: 70%; left: 85%; transform: translate(-50%, -50%); }  /* Bottom right */
-.table-position.pos-7 { top: 5%; left: 50%; transform: translate(-50%, -50%); }   /* Top center */
+.table-position.pos-0 { top: 95%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
+.table-position.pos-1 { top: 78%; left: 8%; transform: translate(-50%, -50%); }   /* Bottom left */
+.table-position.pos-2 { top: 50%; left: -2%; transform: translate(-50%, -50%); }  /* Left */
+.table-position.pos-3 { top: 5%; left: 15%; transform: translate(-50%, -50%); }   /* Top left */
+.table-position.pos-4 { top: 5%; left: 85%; transform: translate(-50%, -50%); }   /* Top right */
+.table-position.pos-5 { top: 50%; left: 102%; transform: translate(-50%, -50%); } /* Right */
+.table-position.pos-6 { top: 78%; left: 92%; transform: translate(-50%, -50%); }  /* Bottom right */
+.table-position.pos-7 { top: 0%; left: 50%; transform: translate(-50%, -50%); }    /* Top center */
 
 .table-position .player-name {
     font-size: 13px;
@@ -1092,6 +1146,72 @@ input[type="text"]::placeholder {
     display: flex;
     gap: 18px;
     justify-content: center;
+}
+
+/* Trick Winner Popup */
+.trick-winner-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 150;
+    backdrop-filter: blur(4px);
+}
+
+.trick-winner-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    padding: 40px 60px;
+    border-radius: var(--border-radius-lg);
+    text-align: center;
+    z-index: 151;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 215, 0, 0.3);
+    animation: trickWinnerPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    min-width: 320px;
+}
+
+@keyframes trickWinnerPop {
+    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.trick-winner-content {
+    color: white;
+}
+
+.trick-winner-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.trick-winner-popup h3 {
+    font-size: 1.8rem;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+#trick-winner-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.trick-winner-card {
+    font-size: 1rem;
+    opacity: 0.9;
 }
 
 /* Turn Results */

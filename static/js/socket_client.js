@@ -158,6 +158,13 @@ const SocketClient = {
                 if (typeof clearCardSelection === 'function') {
                     clearCardSelection();
                 }
+                // Show trick winner popup
+                if (data.game_state.trick_winner) {
+                    GameUI.showTrickWinner(
+                        data.game_state.trick_winner.player_name,
+                        data.game_state.trick_winner.card?.display_name || ''
+                    );
+                }
                 // After 3 seconds, advance (only one client needs to trigger this)
                 if (!App.trickAdvanceScheduled) {
                     App.trickAdvanceScheduled = true;

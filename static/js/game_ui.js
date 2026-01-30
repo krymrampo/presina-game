@@ -130,7 +130,10 @@ const GameUI = {
             return;
         }
         
-        handArea.innerHTML = myPlayer.hand.map(card => {
+        // Sort cards by strength (value) ascending
+        const sortedHand = [...myPlayer.hand].sort((a, b) => a.strength - b.strength);
+        
+        handArea.innerHTML = sortedHand.map(card => {
             const isDisabled = !isMyTurn ? 'disabled' : '';
             const clickHandler = isMyTurn ? 
                 `onclick="selectCard('${card.suit}', ${card.value}, '${card.display_name}', event)"` : '';
@@ -147,32 +150,16 @@ const GameUI = {
     
     // ==================== Table ====================
     updateTable(gameState) {
-        // Played cards
-        const playedCards = document.getElementById('played-cards');
-        
-        if (gameState.cards_on_table && gameState.cards_on_table.length > 0) {
-            playedCards.innerHTML = gameState.cards_on_table.map(([playerId, card]) => {
-                const player = gameState.players.find(p => p.player_id === playerId);
-                const jollyText = card.jolly_choice ? ` (${card.jolly_choice})` : '';
-                
-                return `
-                    <div class="played-card-wrapper" title="${player?.name}: ${card.display_name}${jollyText}">
-                        <img src="/carte_napoletane/${card.suit}/${card.suit}_${card.value}.jpg" 
-                             class="card">
-                    </div>
-                `;
-            }).join('');
-        } else {
-            playedCards.innerHTML = '';
-        }
-        
-        // Player positions around table
+        // Player positions around table - calculate first to map positions
         const positions = document.getElementById('table-positions');
         const activePlayers = gameState.players.filter(p => !p.is_spectator);
         const numPlayers = activePlayers.length;
         
         // Find my index in active players
         const myIndex = activePlayers.findIndex(p => p.player_id === App.playerId);
+        
+        // Map playerId to position index
+        const playerPosMap = {};
         
         // Calculate positions so that I am always at position 0 (bottom center)
         positions.innerHTML = activePlayers.map((player, index) => {
@@ -191,6 +178,7 @@ const GameUI = {
             
             // Map to visual positions based on number of players
             const posIndex = this.getTablePosition(relativePos, numPlayers);
+            playerPosMap[player.player_id] = posIndex;
             
             let betInfo = '';
             if (player.bet !== null) {
@@ -206,6 +194,26 @@ const GameUI = {
                 </div>
             `;
         }).join('');
+        
+        // Played cards - positioned in front of each player
+        const playedCards = document.getElementById('played-cards');
+        
+        if (gameState.cards_on_table && gameState.cards_on_table.length > 0) {
+            playedCards.innerHTML = gameState.cards_on_table.map(([playerId, card]) => {
+                const player = gameState.players.find(p => p.player_id === playerId);
+                const posIndex = playerPosMap[playerId] || 0;
+                const jollyText = card.jolly_choice ? ` (${card.jolly_choice})` : '';
+                
+                return `
+                    <div class="played-card-position pos-${posIndex}" title="${player?.name}: ${card.display_name}${jollyText}">
+                        <img src="/carte_napoletane/${card.suit}/${card.suit}_${card.value}.jpg" 
+                             class="card" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                    </div>
+                `;
+            }).join('');
+        } else {
+            playedCards.innerHTML = '';
+        }
     },
     
     // Get the visual table position based on relative position and player count
@@ -301,6 +309,26 @@ const GameUI = {
         } else {
             jollyChoice.classList.add('hidden');
         }
+    },
+    
+    // ==================== Trick Winner Popup ====================
+    showTrickWinner(winnerName, cardName) {
+        const overlay = document.getElementById('trick-winner-overlay');
+        const popup = document.getElementById('trick-winner-popup');
+        const nameEl = document.getElementById('trick-winner-name');
+        const cardEl = document.getElementById('trick-winner-card');
+        
+        nameEl.textContent = winnerName;
+        cardEl.textContent = `con ${cardName}`;
+        
+        overlay.classList.remove('hidden');
+        popup.classList.remove('hidden');
+        
+        // Auto hide after 3 seconds
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            popup.classList.add('hidden');
+        }, 3000);
     },
     
     // ==================== Turn Results ====================
