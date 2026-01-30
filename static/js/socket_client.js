@@ -151,17 +151,6 @@ const SocketClient = {
             // Player reconnected - UI updates via game_state
         });
         
-        // Timer sync - request game state periodically to sync with server
-        setInterval(() => {
-            if (App.currentScreen === 'game' && App.currentRoom && App.gameState) {
-                // Only request state if game is in active phase
-                const phase = App.gameState.phase;
-                if (phase === 'betting' || phase === 'playing' || phase === 'waiting_jolly') {
-                    SocketClient.getGameState();
-                }
-            }
-        }, 1000);  // Sync every 1 second for smoother updates
-        
         // Rejoin events
         socket.on('rejoin_success', (data) => {
             App.currentRoom = data.room;

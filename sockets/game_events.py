@@ -49,7 +49,6 @@ def register_game_events(socketio):
             return
         
         room.game.start_game()
-        room.game.auto_advance_offline()
         
         # Send game state to all players
         for pid, player in room.game.players.items():
@@ -103,8 +102,6 @@ def register_game_events(socketio):
             emit('error', {'message': message})
             return
 
-        room.game.auto_advance_offline()
-        
         # Send updated game state to all players
         _broadcast_game_state(socketio, room)
     
@@ -145,8 +142,6 @@ def register_game_events(socketio):
             emit('error', {'message': message})
             return
 
-        room.game.auto_advance_offline()
-        
         # Check if waiting for jolly choice
         if room.game.phase == GamePhase.WAITING_JOLLY and room.game.pending_jolly_player == player_id:
             emit('jolly_choice_required', {
@@ -185,8 +180,6 @@ def register_game_events(socketio):
             emit('error', {'message': message})
             return
 
-        room.game.auto_advance_offline()
-        
         # Send updated game state to all players
         _broadcast_game_state(socketio, room)
     
@@ -222,7 +215,6 @@ def register_game_events(socketio):
         success, message = room.game.advance_from_trick_complete()
         
         if success:
-            room.game.auto_advance_offline()
             _broadcast_game_state(socketio, room)
     
     @socketio.on('ready_next_turn')
@@ -260,8 +252,6 @@ def register_game_events(socketio):
             emit('error', {'message': message})
             return
 
-        room.game.auto_advance_offline()
-        
         # Send updated game state to all players
         _broadcast_game_state(socketio, room)
         
@@ -276,7 +266,6 @@ def register_game_events(socketio):
         """
         Get current game state.
         Data: { player_id }
-        Also checks for timeouts and auto-advances if needed.
         """
         player_id = data.get('player_id')
         
@@ -294,15 +283,9 @@ def register_game_events(socketio):
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
         
-        # Check for timeout and auto-advance if needed
-        if room.game.is_time_expired():
-            room.game.handle_timeout()
-            room.game.auto_advance_offline()
-            _broadcast_game_state(socketio, room)
-        else:
-            emit('game_state', {
-                'game_state': room.game.get_state_for_player(player_id)
-            })
+        emit('game_state', {
+            'game_state': room.game.get_state_for_player(player_id)
+        })
 
 
 def _broadcast_game_state(socketio, room):

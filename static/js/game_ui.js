@@ -8,73 +8,6 @@ const GameUI = {
     // Cache for previous state to avoid unnecessary re-renders
     _previousHand: null,
     _previousTableCards: null,
-    
-    // Client-side timer
-    _localTimer: null,
-    _timerInterval: null,
-    _lastServerTime: null,
-    _lastServerTimeReceived: null,
-    
-    // ==================== Timer Element ====================
-    _createTimerElement() {
-        const timerEl = document.createElement('span');
-        timerEl.id = 'turn-timer';
-        timerEl.className = 'turn-timer';
-        
-        // Insert after phase indicator
-        const phaseIndicator = document.getElementById('phase-indicator');
-        if (phaseIndicator && phaseIndicator.parentNode) {
-            phaseIndicator.parentNode.insertBefore(timerEl, phaseIndicator.nextSibling);
-        }
-        
-        return timerEl;
-    },
-    
-    // ==================== Client-side Timer ====================
-    _startLocalTimer(serverTimeRemaining) {
-        // Clear existing timer
-        this._stopLocalTimer();
-        
-        if (serverTimeRemaining === null || serverTimeRemaining === undefined) {
-            return;
-        }
-        
-        this._localTimer = serverTimeRemaining;
-        this._lastServerTime = serverTimeRemaining;
-        this._lastServerTimeReceived = Date.now();
-        
-        // Update display immediately
-        this._updateTimerDisplay(this._localTimer);
-        
-        // Start countdown
-        this._timerInterval = setInterval(() => {
-            this._localTimer--;
-            this._updateTimerDisplay(this._localTimer);
-            
-            if (this._localTimer <= 0) {
-                this._stopLocalTimer();
-            }
-        }, 1000);
-    },
-    
-    _stopLocalTimer() {
-        if (this._timerInterval) {
-            clearInterval(this._timerInterval);
-            this._timerInterval = null;
-        }
-        this._localTimer = null;
-    },
-    
-    _updateTimerDisplay(seconds) {
-        const timerEl = document.getElementById('turn-timer') || this._createTimerElement();
-        if (seconds !== null && seconds !== undefined && seconds >= 0) {
-            timerEl.textContent = `⏱️ ${seconds}s`;
-            timerEl.className = 'turn-timer' + (seconds < 10 ? ' warning' : '');
-            timerEl.classList.remove('hidden');
-        } else {
-            timerEl.classList.add('hidden');
-        }
-    },
 
     // ==================== Main Update ====================
     updateGameScreen(gameState) {
@@ -92,20 +25,6 @@ const GameUI = {
     updateHeader(gameState) {
         document.getElementById('turn-number').textContent = `Turno ${gameState.current_turn + 1}/5`;
         document.getElementById('cards-info').textContent = `${gameState.cards_this_turn} carte`;
-        
-        // Handle timer - use client-side countdown for smooth updates
-        const timeRemaining = gameState.time_remaining;
-        if (timeRemaining !== null && timeRemaining !== undefined && timeRemaining > 0) {
-            // Only restart timer if server time is significantly different from local
-            const timeDiff = Math.abs((this._localTimer !== null ? this._localTimer : 0) - timeRemaining);
-            if (timeDiff > 2 || this._timerInterval === null) {
-                this._startLocalTimer(timeRemaining);
-            }
-        } else {
-            this._stopLocalTimer();
-            const timerEl = document.getElementById('turn-timer');
-            if (timerEl) timerEl.classList.add('hidden');
-        }
         
         const phaseIndicator = document.getElementById('phase-indicator');
         phaseIndicator.className = 'phase-indicator';
@@ -207,7 +126,6 @@ const GameUI = {
         // Don't re-render if card selection popup is open
         const cardConfirm = document.getElementById('card-confirm');
         if (cardConfirm && !cardConfirm.classList.contains('hidden')) {
-            // Just update the timer, don't touch the cards
             return;
         }
         

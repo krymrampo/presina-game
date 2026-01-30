@@ -272,8 +272,6 @@ class RoomManager:
             player = room.game.get_player(player_id)
             if player:
                 player.is_online = False
-            # Try to auto-advance if an offline player is blocking
-            room.game.auto_advance_offline()
             # Don't remove from player_rooms so they can rejoin
             return True, "Disconnesso dalla partita"
         
