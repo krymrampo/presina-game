@@ -881,44 +881,52 @@ input[type="text"]::placeholder {
     z-index: 10;
 }
 
-/* Card positions around the table - facing center */
+/* Card positions around the table - facing center (upright from player perspective) */
+/* Position 0: bottom - card is upright */
 .played-card-position.pos-0 { 
-    bottom: -60px; 
+    bottom: -80px; 
     left: 50%; 
     transform: translateX(-50%) rotate(0deg);
 }
+/* Position 1: bottom left - tilted slightly right */
 .played-card-position.pos-1 { 
-    bottom: 10%; 
-    left: -30px; 
-    transform: rotate(45deg);
+    bottom: -20px; 
+    left: -20px; 
+    transform: rotate(30deg);
 }
+/* Position 2: left - tilted right */
 .played-card-position.pos-2 { 
     top: 50%; 
-    left: -50px; 
-    transform: translateY(-50%) rotate(90deg);
+    left: -60px; 
+    transform: translateY(-50%) rotate(60deg);
 }
+/* Position 3: top left - tilted down-right */
 .played-card-position.pos-3 { 
-    top: -30px; 
-    left: 15%; 
-    transform: rotate(135deg);
+    top: -50px; 
+    left: 10%; 
+    transform: rotate(120deg);
 }
+/* Position 4: top right - tilted down-left */
 .played-card-position.pos-4 { 
-    top: -30px; 
-    right: 15%; 
-    transform: rotate(225deg);
+    top: -50px; 
+    right: 10%; 
+    transform: rotate(240deg);
 }
+/* Position 5: right - tilted left */
 .played-card-position.pos-5 { 
     top: 50%; 
-    right: -50px; 
-    transform: translateY(-50%) rotate(270deg);
+    right: -60px; 
+    transform: translateY(-50%) rotate(300deg);
 }
+/* Position 6: bottom right - tilted slightly left */
 .played-card-position.pos-6 { 
-    bottom: 10%; 
-    right: -30px; 
-    transform: rotate(315deg);
+    bottom: -20px; 
+    right: -20px; 
+    transform: rotate(330deg);
 }
+/* Position 7: top center - upside down */
 .played-card-position.pos-7 { 
-    top: -60px; 
+    top: -80px; 
     left: 50%; 
     transform: translateX(-50%) rotate(180deg);
 }
@@ -964,14 +972,14 @@ input[type="text"]::placeholder {
     pointer-events: auto;
 }
 
-.table-position.pos-0 { top: 95%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
-.table-position.pos-1 { top: 78%; left: 8%; transform: translate(-50%, -50%); }   /* Bottom left */
-.table-position.pos-2 { top: 50%; left: -2%; transform: translate(-50%, -50%); }  /* Left */
-.table-position.pos-3 { top: 5%; left: 15%; transform: translate(-50%, -50%); }   /* Top left */
-.table-position.pos-4 { top: 5%; left: 85%; transform: translate(-50%, -50%); }   /* Top right */
-.table-position.pos-5 { top: 50%; left: 102%; transform: translate(-50%, -50%); } /* Right */
-.table-position.pos-6 { top: 78%; left: 92%; transform: translate(-50%, -50%); }  /* Bottom right */
-.table-position.pos-7 { top: 0%; left: 50%; transform: translate(-50%, -50%); }    /* Top center */
+.table-position.pos-0 { top: 108%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
+.table-position.pos-1 { top: 85%; left: 2%; transform: translate(-50%, -50%); }    /* Bottom left */
+.table-position.pos-2 { top: 50%; left: -8%; transform: translate(-50%, -50%); }   /* Left */
+.table-position.pos-3 { top: -5%; left: 15%; transform: translate(-50%, -50%); }   /* Top left */
+.table-position.pos-4 { top: -5%; left: 85%; transform: translate(-50%, -50%); }   /* Top right */
+.table-position.pos-5 { top: 50%; left: 108%; transform: translate(-50%, -50%); }  /* Right */
+.table-position.pos-6 { top: 85%; left: 98%; transform: translate(-50%, -50%); }   /* Bottom right */
+.table-position.pos-7 { top: -12%; left: 50%; transform: translate(-50%, -50%); }  /* Top center */
 
 .table-position .player-name {
     font-size: 13px;
@@ -1053,6 +1061,25 @@ input[type="text"]::placeholder {
 .player-info-card.me {
     border-left: 4px solid var(--primary);
     background: rgba(99, 102, 241, 0.1);
+}
+
+/* Player status colors based on bet vs tricks */
+/* Orange: still needs to win tricks */
+.player-info-card.status-pending {
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+}
+
+/* Green: achieved bet */
+.player-info-card.status-achieved {
+    border-left: 4px solid #22c55e;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%);
+}
+
+/* Red: exceeded bet */
+.player-info-card.status-exceeded {
+    border-left: 4px solid #ef4444;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
 }
 
 .player-info-card .name-row {
@@ -1165,14 +1192,20 @@ input[type="text"]::placeholder {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
     padding: 40px 60px;
     border-radius: var(--border-radius-lg);
     text-align: center;
     z-index: 151;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(34, 197, 94, 0.3);
     animation: trickWinnerPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     min-width: 320px;
+}
+
+/* Orange variant for losing trick */
+.trick-winner-popup.loser {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(249, 115, 22, 0.3);
 }
 
 @keyframes trickWinnerPop {
@@ -1457,6 +1490,9 @@ input[type="text"]::placeholder {
     font-size: 14px;
     margin-left: 12px;
     animation: fadeIn 0.3s ease;
+    transition: background 0.3s ease, transform 0.2s ease;
+    min-width: 60px;
+    text-align: center;
 }
 
 .turn-timer.warning {

@@ -5,6 +5,10 @@
 
 const GameUI = {
     
+    // Cache for previous state to avoid unnecessary re-renders
+    _previousHand: null,
+    _previousTableCards: null,
+    
     // ==================== Timer Element ====================
     _createTimerElement() {
         const timerEl = document.createElement('span');
@@ -127,11 +131,32 @@ const GameUI = {
             } else {
                 handArea.innerHTML = '<p class="empty-message">Nessuna carta</p>';
             }
+            this._previousHand = null;
             return;
         }
         
         // Sort cards by strength (value) ascending
         const sortedHand = [...myPlayer.hand].sort((a, b) => a.strength - b.strength);
+        
+        // Check if hand changed to avoid unnecessary re-render
+        const handKey = sortedHand.map(c => `${c.suit}-${c.value}`).join(',');
+        const turnKey = `${gameState.current_turn}-${gameState.current_trick}-${isMyTurn}`;
+        const currentKey = `${handKey}|${turnKey}`;
+        
+        if (this._previousHand === currentKey) {
+            // Only update disabled state without re-rendering
+            const cards = handArea.querySelectorAll('.card');
+            cards.forEach(card => {
+                if (isMyTurn) {
+                    card.classList.remove('disabled');
+                } else {
+                    card.classList.add('disabled');
+                }
+            });
+            return;
+        }
+        
+        this._previousHand = currentKey;
         
         handArea.innerHTML = sortedHand.map(card => {
             const isDisabled = !isMyTurn ? 'disabled' : '';
@@ -199,20 +224,27 @@ const GameUI = {
         const playedCards = document.getElementById('played-cards');
         
         if (gameState.cards_on_table && gameState.cards_on_table.length > 0) {
-            playedCards.innerHTML = gameState.cards_on_table.map(([playerId, card]) => {
-                const player = gameState.players.find(p => p.player_id === playerId);
-                const posIndex = playerPosMap[playerId] || 0;
-                const jollyText = card.jolly_choice ? ` (${card.jolly_choice})` : '';
-                
-                return `
-                    <div class="played-card-position pos-${posIndex}" title="${player?.name}: ${card.display_name}${jollyText}">
-                        <img src="/carte_napoletane/${card.suit}/${card.suit}_${card.value}.jpg" 
-                             class="card" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
-                    </div>
-                `;
-            }).join('');
+            // Check if cards changed to avoid unnecessary re-render
+            const tableKey = gameState.cards_on_table.map(([pid, c]) => `${pid}-${c.suit}-${c.value}`).join(',');
+            
+            if (this._previousTableCards !== tableKey) {
+                this._previousTableCards = tableKey;
+                playedCards.innerHTML = gameState.cards_on_table.map(([playerId, card]) => {
+                    const player = gameState.players.find(p => p.player_id === playerId);
+                    const posIndex = playerPosMap[playerId] || 0;
+                    const jollyText = card.jolly_choice ? ` (${card.jolly_choice})` : '';
+                    
+                    return `
+                        <div class="played-card-position pos-${posIndex}" title="${player?.name}: ${card.display_name}${jollyText}">
+                            <img src="/carte_napoletane/${card.suit}/${card.suit}_${card.value}.jpg" 
+                                 class="card" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                        </div>
+                    `;
+                }).join('');
+            }
         } else {
             playedCards.innerHTML = '';
+            this._previousTableCards = null;
         }
     },
     
@@ -244,8 +276,20 @@ const GameUI = {
             const isMe = player.player_id === App.playerId;
             const statusClass = !player.is_online ? 'offline' : '';
             
+            // Determine status color based on bet vs tricks won
+            let statusColorClass = '';
+            if (player.bet !== null && gameState.phase !== 'betting') {
+                if (player.tricks_won < player.bet) {
+                    statusColorClass = 'status-pending'; // Orange: still needs tricks
+                } else if (player.tricks_won === player.bet) {
+                    statusColorClass = 'status-achieved'; // Green: achieved bet
+                } else {
+                    statusColorClass = 'status-exceeded'; // Red: exceeded bet
+                }
+            }
+            
             return `
-                <div class="player-info-card ${isCurrent ? 'current' : ''} ${isMe ? 'me' : ''} ${statusClass}">
+                <div class="player-info-card ${isCurrent ? 'current' : ''} ${isMe ? 'me' : ''} ${statusClass} ${statusColorClass}">
                     <div class="name-row">
                         <span>
                             <span class="online-dot ${player.is_online ? 'online' : 'offline'}"></span>
@@ -312,7 +356,7 @@ const GameUI = {
     },
     
     // ==================== Trick Winner Popup ====================
-    showTrickWinner(winnerName, cardName) {
+    showTrickWinner(winnerName, cardName, isWinner = true) {
         const overlay = document.getElementById('trick-winner-overlay');
         const popup = document.getElementById('trick-winner-popup');
         const nameEl = document.getElementById('trick-winner-name');
@@ -320,6 +364,13 @@ const GameUI = {
         
         nameEl.textContent = winnerName;
         cardEl.textContent = `con ${cardName}`;
+        
+        // Set color based on win/lose
+        if (isWinner) {
+            popup.classList.remove('loser');
+        } else {
+            popup.classList.add('loser');
+        }
         
         overlay.classList.remove('hidden');
         popup.classList.remove('hidden');

@@ -160,9 +160,11 @@ const SocketClient = {
                 }
                 // Show trick winner popup
                 if (data.game_state.trick_winner) {
+                    const isCurrentPlayerWinner = data.game_state.trick_winner.player_id === App.playerId;
                     GameUI.showTrickWinner(
                         data.game_state.trick_winner.player_name,
-                        data.game_state.trick_winner.card?.display_name || ''
+                        data.game_state.trick_winner.card?.display_name || '',
+                        isCurrentPlayerWinner
                     );
                 }
                 // After 3 seconds, advance (only one client needs to trigger this)
