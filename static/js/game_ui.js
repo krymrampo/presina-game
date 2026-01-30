@@ -281,10 +281,26 @@ const GameUI = {
             let betInfo = '';
             if (player.is_spectator) {
                 betInfo = '👁️ Spettatore';
-            } else if (player.bet !== null) {
-                betInfo = `Puntata: ${player.bet} | Prese: ${player.tricks_won}`;
             } else if (gameState.phase === 'betting') {
-                betInfo = player.player_id === gameState.current_better_id ? 'Sta puntando...' : 'In attesa';
+                // During betting phase
+                if (player.bet !== null) {
+                    betInfo = `✓ Puntato: <strong>${player.bet}</strong>`;
+                } else if (player.player_id === gameState.current_better_id) {
+                    betInfo = '🎯 <em>Sta puntando...</em>';
+                } else {
+                    betInfo = '⏳ In attesa...';
+                }
+            } else {
+                // During playing phase - show bet vs tricks with progress indicator
+                if (player.bet !== null) {
+                    const diff = player.tricks_won - player.bet;
+                    let statusIcon = '';
+                    if (diff < 0) statusIcon = '🔸'; // Still needs tricks
+                    else if (diff === 0) statusIcon = '✅'; // On target
+                    else statusIcon = '⚠️'; // Exceeded
+                    
+                    betInfo = `${statusIcon} Puntata: <strong>${player.bet}</strong> | Prese: <strong>${player.tricks_won}</strong>`;
+                }
             }
             
             const spectatorBadge = player.is_spectator ? ' 👁️' : '';
@@ -387,38 +403,111 @@ const GameUI = {
     // ==================== Betting Area ====================
     updateBettingArea(gameState) {
         const bettingArea = document.getElementById('betting-area');
+        const betsSummary = document.getElementById('bets-summary');
+        const tableBetsOverlay = document.getElementById('table-bets-overlay');
         const isMyTurn = gameState.current_better_id === App.playerId;
         
+        // Handle betting area (in left panel) - only when it's my turn
         if (gameState.phase !== 'betting' || !isMyTurn) {
             bettingArea.classList.add('hidden');
-            return;
-        }
-        
-        bettingArea.classList.remove('hidden');
-        
-        const betButtons = document.getElementById('bet-buttons');
-        const forbiddenBet = gameState.forbidden_bet;
-        
-        let buttonsHtml = '';
-        for (let i = 0; i <= gameState.cards_this_turn; i++) {
-            const isForbidden = i === forbiddenBet;
-            const btnClass = isForbidden ? 'btn btn-danger bet-btn btn-forbidden' : 'btn btn-primary bet-btn';
-            const disabled = isForbidden ? 'disabled' : '';
-            const onclick = isForbidden ? '' : `onclick="makeBet(${i})"`;
-            
-            buttonsHtml += `<button class="${btnClass}" ${disabled} ${onclick}>${i}</button>`;
-        }
-        
-        betButtons.innerHTML = buttonsHtml;
-        
-        // Forbidden bet note
-        const forbiddenNote = document.getElementById('forbidden-bet-note');
-        if (forbiddenBet !== null) {
-            forbiddenNote.textContent = `Non puoi puntare ${forbiddenBet} (la somma sarebbe uguale alle carte)`;
-            forbiddenNote.classList.remove('hidden');
         } else {
-            forbiddenNote.classList.add('hidden');
+            bettingArea.classList.remove('hidden');
+            
+            const betButtons = document.getElementById('bet-buttons');
+            const forbiddenBet = gameState.forbidden_bet;
+            
+            let buttonsHtml = '';
+            for (let i = 0; i <= gameState.cards_this_turn; i++) {
+                const isForbidden = i === forbiddenBet;
+                const btnClass = isForbidden ? 'btn btn-danger bet-btn btn-forbidden' : 'btn btn-primary bet-btn';
+                const disabled = isForbidden ? 'disabled' : '';
+                const onclick = isForbidden ? '' : `onclick="makeBet(${i})"`;
+                
+                buttonsHtml += `<button class="${btnClass}" ${disabled} ${onclick}>${i}</button>`;
+            }
+            
+            betButtons.innerHTML = buttonsHtml;
+            
+            // Forbidden bet note
+            const forbiddenNote = document.getElementById('forbidden-bet-note');
+            if (forbiddenBet !== null) {
+                forbiddenNote.textContent = `Non puoi puntare ${forbiddenBet} (la somma sarebbe uguale alle carte)`;
+                forbiddenNote.classList.remove('hidden');
+            } else {
+                forbiddenNote.classList.add('hidden');
+            }
         }
+        
+        // Show bets summary in left panel during betting phase
+        if (gameState.phase === 'betting') {
+            betsSummary.classList.remove('hidden');
+            this._updateBetsSummary(gameState);
+            
+            // Show table overlay with all bets
+            tableBetsOverlay.classList.remove('hidden');
+            this._updateTableBetsOverlay(gameState);
+        } else {
+            betsSummary.classList.add('hidden');
+            tableBetsOverlay.classList.add('hidden');
+        }
+    },
+    
+    // Update bets summary in left panel
+    _updateBetsSummary(gameState) {
+        const betsList = document.getElementById('bets-list');
+        if (!betsList) return;
+        
+        const activePlayers = gameState.players.filter(p => !p.is_spectator && !p.is_eliminated);
+        
+        betsList.innerHTML = activePlayers.map(player => {
+            const hasBet = player.bet !== null && player.bet !== undefined;
+            const isCurrent = player.player_id === gameState.current_better_id;
+            const betClass = isCurrent ? 'betting' : '';
+            const betDisplay = hasBet ? player.bet : (isCurrent ? '...' : '-');
+            
+            return `
+                <div class="bet-item ${betClass}">
+                    <span class="bet-name">${escapeHtml(player.name)}</span>
+                    <span class="bet-value">${betDisplay}</span>
+                </div>
+            `;
+        }).join('');
+    },
+    
+    // Update table bets overlay
+    _updateTableBetsOverlay(gameState) {
+        const tableBetsList = document.getElementById('table-bets-list');
+        if (!tableBetsList) return;
+        
+        const activePlayers = gameState.players.filter(p => !p.is_spectator && !p.is_eliminated);
+        const totalBets = activePlayers.reduce((sum, p) => sum + (p.bet !== null ? p.bet : 0), 0);
+        
+        tableBetsList.innerHTML = activePlayers.map(player => {
+            const hasBet = player.bet !== null && player.bet !== undefined;
+            const isCurrent = player.player_id === gameState.current_better_id;
+            const currentClass = isCurrent ? 'current' : '';
+            
+            let statusText = '';
+            if (hasBet) {
+                statusText = `<span class="tb-value">${player.bet}</span>`;
+            } else if (isCurrent) {
+                statusText = '<span class="tb-status">sta puntando...</span>';
+            } else {
+                statusText = '<span class="tb-status">in attesa</span>';
+            }
+            
+            return `
+                <div class="table-bet-item ${currentClass}">
+                    <span class="tb-name">${escapeHtml(player.name)}</span>
+                    ${statusText}
+                </div>
+            `;
+        }).join('') + `
+            <div class="table-bet-item" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                <span class="tb-name">TOTALE</span>
+                <span class="tb-value">${totalBets} / ${gameState.cards_this_turn}</span>
+            </div>
+        `;
     },
     
     // ==================== Jolly Choice ====================

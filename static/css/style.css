@@ -657,15 +657,11 @@ input[type="text"]::placeholder {
 .game-footer {
     background: var(--bg-card);
     border-top: 1px solid var(--border-color);
-    padding: 8px 16px;
+    padding: 6px 16px;
     text-align: center;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
+    flex-shrink: 0;
 }
 
 .game-container {
@@ -1081,9 +1077,18 @@ input[type="text"]::placeholder {
 }
 
 .table-position .player-bet {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 3px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.table-position .player-bet strong {
+    color: var(--primary);
+    font-weight: 700;
 }
 
 /* Players Panel */
@@ -1170,17 +1175,27 @@ input[type="text"]::placeholder {
     font-weight: 600;
 }
 
-/* Betting Area */
+/* Betting Area (now in left panel) */
 .betting-area {
-    padding: 20px;
-    background: var(--bg-card);
+    padding: 16px;
+    background: var(--bg-medium);
     text-align: center;
-    border-top: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-top: 16px;
+    border: 1px solid var(--primary);
+}
+
+.betting-area h4 {
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .betting-area h3 {
-    margin-bottom: 16px;
-    font-size: 14px;
+    margin-bottom: 12px;
+    font-size: 13px;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1204,9 +1219,121 @@ input[type="text"]::placeholder {
 
 .forbidden-note {
     color: var(--danger);
-    margin-top: 12px;
-    font-size: 13px;
+    margin-top: 10px;
+    font-size: 12px;
     font-weight: 500;
+}
+
+/* Bets Summary in left panel */
+.bets-summary {
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--bg-medium);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.bets-summary h4 {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.bets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.bet-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 4px 8px;
+    background: var(--bg-card);
+    border-radius: 4px;
+}
+
+.bet-item .bet-name {
+    color: var(--text-primary);
+}
+
+.bet-item .bet-value {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.bet-item.betting .bet-value {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Table Bets Overlay */
+.table-bets-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(13, 31, 26, 0.95);
+    padding: 24px 32px;
+    border-radius: var(--border-radius-lg);
+    border: 2px solid var(--primary);
+    text-align: center;
+    z-index: 20;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+    min-width: 280px;
+}
+
+.table-bets-overlay h3 {
+    color: var(--primary);
+    margin-bottom: 16px;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.table-bets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.table-bet-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.table-bet-item.current {
+    border-color: var(--primary);
+    background: rgba(212, 175, 55, 0.15);
+    animation: pulse-turn 2s infinite;
+}
+
+.table-bet-item .tb-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.table-bet-item .tb-value {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.table-bet-item .tb-status {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 13px;
 }
 
 /* Jolly Choice */

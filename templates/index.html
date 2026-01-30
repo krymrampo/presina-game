@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presina - Gioco di Carte Online</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260130c">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260130d">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
@@ -193,12 +193,30 @@
                 
                 <!-- Main Game Area -->
                 <div class="game-main">
-                    <!-- Left Panel: Hand -->
+                    <!-- Left Panel: Hand & Betting -->
                     <div class="hand-panel">
                         <h3>Le tue carte</h3>
                         <div id="player-hand" class="hand-area">
                             <!-- Cards will be rendered here -->
                         </div>
+                        
+                        <!-- Betting Area (moved here) -->
+                        <div id="betting-area" class="betting-area hidden">
+                            <h4>Fai la tua puntata</h4>
+                            <div id="bet-buttons" class="bet-buttons">
+                                <!-- Bet buttons rendered by JS -->
+                            </div>
+                            <p id="forbidden-bet-note" class="forbidden-note hidden"></p>
+                        </div>
+                        
+                        <!-- Bets Summary (visible during betting phase) -->
+                        <div id="bets-summary" class="bets-summary hidden">
+                            <h4>Puntate</h4>
+                            <div id="bets-list" class="bets-list">
+                                <!-- Bets rendered here -->
+                            </div>
+                        </div>
+                        
                         <div id="special-turn-note" class="special-note hidden">
                             ⚠️ Turno speciale: vedi le carte degli altri, non le tue!
                         </div>
@@ -231,13 +249,12 @@
                     </div>
                 </div>
                 
-                <!-- Betting Area -->
-                <div id="betting-area" class="betting-area hidden">
-                    <h3>Fai la tua puntata</h3>
-                    <div id="bet-buttons" class="bet-buttons">
-                        <!-- Bet buttons rendered by JS -->
+                <!-- Table Bets Overlay (visible during betting phase) -->
+                <div id="table-bets-overlay" class="table-bets-overlay hidden">
+                    <h3>Puntate in corso...</h3>
+                    <div id="table-bets-list" class="table-bets-list">
+                        <!-- Bets displayed here -->
                     </div>
-                    <p id="forbidden-bet-note" class="forbidden-note hidden"></p>
                 </div>
                 
                 <!-- Jolly Choice -->
@@ -313,9 +330,9 @@
         </div>
     </div>
     
-    <script src="/static/js/main.js?v=20260130c"></script>
-    <script src="/static/js/socket_client.js?v=20260130c"></script>
-    <script src="/static/js/game_ui.js?v=20260130c"></script>
-    <script src="/static/js/chat.js?v=20260130c"></script>
+    <script src="/static/js/main.js?v=20260130d"></script>
+    <script src="/static/js/socket_client.js?v=20260130d"></script>
+    <script src="/static/js/game_ui.js?v=20260130d"></script>
+    <script src="/static/js/chat.js?v=20260130d"></script>
 </body>
 </html>
