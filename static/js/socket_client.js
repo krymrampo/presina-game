@@ -44,10 +44,16 @@ const SocketClient = {
         socket.on('error', (data) => {
             console.error('Socket error:', data);
             
+            // Shake animation on card confirm popup if visible
+            const cardConfirm = document.getElementById('card-confirm');
+            if (cardConfirm && !cardConfirm.classList.contains('hidden')) {
+                cardConfirm.classList.add('animate-shake');
+                setTimeout(() => cardConfirm.classList.remove('animate-shake'), 500);
+            }
+            
             // If we were trying to play a card and got an error, re-enable the confirm button
             if (App.selectedCard) {
                 const confirmBtn = document.getElementById('btn-confirm-card');
-                const cardConfirm = document.getElementById('card-confirm');
                 if (confirmBtn && cardConfirm && !cardConfirm.classList.contains('hidden')) {
                     confirmBtn.disabled = false;
                     confirmBtn.textContent = '✓ Gioca';
@@ -79,6 +85,13 @@ const SocketClient = {
         
         socket.on('join_error', (data) => {
             // Handle join errors (e.g., wrong access code)
+            // Shake the private join modal if visible
+            const joinModal = document.getElementById('join-private-modal');
+            const modalContent = joinModal?.querySelector('.modal-content');
+            if (modalContent && joinModal && !joinModal.classList.contains('hidden')) {
+                modalContent.classList.add('animate-shake');
+                setTimeout(() => modalContent.classList.remove('animate-shake'), 500);
+            }
             alert(data.message || 'Errore durante l\'accesso alla stanza');
         });
         

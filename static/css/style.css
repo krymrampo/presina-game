@@ -1640,6 +1640,101 @@ input[type="text"]::placeholder {
     background: #94a3b8;
 }
 
+/* ==================== Animazioni Extra ==================== */
+
+/* Shake - per errori */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Bounce - per vittoria */
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-20px); }
+    50% { transform: translateY(0); }
+    75% { transform: translateY(-10px); }
+}
+
+.animate-bounce {
+    animation: bounce 0.6s ease;
+}
+
+/* Slide-in per popup */
+@keyframes slideIn {
+    from { 
+        opacity: 0; 
+        transform: translate(-50%, -60%);
+    }
+    to { 
+        opacity: 1; 
+        transform: translate(-50%, -50%);
+    }
+}
+
+.card-confirm:not(.hidden) {
+    animation: slideIn 0.3s ease;
+}
+
+.jolly-choice:not(.hidden) {
+    animation: slideIn 0.3s ease;
+}
+
+/* Pulse per turno giocatore */
+@keyframes pulse-turn {
+    0%, 100% { 
+        box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 0 10px rgba(212, 175, 55, 0);
+        transform: scale(1.02);
+    }
+}
+
+.current-turn-pulse {
+    animation: pulse-turn 2s infinite;
+}
+
+/* Glow per mano vincente */
+@keyframes glow {
+    0%, 100% { 
+        box-shadow: 0 0 5px var(--primary), 0 0 10px var(--primary);
+    }
+    50% { 
+        box-shadow: 0 0 20px var(--primary), 0 0 30px var(--primary);
+    }
+}
+
+.animate-glow {
+    animation: glow 1.5s ease-in-out infinite;
+}
+
+/* Fade scale per notifiche */
+@keyframes fadeScale {
+    0% { 
+        opacity: 0; 
+        transform: scale(0.8);
+    }
+    100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+}
+
+.trick-winner-popup:not(.hidden) {
+    animation: fadeScale 0.4s ease;
+}
+
+.turn-results:not(.hidden) {
+    animation: fadeScale 0.3s ease;
+}
+
 /* ==================== Responsive ==================== */
 @media (max-width: 1024px) {
     .game-main {

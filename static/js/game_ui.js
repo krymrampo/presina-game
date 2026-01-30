@@ -290,7 +290,7 @@ const GameUI = {
             const spectatorBadge = player.is_spectator ? ' 👁️' : '';
             
             return `
-                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''}">
+                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn current-turn-pulse' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''}">
                     <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}</div>
                     <div class="player-bet">${betInfo}</div>
                 </div>
@@ -446,6 +446,7 @@ const GameUI = {
             nameEl.style.display = 'none';
             cardEl.style.display = 'none';
             popup.classList.remove('loser');
+            popup.classList.add('animate-bounce');
         } else {
             // Ha vinto un altro
             titleEl.textContent = `${winnerName} ha vinto la mano`;
@@ -453,10 +454,20 @@ const GameUI = {
             cardEl.textContent = `con ${cardName}`;
             cardEl.style.display = 'block';
             popup.classList.add('loser');
+            popup.classList.remove('animate-bounce');
         }
         
         overlay.classList.remove('hidden');
         popup.classList.remove('hidden');
+        
+        // Highlight winning card with glow animation
+        setTimeout(() => {
+            const winningCards = document.querySelectorAll('.played-card-position');
+            winningCards.forEach(cardEl => {
+                // Add glow to all cards on table (the winner will be obvious from popup)
+                cardEl.classList.add('animate-glow');
+            });
+        }, 100);
         
         // Auto hide after 3 seconds
         setTimeout(() => {
@@ -465,6 +476,11 @@ const GameUI = {
             // Reset display properties
             nameEl.style.display = '';
             cardEl.style.display = '';
+            // Remove glow from cards
+            const winningCards = document.querySelectorAll('.played-card-position');
+            winningCards.forEach(cardEl => {
+                cardEl.classList.remove('animate-glow');
+            });
         }, 3000);
     },
     
