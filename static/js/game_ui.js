@@ -132,8 +132,11 @@ const GameUI = {
                 phaseIndicator.textContent = gameState.phase;
         }
         
-        // Trick info
-        document.getElementById('trick-info').textContent = `Mano ${gameState.current_trick + 1}/${gameState.cards_this_turn}`;
+        // Trick info (now in header)
+        const trickInfoEl = document.getElementById('trick-info');
+        if (trickInfoEl) {
+            trickInfoEl.textContent = `Mano ${gameState.current_trick + 1}/${gameState.cards_this_turn}`;
+        }
     },
     
     // ==================== Spectator Banner ====================
