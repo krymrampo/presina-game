@@ -283,8 +283,10 @@ def register_game_events(socketio):
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
         
+        state = room.game.get_state_for_player(player_id)
+        state['admin_id'] = room.admin_id
         emit('game_state', {
-            'game_state': room.game.get_state_for_player(player_id)
+            'game_state': state
         })
 
 

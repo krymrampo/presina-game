@@ -25,6 +25,7 @@ class Player:
         self.bet: Optional[int] = None
         self.tricks_won = 0
         self.is_online = True
+        self.offline_since = None  # Timestamp when marked offline
         self.is_spectator = False
         self.join_next_turn = False  # For players joining mid-game
         self.ready_for_next_turn = False

@@ -504,6 +504,11 @@ input[type="text"]::placeholder {
     font-size: 14px;
 }
 
+.banner-actions {
+    display: flex;
+    gap: 8px;
+}
+
 .banner.hidden {
     display: none;
 }

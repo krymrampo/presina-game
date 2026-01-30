@@ -80,17 +80,20 @@ def register_lobby_events(socketio):
         
         # Get player_id BEFORE unregistering (otherwise it's deleted)
         player_id = room_manager.get_player_by_sid(request.sid)
-        room = room_manager.get_player_room(player_id) if player_id else None
         
         # Now unregister the socket
         room_manager.unregister_socket(request.sid)
         
         # Notify room if player was in one
+        room = room_manager.get_player_room(player_id) if player_id else None
         if player_id and room:
-            socketio.emit('player_disconnected', {
-                'player_id': player_id
-            }, room=room.room_id)
-            socketio.emit('room_update', room.to_dict(), room=room.room_id)
+            # Broadcast updated per-player state so UIs reflect offline status
+            _emit_room_state(socketio, room, 'game_state')
+        
+        # Broadcast updated room list (may clean up offline ghosts)
+        socketio.emit('rooms_list', {
+            'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
+        })
     
     @socketio.on('register_player')
     def handle_register(data):
@@ -283,6 +286,44 @@ def register_lobby_events(socketio):
         socketio.emit('rooms_list', {
             'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
         })
+
+    @socketio.on('abandon_room')
+    def handle_abandon_room(data):
+        """
+        Abandon a room explicitly (clear mapping to allow joining another room).
+        Data: { player_id }
+        """
+        player_id = data.get('player_id')
+
+        if not player_id:
+            emit('error', {'message': 'ID giocatore mancante'})
+            return
+
+        if not _ensure_player_socket(player_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
+            return
+
+        room = room_manager.get_player_room(player_id)
+        room_id = room.room_id if room else None
+
+        success, message, room = room_manager.abandon_room(player_id)
+
+        if not success:
+            emit('error', {'message': message})
+            return
+
+        if room_id:
+            leave_room(room_id)
+
+        if room:
+            _emit_room_state(socketio, room, 'game_state', exclude_player_id=player_id)
+
+        emit('left_room', {'message': message})
+
+        # Broadcast updated room list
+        socketio.emit('rooms_list', {
+            'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
+        })
     
     @socketio.on('kick_player')
     def handle_kick_player(data):
@@ -364,5 +405,8 @@ def register_lobby_events(socketio):
         emit('player_reconnected', {
             'player_id': player_id
         }, room=room.room_id, include_self=False)
+        
+        # Broadcast updated per-player state so online status is refreshed
+        _emit_room_state(socketio, room, 'game_state')
 
 

@@ -86,6 +86,7 @@ class RoomManager:
     MAX_CHAT_MESSAGES = 100
     ROOM_MAX_AGE_HOURS = 24.0  # Delete inactive rooms after 24h
     FINISHED_ROOM_MAX_AGE_MINUTES = 30.0  # Delete finished games after 30min
+    OFFLINE_GRACE_SECONDS_WAITING = 30.0  # Grace period before removing offline players in lobby
     
     def __init__(self):
         self.rooms: Dict[str, Room] = {}
@@ -111,6 +112,44 @@ class RoomManager:
             self.delete_room(room_id)
         
         return len(to_delete)
+
+    def cleanup_offline_players(self) -> int:
+        """
+        Remove waiting rooms where all players stayed offline too long.
+        Returns number of rooms deleted.
+        """
+        now = time.time()
+        deleted = 0
+
+        for room_id, room in list(self.rooms.items()):
+            if room.game.phase != GamePhase.WAITING:
+                continue
+
+            players = list(room.game.players.values())
+            if not players:
+                self.delete_room(room_id)
+                deleted += 1
+                continue
+
+            if any(p.is_online for p in players):
+                continue  # keep rooms with at least one online player
+
+            # All players offline - check grace
+            latest_offline = 0.0
+            for player in players:
+                offline_since = getattr(player, 'offline_since', None)
+                if offline_since is None:
+                    # Unknown offline timestamp - treat as stale to avoid ghosts
+                    latest_offline = 0.0
+                    break
+                if offline_since > latest_offline:
+                    latest_offline = offline_since
+
+            if latest_offline == 0.0 or now - latest_offline >= self.OFFLINE_GRACE_SECONDS_WAITING:
+                self.delete_room(room_id)
+                deleted += 1
+
+        return deleted
     
     # ==================== Room Management ====================
     
@@ -155,6 +194,7 @@ class RoomManager:
     
     def get_public_rooms(self) -> List[Room]:
         """Get all public rooms for the lobby."""
+        self.cleanup_offline_players()
         return [r for r in self.rooms.values() if r.is_public]
     
     def search_rooms(self, query: str) -> List[Room]:
@@ -272,6 +312,8 @@ class RoomManager:
             player = room.game.get_player(player_id)
             if player:
                 player.is_online = False
+                player.offline_since = time.time()
+                player.sid = None
             # Don't remove from player_rooms so they can rejoin
             return True, "Disconnesso dalla partita"
         
@@ -288,6 +330,48 @@ class RoomManager:
             room.admin_id = new_admin_id
         
         return True, "Uscito dalla stanza"
+
+    def abandon_room(self, player_id: str) -> tuple[bool, str, Optional[Room]]:
+        """
+        Abandon a room explicitly (clears mapping so player can join another room).
+
+        Returns:
+            (success, message, room)
+        """
+        if player_id not in self.player_rooms:
+            return False, "Non sei in nessuna stanza", None
+
+        room_id = self.player_rooms[player_id]
+        room = self.get_room(room_id)
+
+        if not room:
+            del self.player_rooms[player_id]
+            return True, "Stanza non trovata", None
+
+        room.update_activity()
+
+        # If game not in progress, use normal leave
+        if room.game.phase in (GamePhase.WAITING, GamePhase.GAME_OVER):
+            success, msg = self.leave_room(player_id)
+            return success, msg, room if room_id in self.rooms else None
+
+        # Game in progress: force remove player from game to free the slot
+        room.game.force_remove_player(player_id)
+
+        if player_id in self.player_rooms:
+            del self.player_rooms[player_id]
+
+        # Reassign admin if needed
+        if room.admin_id == player_id:
+            remaining_ids = list(room.game.players.keys())
+            room.admin_id = remaining_ids[0] if remaining_ids else room.admin_id
+
+        # Delete room if empty
+        if len(room.game.players) == 0:
+            self.delete_room(room_id)
+            return True, "Stanza chiusa", None
+
+        return True, "Stanza abbandonata", room
     
     def kick_player(self, admin_id: str, player_id: str) -> tuple[bool, str]:
         """
@@ -356,6 +440,7 @@ class RoomManager:
         # Update player's socket and online status
         player.sid = new_sid
         player.is_online = True
+        player.offline_since = None
         
         return True, "Riconnesso alla stanza", room
     
@@ -377,6 +462,8 @@ class RoomManager:
                 player = room.game.get_player(player_id)
                 if player:
                     player.is_online = False
+                    player.offline_since = time.time()
+                    player.sid = None
                     room.game.auto_advance_offline()
                 
                 # Handle admin reassignment if admin disconnects

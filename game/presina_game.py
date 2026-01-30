@@ -84,6 +84,50 @@ class PresinaGameOnline:
             self.player_order.remove(player_id)
             return True
         return False
+
+    def force_remove_player(self, player_id: str) -> bool:
+        """Force remove a player even if the game has started."""
+        if player_id not in self.players:
+            return False
+
+        # Remove references first
+        self.bets_made = [pid for pid in self.bets_made if pid != player_id]
+        self.cards_on_table = [(pid, card) for pid, card in self.cards_on_table if pid != player_id]
+        self.last_trick_cards = [(pid, card) for pid, card in self.last_trick_cards if pid != player_id]
+
+        if self.pending_jolly_player == player_id:
+            self.pending_jolly_player = None
+            if self.phase == GamePhase.WAITING_JOLLY:
+                self.phase = GamePhase.PLAYING
+
+        if self.trick_winner_id == player_id:
+            self.trick_winner_id = None
+
+        # Remove player from game
+        del self.players[player_id]
+        if player_id in self.player_order:
+            self.player_order.remove(player_id)
+
+        # Recompute indices to keep them in range
+        active = self.get_active_players()
+        if active:
+            self.first_better_index = self.first_better_index % len(active)
+            self.trick_starter_index = self.trick_starter_index % len(active)
+            self.current_player_index = self.trick_starter_index
+        else:
+            self.first_better_index = 0
+            self.trick_starter_index = 0
+            self.current_player_index = 0
+
+        # If betting/playing, check if we can advance
+        if self.phase == GamePhase.BETTING:
+            if active and len(self.bets_made) >= len(active):
+                self._start_playing()
+        elif self.phase in (GamePhase.PLAYING, GamePhase.WAITING_JOLLY):
+            if active and len(self.cards_on_table) >= len(active):
+                self._resolve_trick()
+
+        return True
     
     def get_player(self, player_id: str) -> Optional[Player]:
         """Get a player by ID."""

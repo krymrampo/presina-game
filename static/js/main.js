@@ -45,10 +45,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     setupEventListeners();
+    autoEnterLobbyIfSaved();
 });
 
 function generatePlayerId() {
     return 'p_' + Math.random().toString(36).substr(2, 9);
+}
+
+function autoEnterLobbyIfSaved() {
+    const savedPlayerId = sessionStorage.getItem('presina_player_id');
+    const savedPlayerName = sessionStorage.getItem('presina_player_name');
+    
+    if (!savedPlayerId || !savedPlayerName) {
+        return;
+    }
+    
+    // Ensure state is restored
+    App.playerId = savedPlayerId;
+    App.playerName = savedPlayerName;
+    document.getElementById('player-name').value = savedPlayerName;
+    
+    // Go straight to lobby list on refresh
+    SocketClient.connect();
+    SocketClient.registerPlayer();
+    showScreen('lobby');
+    SocketClient.listRooms();
+    checkAndShowRejoinBanner();
 }
 
 // ==================== Screen Navigation ====================
@@ -99,6 +121,7 @@ function setupEventListeners() {
     document.getElementById('btn-rejoin').addEventListener('click', () => {
         SocketClient.rejoinGame();
     });
+    document.getElementById('btn-abandon').addEventListener('click', abandonSavedRoom);
     
     // Room name enter key
     document.getElementById('room-name').addEventListener('keypress', (e) => {
@@ -195,6 +218,24 @@ function checkAndShowRejoinBanner() {
             console.error('Failed to parse saved room:', e);
         }
     }
+}
+
+function abandonSavedRoom() {
+    if (!confirm('Vuoi abbandonare questa stanza? Non potrai rientrare.')) {
+        return;
+    }
+    
+    SocketClient.abandonRoom();
+    
+    // Clear local session immediately
+    App.currentRoom = null;
+    App.gameState = null;
+    sessionStorage.removeItem('presina_room');
+    
+    const banner = document.getElementById('existing-room-banner');
+    if (banner) banner.classList.add('hidden');
+    
+    SocketClient.listRooms();
 }
 
 function showCreateRoomModal() {
@@ -342,7 +383,10 @@ function updateWaitingRoom(gameState) {
     document.getElementById('room-title').textContent = App.currentRoom?.name || 'Stanza';
     
     // Check if admin
-    App.isAdmin = App.currentRoom?.admin_id === App.playerId;
+    if (gameState.admin_id && App.currentRoom) {
+        App.currentRoom.admin_id = gameState.admin_id;
+    }
+    App.isAdmin = gameState.admin_id === App.playerId;
     
     // Update admin controls
     const adminControls = document.getElementById('admin-controls');
@@ -367,7 +411,7 @@ function updateWaitingRoom(gameState) {
     // Update players grid
     const container = document.getElementById('waiting-players');
     container.innerHTML = gameState.players.map(player => `
-        <div class="player-card ${player.player_id === App.currentRoom?.admin_id ? 'admin' : ''} ${!player.is_online ? 'offline' : ''}">
+        <div class="player-card ${player.player_id === gameState.admin_id ? 'admin' : ''} ${!player.is_online ? 'offline' : ''}">
             ${App.isAdmin && player.player_id !== App.playerId ? `<button class="kick-btn" onclick="kickPlayer('${player.player_id}')">✕</button>` : ''}
             <div class="player-name">${escapeHtml(player.name)}</div>
             <div class="player-status">
