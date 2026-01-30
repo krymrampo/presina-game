@@ -33,6 +33,11 @@ class PresinaGameOnline:
     MIN_PLAYERS = 2
     MAX_PLAYERS = 8
     
+    # Time limits in seconds
+    BETTING_TIME_LIMIT = 60      # 60 seconds to make a bet
+    PLAYING_TIME_LIMIT = 60      # 60 seconds to play a card
+    JOLLY_CHOICE_TIME_LIMIT = 30 # 30 seconds to choose jolly action
+    
     def __init__(self, room_id: str):
         self.room_id = room_id
         self.players: Dict[str, Player] = {}  # player_id -> Player
@@ -57,6 +62,10 @@ class PresinaGameOnline:
         self.game_results: List[dict] = []    # Final standings
         
         self.messages: List[dict] = []        # Game event messages
+        
+        # Timer tracking
+        self.phase_start_time: Optional[float] = None
+        self.turn_time_limit: Optional[int] = None
     
     # ==================== Player Management ====================
     
@@ -161,6 +170,7 @@ class PresinaGameOnline:
             self.trick_starter_index = self.first_better_index
         
         self.phase = GamePhase.BETTING
+        self._start_phase_timer(self.BETTING_TIME_LIMIT)
         self._add_message('system', f"Turno {self.current_turn + 1}: {cards_this_turn} carte")
 
     def auto_advance_offline(self):
@@ -311,11 +321,70 @@ class PresinaGameOnline:
     def _start_playing(self):
         """Transition from betting to playing phase."""
         self.phase = GamePhase.PLAYING
+        self._start_phase_timer(self.PLAYING_TIME_LIMIT)
         active = self.get_active_players()
         if active:
             self.trick_starter_index = self.first_better_index
             self.current_player_index = self.trick_starter_index
         self._add_message('system', "Fase di gioco iniziata")
+    
+    def _start_phase_timer(self, time_limit: int):
+        """Start timer for current phase."""
+        self.phase_start_time = time.time()
+        self.turn_time_limit = time_limit
+    
+    def get_remaining_time(self) -> Optional[int]:
+        """Get remaining time for current phase in seconds."""
+        if self.phase_start_time is None or self.turn_time_limit is None:
+            return None
+        
+        elapsed = time.time() - self.phase_start_time
+        remaining = self.turn_time_limit - elapsed
+        return max(0, int(remaining))
+    
+    def is_time_expired(self) -> bool:
+        """Check if current phase time has expired."""
+        if self.phase_start_time is None or self.turn_time_limit is None:
+            return False
+        
+        elapsed = time.time() - self.phase_start_time
+        return elapsed >= self.turn_time_limit
+    
+    def handle_timeout(self) -> Tuple[bool, str]:
+        """
+        Handle timeout for current phase.
+        Returns (action_taken, message)
+        """
+        if not self.is_time_expired():
+            return False, "Time not expired"
+        
+        if self.phase == GamePhase.BETTING:
+            # Auto-make a valid bet for current player
+            current = self.get_current_better()
+            if current:
+                bet = self._choose_auto_bet()
+                success, msg = self.make_bet(current.player_id, bet)
+                return success, f"Timeout: auto bet {bet} for {current.name}"
+        
+        elif self.phase == GamePhase.PLAYING:
+            # Auto-play a card for current player
+            current = self.get_current_player()
+            if current:
+                card = self._choose_auto_card(current)
+                if card:
+                    if card.is_jolly:
+                        success, msg = self.play_card(current.player_id, card.suit, card.value, 'lascia')
+                    else:
+                        success, msg = self.play_card(current.player_id, card.suit, card.value)
+                    return success, f"Timeout: auto play for {current.name}"
+        
+        elif self.phase == GamePhase.WAITING_JOLLY:
+            # Auto-choose 'lascia' for jolly
+            if self.pending_jolly_player:
+                success, msg = self.play_card(self.pending_jolly_player, None, None, 'lascia')
+                return success, "Timeout: auto jolly choice 'lascia'"
+        
+        return False, "No timeout action for current phase"
     
     # ==================== Playing Phase ====================
     
@@ -367,6 +436,7 @@ class PresinaGameOnline:
             if not jolly_choice:
                 self.pending_jolly_player = player_id
                 self.phase = GamePhase.WAITING_JOLLY
+                self._start_phase_timer(self.JOLLY_CHOICE_TIME_LIMIT)
                 return True, "Scegli: prende o lascia?"
             card.jolly_choice = jolly_choice
         
@@ -598,7 +668,9 @@ class PresinaGameOnline:
             'turn_results': self.turn_results,
             'game_results': self.game_results,
             'is_spectator': is_spectator,
-            'messages': self.messages[-20:]  # Last 20 messages
+            'messages': self.messages[-20:],  # Last 20 messages
+            'time_remaining': self.get_remaining_time(),
+            'time_limit': self.turn_time_limit
         }
     
     def to_dict(self) -> dict:

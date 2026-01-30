@@ -5,6 +5,21 @@
 
 const GameUI = {
     
+    // ==================== Timer Element ====================
+    _createTimerElement() {
+        const timerEl = document.createElement('span');
+        timerEl.id = 'turn-timer';
+        timerEl.className = 'turn-timer';
+        
+        // Insert after phase indicator
+        const phaseIndicator = document.getElementById('phase-indicator');
+        if (phaseIndicator && phaseIndicator.parentNode) {
+            phaseIndicator.parentNode.insertBefore(timerEl, phaseIndicator.nextSibling);
+        }
+        
+        return timerEl;
+    },
+
     // ==================== Main Update ====================
     updateGameScreen(gameState) {
         this.updateHeader(gameState);
@@ -21,6 +36,14 @@ const GameUI = {
     updateHeader(gameState) {
         document.getElementById('turn-number').textContent = `Turno ${gameState.current_turn + 1}/5`;
         document.getElementById('cards-info').textContent = `${gameState.cards_this_turn} carte`;
+        
+        // Update timer if available
+        const timeRemaining = gameState.time_remaining;
+        if (timeRemaining !== null && timeRemaining !== undefined) {
+            const timerEl = document.getElementById('turn-timer') || this._createTimerElement();
+            timerEl.textContent = `⏱️ ${timeRemaining}s`;
+            timerEl.className = 'turn-timer' + (timeRemaining < 10 ? ' warning' : '');
+        }
         
         const phaseIndicator = document.getElementById('phase-indicator');
         phaseIndicator.className = 'phase-indicator';
@@ -110,7 +133,7 @@ const GameUI = {
         handArea.innerHTML = myPlayer.hand.map(card => {
             const isDisabled = !isMyTurn ? 'disabled' : '';
             const clickHandler = isMyTurn ? 
-                `onclick="selectCard('${card.suit}', ${card.value}, '${card.display_name}')"` : '';
+                `onclick="selectCard('${card.suit}', ${card.value}, '${card.display_name}', event)"` : '';
             
             return `
                 <img src="/carte_napoletane/${card.suit}/${card.suit}_${card.value}.jpg" 

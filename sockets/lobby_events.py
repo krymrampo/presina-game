@@ -9,6 +9,7 @@ from flask_socketio import emit, join_room, leave_room
 from game.player import Player
 from game.presina_game import GamePhase
 from rooms.room_manager import room_manager
+from .rate_limiter import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,7 @@ def register_lobby_events(socketio):
         emit('rooms_list', {'rooms': [r.to_dict() for r in rooms]})
     
     @socketio.on('create_room')
+    @rate_limit(max_requests=3, window_seconds=60, error_message="Troppe stanze create, rallenta")
     def handle_create_room(data):
         """
         Create a new room.
@@ -176,6 +178,7 @@ def register_lobby_events(socketio):
         })
     
     @socketio.on('join_room')
+    @rate_limit(max_requests=10, window_seconds=60, error_message="Tentativi di accesso eccessivi")
     def handle_join_room(data):
         """
         Join an existing room.

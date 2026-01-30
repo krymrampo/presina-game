@@ -263,12 +263,14 @@ function updateWaitingRoom(gameState) {
 }
 
 // ==================== Game Functions ====================
-function selectCard(suit, value, displayName) {
+function selectCard(suit, value, displayName, event) {
     App.selectedCard = { suit, value, displayName };
     
     // Update UI
     document.querySelectorAll('.hand-area .card').forEach(c => c.classList.remove('selected'));
-    event.target.classList.add('selected');
+    if (event && event.target) {
+        event.target.classList.add('selected');
+    }
     
     document.getElementById('selected-card-name').textContent = displayName;
     document.getElementById('card-confirm-overlay').classList.remove('hidden');

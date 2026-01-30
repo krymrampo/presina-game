@@ -6,6 +6,7 @@ from flask_socketio import emit
 
 from rooms.room_manager import room_manager
 from game.presina_game import GamePhase
+from .rate_limiter import rate_limit
 
 def _verify_player_socket(player_id: str, sid: str) -> bool:
     """
@@ -66,6 +67,7 @@ def register_game_events(socketio):
         })
     
     @socketio.on('make_bet')
+    @rate_limit(max_requests=5, window_seconds=10, error_message="Troppe puntate, rallenta")
     def handle_make_bet(data):
         """
         Make a bet.
@@ -109,6 +111,7 @@ def register_game_events(socketio):
         _broadcast_game_state(socketio, room)
     
     @socketio.on('play_card')
+    @rate_limit(max_requests=5, window_seconds=10, error_message="Troppe carte giocate, rallenta")
     def handle_play_card(data):
         """
         Play a card.
@@ -157,6 +160,7 @@ def register_game_events(socketio):
             _broadcast_game_state(socketio, room)
     
     @socketio.on('choose_jolly')
+    @rate_limit(max_requests=3, window_seconds=10, error_message="Troppe scelte, rallenta")
     def handle_choose_jolly(data):
         """
         Choose jolly action.
@@ -195,14 +199,24 @@ def register_game_events(socketio):
         """
         Advance from TRICK_COMPLETE phase after 3 second display.
         Data: { player_id }
+        Only authenticated players in the room can trigger this.
         """
         player_id = data.get('player_id')
         
         if not player_id:
             return
         
+        # Verify player identity
+        if not _verify_player_socket(player_id, request.sid):
+            return
+        
         room = room_manager.get_player_room(player_id)
         if not room:
+            return
+        
+        # Verify player is actually in this room
+        player = room.game.get_player(player_id)
+        if not player:
             return
         
         # Only process if in TRICK_COMPLETE phase
@@ -220,6 +234,7 @@ def register_game_events(socketio):
         """
         Admin advances to next turn.
         Data: { player_id }
+        Only the room admin can advance to the next turn (server-side check).
         """
         player_id = data.get('player_id')
         
@@ -237,8 +252,11 @@ def register_game_events(socketio):
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
         
-        # Check if player is admin
+        # Server-side admin check - ignore what client says
         is_admin = room.admin_id == player_id
+        if not is_admin:
+            emit('error', {'message': 'Solo l\'admin può avviare il prossimo turno'})
+            return
         
         success, message = room.game.ready_for_next_turn(player_id, is_admin)
         
@@ -262,6 +280,7 @@ def register_game_events(socketio):
         """
         Get current game state.
         Data: { player_id }
+        Also checks for timeouts and auto-advances if needed.
         """
         player_id = data.get('player_id')
         
@@ -279,9 +298,15 @@ def register_game_events(socketio):
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
         
-        emit('game_state', {
-            'game_state': room.game.get_state_for_player(player_id)
-        })
+        # Check for timeout and auto-advance if needed
+        if room.game.is_time_expired():
+            room.game.handle_timeout()
+            room.game.auto_advance_offline()
+            _broadcast_game_state(socketio, room)
+        else:
+            emit('game_state', {
+                'game_state': room.game.get_state_for_player(player_id)
+            })
 
 
 def _broadcast_game_state(socketio, room):

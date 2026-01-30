@@ -1327,6 +1327,23 @@ input[type="text"]::placeholder {
     padding: 10px 16px;
 }
 
+/* Turn Timer */
+.turn-timer {
+    background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+    margin-left: 12px;
+    animation: fadeIn 0.3s ease;
+}
+
+.turn-timer.warning {
+    background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+    animation: pulse 1s ease-in-out infinite;
+}
+
 /* ==================== Game Over Screen ==================== */
 .game-over-container {
     max-width: 520px;

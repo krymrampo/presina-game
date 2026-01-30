@@ -3,7 +3,7 @@ Presina - Main Flask application.
 """
 import logging
 from urllib.parse import parse_qs
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, render_template, send_from_directory, request, jsonify
 from werkzeug.wrappers import Response
 from flask_socketio import SocketIO
 
@@ -72,9 +72,29 @@ def serve_static(filepath):
     return send_from_directory('static', filepath)
 
 
+@app.route('/admin/cleanup', methods=['POST'])
+def admin_cleanup():
+    """Admin endpoint to cleanup stale rooms."""
+    # Simple auth check - in production use proper auth
+    auth_key = request.headers.get('X-Admin-Key') or request.args.get('key')
+    expected_key = app.config.get('SECRET_KEY')
+    
+    if not auth_key or auth_key != expected_key:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    from rooms.room_manager import room_manager
+    deleted_count = room_manager.cleanup_stale_rooms()
+    
+    return jsonify({
+        'success': True,
+        'deleted_rooms': deleted_count,
+        'remaining_rooms': len(room_manager.rooms)
+    })
+
+
 # ==================== Main ====================
 
 if __name__ == '__main__':
     logger.info("Starting Presina server...")
     logger.info("Open http://localhost:5000 in your browser")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)

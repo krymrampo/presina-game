@@ -3,6 +3,7 @@ Chat Socket.IO events.
 """
 from flask import request
 from flask_socketio import emit
+import html
 
 from rooms.room_manager import room_manager
 
@@ -36,12 +37,16 @@ def register_chat_events(socketio):
         if not room:
             return
         
+        # Sanitize message to prevent XSS
+        sanitized_message = html.escape(message)
+        
         success, msg_dict = room_manager.add_chat_message(
-            room.room_id, player_id, message
+            room.room_id, player_id, sanitized_message
         )
         
         if success:
-            emit('chat_message', msg_dict, room=room.room_id)
+            # Broadcast to all players in the room (including sender)
+            emit('chat_message', msg_dict, room=room.room_id, broadcast=True)
     
     @socketio.on('get_chat_history')
     def handle_get_chat_history(data):

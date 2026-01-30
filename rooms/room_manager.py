@@ -18,6 +18,7 @@ class Room:
     name: str
     admin_id: str
     created_at: float = field(default_factory=time.time)
+    last_activity: float = field(default_factory=time.time)
     is_public: bool = True
     game: PresinaGameOnline = None
     chat_messages: List[dict] = field(default_factory=list)
@@ -25,6 +26,22 @@ class Room:
     def __post_init__(self):
         if self.game is None:
             self.game = PresinaGameOnline(self.room_id)
+    
+    def update_activity(self):
+        """Update last activity timestamp."""
+        self.last_activity = time.time()
+    
+    def is_stale(self, max_age_hours: float = 24.0) -> bool:
+        """Check if room has been inactive for too long."""
+        age = time.time() - self.last_activity
+        return age > (max_age_hours * 3600)
+    
+    def is_finished_and_stale(self, max_age_minutes: float = 30.0) -> bool:
+        """Check if finished game room should be cleaned up."""
+        if self.game.phase != GamePhase.GAME_OVER:
+            return False
+        age = time.time() - self.last_activity
+        return age > (max_age_minutes * 60)
     
     @property
     def status(self) -> str:
@@ -59,11 +76,33 @@ class RoomManager:
     """Manages all game rooms."""
     
     MAX_CHAT_MESSAGES = 100
+    ROOM_MAX_AGE_HOURS = 24.0  # Delete inactive rooms after 24h
+    FINISHED_ROOM_MAX_AGE_MINUTES = 30.0  # Delete finished games after 30min
     
     def __init__(self):
         self.rooms: Dict[str, Room] = {}
         self.player_rooms: Dict[str, str] = {}  # player_id -> room_id
         self.sid_to_player: Dict[str, str] = {}  # socket sid -> player_id
+    
+    def cleanup_stale_rooms(self) -> int:
+        """
+        Remove old inactive rooms.
+        Returns number of rooms deleted.
+        """
+        to_delete = []
+        
+        for room_id, room in self.rooms.items():
+            # Remove finished games after shorter timeout
+            if room.is_finished_and_stale(self.FINISHED_ROOM_MAX_AGE_MINUTES):
+                to_delete.append(room_id)
+            # Remove very old inactive rooms
+            elif room.is_stale(self.ROOM_MAX_AGE_HOURS):
+                to_delete.append(room_id)
+        
+        for room_id in to_delete:
+            self.delete_room(room_id)
+        
+        return len(to_delete)
     
     # ==================== Room Management ====================
     
@@ -130,6 +169,9 @@ class RoomManager:
         room = self.get_room(room_id)
         if not room:
             return False, "Stanza non trovata"
+        
+        # Update activity
+        room.update_activity()
 
         # Disallow joining finished games
         if room.game.phase == GamePhase.GAME_OVER:
@@ -183,6 +225,9 @@ class RoomManager:
         
         room_id = self.player_rooms[player_id]
         room = self.get_room(room_id)
+        
+        if room:
+            room.update_activity()
         
         if not room:
             del self.player_rooms[player_id]
@@ -344,6 +389,9 @@ class RoomManager:
         room = self.get_room(room_id)
         if not room:
             return False, {}
+        
+        # Update activity
+        room.update_activity()
         
         player = room.game.get_player(player_id)
         if not player:
