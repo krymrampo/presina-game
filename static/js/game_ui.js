@@ -204,6 +204,13 @@ const GameUI = {
         const turnKey = `${gameState.current_turn}-${gameState.current_trick}-${isMyTurn}`;
         const currentKey = `${handKey}|${turnKey}`;
         
+        // Don't re-render if card selection popup is open
+        const cardConfirm = document.getElementById('card-confirm');
+        if (cardConfirm && !cardConfirm.classList.contains('hidden')) {
+            // Just update the timer, don't touch the cards
+            return;
+        }
+        
         if (this._previousHand === currentKey) {
             // Only update disabled state without re-rendering
             const cards = handArea.querySelectorAll('.card');
