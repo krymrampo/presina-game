@@ -12,7 +12,8 @@ const App = {
     gameState: null,
     isAdmin: false,
     selectedCard: null,
-    trickAdvanceScheduled: false
+    trickAdvanceScheduled: false,
+    pendingJoinRoomId: null
 };
 
 // ==================== Initialization ====================
@@ -20,11 +21,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check for existing session
     const savedPlayerId = sessionStorage.getItem('presina_player_id');
     const savedPlayerName = sessionStorage.getItem('presina_player_name');
+    const savedRoom = sessionStorage.getItem('presina_room');
     
     if (savedPlayerId && savedPlayerName) {
         App.playerId = savedPlayerId;
         App.playerName = savedPlayerName;
         document.getElementById('player-name').value = savedPlayerName;
+        
+        // Restore room info if exists
+        if (savedRoom) {
+            try {
+                App.currentRoom = JSON.parse(savedRoom);
+                console.log('Restored room from session:', App.currentRoom);
+            } catch (e) {
+                console.error('Failed to parse saved room:', e);
+                sessionStorage.removeItem('presina_room');
+            }
+        }
     } else {
         // Generate new player ID
         App.playerId = generatePlayerId();
@@ -153,6 +166,25 @@ function enterLobby() {
     
     showScreen('lobby');
     SocketClient.listRooms();
+    
+    // Show rejoin banner if we have a saved room
+    checkAndShowRejoinBanner();
+}
+
+function checkAndShowRejoinBanner() {
+    const savedRoom = sessionStorage.getItem('presina_room');
+    const banner = document.getElementById('existing-room-banner');
+    
+    if (savedRoom && banner) {
+        try {
+            const roomData = JSON.parse(savedRoom);
+            banner.querySelector('span').textContent = `Hai una partita in corso: "${roomData.name}"`;
+            banner.classList.remove('hidden');
+            App.currentRoom = roomData;
+        } catch (e) {
+            console.error('Failed to parse saved room:', e);
+        }
+    }
 }
 
 function showCreateRoomModal() {
@@ -236,6 +268,10 @@ function leaveRoom() {
         }
     }
     SocketClient.leaveRoom();
+    // Clear saved room on explicit leave
+    App.currentRoom = null;
+    App.gameState = null;
+    sessionStorage.removeItem('presina_room');
     showScreen('lobby');
     SocketClient.listRooms();
 }
@@ -401,6 +437,7 @@ function backToLobby() {
     SocketClient.leaveRoom();
     App.currentRoom = null;
     App.gameState = null;
+    sessionStorage.removeItem('presina_room');
     showScreen('lobby');
     SocketClient.listRooms();
 }

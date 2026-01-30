@@ -654,6 +654,20 @@ input[type="text"]::placeholder {
     padding: 0; /* Rimuove il padding per occupare tutto lo schermo */
 }
 
+.game-footer {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+    padding: 8px 16px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+}
+
 .game-container {
     height: 100vh;
     display: flex;

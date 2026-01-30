@@ -68,6 +68,11 @@ const SocketClient = {
         socket.on('room_created', (data) => {
             App.currentRoom = data.room;
             App.gameState = data.game_state;
+            // Save room to sessionStorage for rejoin after refresh
+            sessionStorage.setItem('presina_room', JSON.stringify(data.room));
+            // Hide rejoin banner if visible
+            const banner = document.getElementById('existing-room-banner');
+            if (banner) banner.classList.add('hidden');
             showScreen('waiting-room');
             updateWaitingRoom(data.game_state);
         });
@@ -80,6 +85,11 @@ const SocketClient = {
         socket.on('room_joined', (data) => {
             App.currentRoom = data.room;
             App.gameState = data.game_state;
+            // Save room to sessionStorage for rejoin after refresh
+            sessionStorage.setItem('presina_room', JSON.stringify(data.room));
+            // Hide rejoin banner if visible
+            const banner = document.getElementById('existing-room-banner');
+            if (banner) banner.classList.add('hidden');
             
             if (data.game_state.phase === 'waiting') {
                 showScreen('waiting-room');
@@ -110,12 +120,14 @@ const SocketClient = {
         
         socket.on('kicked', (data) => {
             App.currentRoom = null;
+            sessionStorage.removeItem('presina_room');
             showScreen('lobby');
             this.listRooms();
         });
         
         socket.on('left_room', (data) => {
             App.currentRoom = null;
+            sessionStorage.removeItem('presina_room');
         });
         
         socket.on('player_disconnected', (data) => {
@@ -141,6 +153,11 @@ const SocketClient = {
         socket.on('rejoin_success', (data) => {
             App.currentRoom = data.room;
             App.gameState = data.game_state;
+            // Update saved room info
+            sessionStorage.setItem('presina_room', JSON.stringify(data.room));
+            // Hide rejoin banner if visible
+            const banner = document.getElementById('existing-room-banner');
+            if (banner) banner.classList.add('hidden');
             
             if (data.game_state.phase === 'waiting') {
                 showScreen('waiting-room');
@@ -152,7 +169,12 @@ const SocketClient = {
         });
         
         socket.on('rejoin_failed', (data) => {
-            document.getElementById('existing-room-banner').classList.add('hidden');
+            const banner = document.getElementById('existing-room-banner');
+            if (banner) banner.classList.add('hidden');
+            // Clear saved room as it's no longer valid
+            App.currentRoom = null;
+            sessionStorage.removeItem('presina_room');
+            alert('Non è stato possibile rientrare nella partita: ' + (data.message || 'Stanza non disponibile'));
         });
         
         // Game events
