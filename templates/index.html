@@ -230,7 +230,6 @@
                             <div id="played-cards" class="played-cards">
                                 <!-- Played cards go here -->
                             </div>
-                            <div id="trick-info" class="trick-info">Mano 1</div>
                         </div>
                         
                         <!-- Player positions around table -->
@@ -280,7 +279,20 @@
                 <!-- Turn Results -->
                 <div id="turn-results" class="turn-results hidden">
                     <h3>Risultati del Turno</h3>
-                    <div id="results-list" class="results-list"></div>
+                    <div class="results-table-wrap">
+                        <table class="results-table" aria-label="Risultati del turno">
+                            <thead>
+                                <tr>
+                                    <th class="col-name">Giocatore</th>
+                                    <th class="col-bet">Puntata</th>
+                                    <th class="col-won">Prese</th>
+                                    <th class="col-result">Esito</th>
+                                    <th class="col-lives">Vite</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-list"></tbody>
+                        </table>
+                    </div>
                     <button id="btn-next-turn" class="btn btn-primary">Prossimo Turno</button>
                     <div id="ready-count" class="ready-count">Pronti: 0/0</div>
                 </div>

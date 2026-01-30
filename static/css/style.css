@@ -1450,40 +1450,85 @@ input[type="text"]::placeholder {
     color: var(--primary);
 }
 
-.results-list {
+.results-table-wrap {
     margin-bottom: 20px;
+    overflow-x: auto;
 }
 
-.result-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 14px;
-    background: var(--bg-medium);
-    border-radius: var(--border-radius-sm);
-    margin-bottom: 8px;
-    border: 1px solid var(--border-color);
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 13px;
 }
 
-.result-item.correct {
-    border-left: 3px solid var(--success);
+.results-table th,
+.results-table td {
+    padding: 8px 10px;
 }
 
-.result-item.wrong {
-    border-left: 3px solid var(--danger);
-}
-
-.result-item .result-name {
-    font-weight: 500;
-}
-
-.result-item .result-stats {
+.results-table th {
+    text-align: left;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
-.result-item .result-lives {
-    font-size: 1.1rem;
+.results-table td {
+    background: var(--bg-medium);
+    border-top: 1px solid var(--border-color);
+}
+
+.results-table .col-name {
+    width: 32%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.results-table .col-bet,
+.results-table .col-won {
+    width: 12%;
+    text-align: center;
+}
+
+.results-table .col-result {
+    width: 22%;
+    text-align: center;
+}
+
+.results-table .col-lives {
+    width: 22%;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.result-row td:first-child {
+    border-left: 3px solid transparent;
+}
+
+.result-row.correct td:first-child {
+    border-left-color: var(--success);
+}
+
+.result-row.wrong td:first-child {
+    border-left-color: var(--danger);
+}
+
+.life-delta {
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.life-delta.correct {
+    color: var(--success);
+}
+
+.life-delta.wrong {
+    color: var(--danger);
 }
 
 .ready-count {

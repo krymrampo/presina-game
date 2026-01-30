@@ -504,16 +504,18 @@ const GameUI = {
         
         const resultsList = document.getElementById('results-list');
         resultsList.innerHTML = gameState.turn_results.map(result => {
-            const correctClass = result.correct ? 'correct' : 'wrong';
-            const lifeChange = result.life_change === 0 ? '✓' : `${result.life_change}`;
-            const lifeIcon = result.correct ? '✅' : '❌';
+            const rowClass = result.correct ? 'correct' : 'wrong';
+            const lifeDelta = result.life_change === 0 ? '±0' : `${result.life_change}`;
+            const outcomeText = result.correct ? '✅ Corretta' : '❌ Sbagliata';
             
             return `
-                <div class="result-item ${correctClass}">
-                    <span class="result-name">${escapeHtml(result.name)}</span>
-                    <span class="result-stats">Puntata: ${result.bet} | Prese: ${result.tricks_won}</span>
-                    <span class="result-lives">${lifeIcon} ❤️${result.lives}</span>
-                </div>
+                <tr class="result-row ${rowClass}">
+                    <td class="col-name">${escapeHtml(result.name)}</td>
+                    <td class="col-bet">${result.bet}</td>
+                    <td class="col-won">${result.tricks_won}</td>
+                    <td class="col-result">${outcomeText}</td>
+                    <td class="col-lives">❤️ ${result.lives} <span class="life-delta ${rowClass}">${lifeDelta}</span></td>
+                </tr>
             `;
         }).join('');
         
