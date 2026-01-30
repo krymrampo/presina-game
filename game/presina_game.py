@@ -5,9 +5,10 @@ Game rules:
 - 2-8 players, each starts with 5 lives
 - 5 turns with 5, 4, 3, 2, 1 cards respectively
 - Special turn (1 card): players see others' cards but not their own
-- Betting: last player cannot bet the number that makes sum = cards in play
+- Betting: last player cannot bet the number that makes sum = cards in play (except 1-card round)
 - Jolly (Asso di Ori): can be 'prende' (strongest) or 'lascia' (weakest)
 - End of turn: correct bet = no life lost, wrong bet = -1 life
+- Special round repeat: if everyone is correct in the 1-card round, it repeats until someone is wrong
 """
 from typing import List, Dict, Optional, Tuple
 from enum import Enum
@@ -55,6 +56,7 @@ class PresinaGameOnline:
         
         self.turn_results: List[dict] = []    # Results for current turn
         self.game_results: List[dict] = []    # Final standings
+        self.last_turn_all_correct: bool = False  # Track if last turn had no mistakes
         
         self.messages: List[dict] = []        # Game event messages
     
@@ -123,6 +125,8 @@ class PresinaGameOnline:
     
     def _start_turn(self):
         """Start a new turn."""
+        # Reset last turn correctness flag
+        self.last_turn_all_correct = False
         # Reset players for new turn
         for player in self.players.values():
             player.reset_for_turn()
@@ -190,6 +194,10 @@ class PresinaGameOnline:
         Get the forbidden bet for the last player.
         Returns None if not the last player.
         """
+        # Special (1 card) turn: sum can equal cards
+        if self.is_special_turn():
+            return None
+
         active = self.get_active_players()
         if len(self.bets_made) != len(active) - 1:
             return None
@@ -418,13 +426,22 @@ class PresinaGameOnline:
                 self._add_message('result', f"{player.name}: puntata corretta!")
             else:
                 self._add_message('result', f"{player.name}: sbagliato, perde 1 vita")
-        
+
+        # Track if everyone was correct this turn
+        self.last_turn_all_correct = all(r.get('correct') for r in self.turn_results)
+
         self.phase = GamePhase.TURN_RESULTS
-        
+
         # Check for game over
         active = self.get_active_players()
-        if self.current_turn >= 4 or len(active) <= 1:
+        if len(active) <= 1:
             self._end_game()
+        elif self.current_turn >= 4:
+            # On last turn, only end if someone made a mistake
+            if not self.last_turn_all_correct:
+                self._end_game()
+            else:
+                self._add_message('system', "Nessuno sbaglia: il turno da 1 carta si ripete")
     
     def ready_for_next_turn(self, player_id: str, is_admin: bool = False) -> Tuple[bool, str]:
         """Mark ready or advance to next turn (admin only advances)."""
@@ -444,12 +461,16 @@ class PresinaGameOnline:
         self.last_trick_cards = []
         
         # Admin advances the turn
-        self.current_turn += 1
-        if self.current_turn < 5:
+        if self.current_turn >= 4 and self.last_turn_all_correct:
+            # Repeat the special (1 card) turn until someone makes a mistake
             self._start_turn()
         else:
-            self._end_game()
-        
+            self.current_turn += 1
+            if self.current_turn < 5:
+                self._start_turn()
+            else:
+                self._end_game()
+
         return True, "Prossimo turno avviato"
     
     def _end_game(self):

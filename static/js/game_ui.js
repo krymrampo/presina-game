@@ -75,12 +75,13 @@ const GameUI = {
         const handArea = document.getElementById('player-hand');
         const myPlayer = gameState.players.find(p => p.player_id === App.playerId);
         const isMyTurn = gameState.current_player_id === App.playerId && gameState.phase === 'playing';
+        const isSpecialTurn = gameState.is_special_turn;
         
         // Special turn note
         const specialNote = document.getElementById('special-turn-note');
         const othersCards = document.getElementById('others-cards');
         
-        if (gameState.is_special_turn) {
+        if (isSpecialTurn) {
             specialNote.classList.remove('hidden');
             
             // Show other players' cards
@@ -106,12 +107,55 @@ const GameUI = {
         
         // My cards
         if (!myPlayer || !myPlayer.hand || myPlayer.hand.length === 0) {
-            if (gameState.is_special_turn) {
+            if (isSpecialTurn) {
                 handArea.innerHTML = '<p class="empty-message">La tua carta è nascosta!</p>';
             } else {
                 handArea.innerHTML = '<p class="empty-message">Nessuna carta</p>';
             }
             this._previousHand = null;
+            return;
+        }
+
+        // Don't re-render if card selection popup is open
+        const cardConfirm = document.getElementById('card-confirm');
+        if (cardConfirm && !cardConfirm.classList.contains('hidden')) {
+            return;
+        }
+
+        // Special turn: hide my own card(s), but keep them playable
+        if (isSpecialTurn) {
+            const hiddenHand = [...myPlayer.hand];
+            const handKey = hiddenHand.map(c => `${c.suit}-${c.value}`).join(',');
+            const turnKey = `${gameState.current_turn}-${gameState.current_trick}-${isMyTurn}`;
+            const currentKey = `hidden|${handKey}|${turnKey}`;
+            
+            if (this._previousHand === currentKey) {
+                // Only update disabled state without re-rendering
+                const cards = handArea.querySelectorAll('.card');
+                cards.forEach(card => {
+                    if (isMyTurn) {
+                        card.classList.remove('disabled');
+                    } else {
+                        card.classList.add('disabled');
+                    }
+                });
+                return;
+            }
+            
+            this._previousHand = currentKey;
+            
+            handArea.innerHTML = hiddenHand.map(card => {
+                const isDisabled = !isMyTurn ? 'disabled' : '';
+                const clickHandler = isMyTurn ?
+                    `onclick="selectCard('${card.suit}', ${card.value}, 'Carta nascosta', event)"` : '';
+                
+                return `
+                    <div class="card card-back ${isDisabled}"
+                         ${clickHandler}
+                         aria-label="Carta nascosta"
+                         title="Carta nascosta"></div>
+                `;
+            }).join('');
             return;
         }
         
@@ -122,12 +166,6 @@ const GameUI = {
         const handKey = sortedHand.map(c => `${c.suit}-${c.value}`).join(',');
         const turnKey = `${gameState.current_turn}-${gameState.current_trick}-${isMyTurn}`;
         const currentKey = `${handKey}|${turnKey}`;
-        
-        // Don't re-render if card selection popup is open
-        const cardConfirm = document.getElementById('card-confirm');
-        if (cardConfirm && !cardConfirm.classList.contains('hidden')) {
-            return;
-        }
         
         if (this._previousHand === currentKey) {
             // Only update disabled state without re-rendering

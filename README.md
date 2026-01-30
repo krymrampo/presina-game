@@ -7,6 +7,7 @@ Un gioco di carte napoletano multiplayer online, costruito con Flask + Socket.IO
 - **2-8 giocatori** in tempo reale
 - **5 turni** con 5, 4, 3, 2, 1 carte
 - **Turno speciale**: nel turno con 1 carta, vedi le carte degli altri ma non la tua
+- **Ultimo turno ripetuto**: se nel turno da 1 carta nessuno sbaglia, si ripete finché qualcuno sbaglia
 - **Jolly** (Asso di Ori): scegli se "prende" (più forte) o "lascia" (più debole)
 - **Chat** in stanza
 - **Riconnessione automatica** dopo disconnect
@@ -104,13 +105,14 @@ Indovinare quante mani vincerai in ogni turno. Chi indovina non perde vite, chi 
 
 ### Puntata
 - L'ultimo giocatore a puntare NON può scegliere il numero che renderebbe la somma totale uguale alle carte in gioco
+- **Eccezione**: nel turno da 1 carta la somma può essere uguale alle carte (1)
 
 ### Il Jolly (Asso di Ori)
 - **Prende**: diventa la carta più forte (sopra il Re di Ori)
 - **Lascia**: diventa la carta più debole (sotto l'Asso di Bastoni)
 
 ### Vittoria
-Dopo 5 turni, vince chi ha più vite!
+Dopo il turno da 1 carta (ripetuto finché qualcuno sbaglia), vince chi ha più vite!
 
 ## 🌐 Deploy
 

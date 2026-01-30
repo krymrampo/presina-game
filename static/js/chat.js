@@ -18,7 +18,7 @@ const Chat = {
         this.renderMessages();
         
         // Show badge if chat is closed
-        if (!this.isOpen && App.currentScreen === 'game') {
+        if (!this.isOpen && (App.currentScreen === 'game' || App.currentScreen === 'game-over')) {
             document.getElementById('chat-badge').classList.remove('hidden');
         }
     },

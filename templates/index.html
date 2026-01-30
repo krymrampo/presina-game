@@ -48,9 +48,11 @@
                     
                     <h3>Turno Speciale (1 carta)</h3>
                     <p>Nel turno con 1 carta, vedi le carte degli altri ma NON la tua!</p>
+                    <p>Se nel turno da 1 carta nessuno sbaglia, il turno si ripete finché qualcuno sbaglia.</p>
                     
                     <h3>Puntata</h3>
                     <p>L'ultimo giocatore a puntare NON può scegliere il numero che renderebbe la somma totale uguale alle carte in gioco.</p>
+                    <p>Eccezione: nel turno da 1 carta la somma può essere uguale alle carte (1).</p>
                     
                     <h3>Il Jolly (Asso di Ori)</h3>
                     <ul>
@@ -59,7 +61,7 @@
                     </ul>
                     
                     <h3>Vittoria</h3>
-                    <p>Dopo 5 turni, vince chi ha più vite!</p>
+                    <p>Dopo il turno da 1 carta (ripetuto finché qualcuno sbaglia), vince chi ha più vite!</p>
                 </div>
                 <button id="btn-back-home" class="btn btn-secondary">← Torna alla Home</button>
             </div>
@@ -307,21 +309,6 @@
                     </div>
                 </div>
                 
-                <!-- Chat -->
-                <div class="game-chat collapsed" id="game-chat">
-                    <div class="chat-header" id="chat-toggle">
-                        <span>💬 Chat <span id="chat-badge" class="chat-badge hidden">!</span></span>
-                        <span class="chat-toggle-icon">▼</span>
-                    </div>
-                    <div class="chat-body" id="chat-body">
-                        <div id="chat-messages" class="chat-messages"></div>
-                        <div class="chat-input-area">
-                            <input type="text" id="chat-input" maxlength="200" placeholder="Messaggio...">
-                            <button id="btn-send-chat" class="btn btn-small">→</button>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Footer -->
                 <div class="game-footer">
                     powered by Krym_rampo & SopraSteria team
@@ -337,6 +324,21 @@
                     <!-- Final standings -->
                 </div>
                 <button id="btn-back-lobby" class="btn btn-primary">Torna alla Lobby</button>
+            </div>
+        </div>
+
+        <!-- Chat (visible in game + game over) -->
+        <div class="game-chat collapsed hidden" id="game-chat">
+            <div class="chat-header" id="chat-toggle">
+                <span>💬 Chat <span id="chat-badge" class="chat-badge hidden">!</span></span>
+                <span class="chat-toggle-icon">▼</span>
+            </div>
+            <div class="chat-body" id="chat-body">
+                <div id="chat-messages" class="chat-messages"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" maxlength="200" placeholder="Messaggio...">
+                    <button id="btn-send-chat" class="btn btn-small">→</button>
+                </div>
             </div>
         </div>
     </div>

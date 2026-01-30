@@ -58,6 +58,16 @@ function showScreen(screenId) {
     });
     document.getElementById(screenId + '-screen').classList.add('active');
     App.currentScreen = screenId;
+
+    // Show chat only during game and game-over screens
+    const gameChat = document.getElementById('game-chat');
+    if (gameChat) {
+        if (screenId === 'game' || screenId === 'game-over') {
+            gameChat.classList.remove('hidden');
+        } else {
+            gameChat.classList.add('hidden');
+        }
+    }
 }
 
 // ==================== Event Listeners ====================
