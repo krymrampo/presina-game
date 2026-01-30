@@ -1006,6 +1006,13 @@ input[type="text"]::placeholder {
     opacity: 0.5;
 }
 
+.table-position.spectator .player-name {
+    background: rgba(100, 116, 139, 0.3);
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 .table-position .player-bet {
     font-size: 11px;
     color: var(--text-muted);

@@ -245,7 +245,12 @@ const GameUI = {
     updateTable(gameState) {
         // Player positions around table - calculate first to map positions
         const positions = document.getElementById('table-positions');
-        const activePlayers = gameState.players.filter(p => !p.is_spectator);
+        const me = gameState.players.find(p => p.player_id === App.playerId);
+        const isSpectator = me && me.is_spectator;
+        
+        // If I'm a spectator, show all players including me in a special way
+        // If I'm playing, only show active players
+        const activePlayers = gameState.players.filter(p => !p.is_spectator || p.player_id === App.playerId);
         const numPlayers = activePlayers.length;
         
         // Find my index in active players
@@ -274,15 +279,19 @@ const GameUI = {
             playerPosMap[player.player_id] = posIndex;
             
             let betInfo = '';
-            if (player.bet !== null) {
+            if (player.is_spectator) {
+                betInfo = '👁️ Spettatore';
+            } else if (player.bet !== null) {
                 betInfo = `Puntata: ${player.bet} | Prese: ${player.tricks_won}`;
             } else if (gameState.phase === 'betting') {
                 betInfo = player.player_id === gameState.current_better_id ? 'Sta puntando...' : 'In attesa';
             }
             
+            const spectatorBadge = player.is_spectator ? ' 👁️' : '';
+            
             return `
-                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''}">
-                    <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}</div>
+                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''}">
+                    <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}</div>
                     <div class="player-bet">${betInfo}</div>
                 </div>
             `;

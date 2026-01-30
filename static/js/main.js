@@ -213,7 +213,7 @@ function updateRoomsList(rooms) {
             <div class="room-meta">
                 <span class="status-badge status-${room.status}">${getStatusText(room.status)}</span>
                 <button class="btn btn-primary btn-small" onclick="joinRoom('${room.room_id}')">
-                    ${room.status === 'waiting' ? 'Entra' : 'Guarda'}
+                    ${room.status === 'waiting' ? 'Entra' : 'Entra'}
                 </button>
             </div>
         </div>
