@@ -32,12 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     setupEventListeners();
-
-    const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-    if (!isLocalhost) {
-        const dummyBtn = document.getElementById('btn-add-dummy');
-        if (dummyBtn) dummyBtn.classList.add('hidden');
-    }
 });
 
 function generatePlayerId() {
@@ -91,7 +85,31 @@ function setupEventListeners() {
     // Waiting room
     document.getElementById('btn-leave-room').addEventListener('click', leaveRoom);
     document.getElementById('btn-start-game').addEventListener('click', startGame);
-    document.getElementById('btn-add-dummy').addEventListener('click', addDummyPlayer);
+    
+    // Private room checkbox toggle
+    const privateCheck = document.getElementById('room-private-check');
+    if (privateCheck) {
+        privateCheck.addEventListener('change', (e) => {
+            const codeGroup = document.getElementById('room-code-group');
+            if (e.target.checked) {
+                codeGroup.classList.remove('hidden');
+                // Generate random code if empty
+                const codeInput = document.getElementById('room-access-code');
+                if (!codeInput.value) {
+                    codeInput.value = Math.random().toString(36).substring(2, 6).toUpperCase();
+                }
+            } else {
+                codeGroup.classList.add('hidden');
+            }
+        });
+    }
+    
+    // Join private room modal
+    document.getElementById('btn-cancel-join-private').addEventListener('click', hideJoinPrivateModal);
+    document.getElementById('btn-confirm-join-private').addEventListener('click', confirmJoinPrivate);
+    document.getElementById('join-access-code').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') confirmJoinPrivate();
+    });
     
     // Waiting chat
     document.getElementById('btn-send-waiting-chat').addEventListener('click', sendWaitingChatMessage);
@@ -140,7 +158,34 @@ function enterLobby() {
 function showCreateRoomModal() {
     document.getElementById('create-room-modal').classList.remove('hidden');
     document.getElementById('room-name').value = `Stanza di ${App.playerName}`;
+    document.getElementById('room-private-check').checked = false;
+    document.getElementById('room-code-group').classList.add('hidden');
+    document.getElementById('room-access-code').value = '';
     document.getElementById('room-name').focus();
+}
+
+function showJoinPrivateModal(roomId) {
+    App.pendingJoinRoomId = roomId;
+    document.getElementById('join-private-modal').classList.remove('hidden');
+    document.getElementById('join-access-code').value = '';
+    document.getElementById('join-access-code').focus();
+}
+
+function hideJoinPrivateModal() {
+    document.getElementById('join-private-modal').classList.add('hidden');
+    App.pendingJoinRoomId = null;
+}
+
+function confirmJoinPrivate() {
+    const code = document.getElementById('join-access-code').value.trim();
+    if (!code) {
+        alert('Inserisci il codice di accesso');
+        return;
+    }
+    if (App.pendingJoinRoomId) {
+        SocketClient.joinRoom(App.pendingJoinRoomId, code);
+        hideJoinPrivateModal();
+    }
 }
 
 function hideCreateRoomModal() {
@@ -154,7 +199,15 @@ function createRoom() {
         return;
     }
     
-    SocketClient.createRoom(roomName);
+    const isPrivate = document.getElementById('room-private-check').checked;
+    const accessCode = isPrivate ? document.getElementById('room-access-code').value.trim() : null;
+    
+    if (isPrivate && !accessCode) {
+        alert('Inserisci un codice di accesso per la stanza privata');
+        return;
+    }
+    
+    SocketClient.createRoom(roomName, !isPrivate, accessCode);
     hideCreateRoomModal();
 }
 
@@ -167,8 +220,12 @@ function searchRooms() {
     }
 }
 
-function joinRoom(roomId) {
-    SocketClient.joinRoom(roomId);
+function joinRoom(roomId, isPrivate = false) {
+    if (isPrivate) {
+        showJoinPrivateModal(roomId);
+    } else {
+        SocketClient.joinRoom(roomId);
+    }
 }
 
 function leaveRoom() {
@@ -191,9 +248,7 @@ function startGame() {
     SocketClient.startGame();
 }
 
-function addDummyPlayer() {
-    SocketClient.addDummyPlayer();
-}
+
 
 // ==================== Room UI Updates ====================
 function updateRoomsList(rooms) {
@@ -204,20 +259,25 @@ function updateRoomsList(rooms) {
         return;
     }
     
-    container.innerHTML = rooms.map(room => `
-        <div class="room-item">
+    container.innerHTML = rooms.map(room => {
+        const isPrivate = room.is_private || !room.is_public;
+        const lockIcon = isPrivate ? '🔒 ' : '';
+        const onClickAction = isPrivate ? `joinRoom('${room.room_id}', true)` : `joinRoom('${room.room_id}')`;
+        
+        return `
+        <div class="room-item ${isPrivate ? 'private' : ''}">
             <div class="room-info">
-                <h4>${escapeHtml(room.name)}</h4>
+                <h4>${lockIcon}${escapeHtml(room.name)}</h4>
                 <span>${room.player_count}/${room.max_players} giocatori</span>
             </div>
             <div class="room-meta">
                 <span class="status-badge status-${room.status}">${getStatusText(room.status)}</span>
-                <button class="btn btn-primary btn-small" onclick="joinRoom('${room.room_id}')">
-                    ${room.status === 'waiting' ? 'Entra' : 'Entra'}
+                <button class="btn btn-primary btn-small" onclick="${onClickAction}">
+                    ${isPrivate ? '🔒 Entra' : 'Entra'}
                 </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function getStatusText(status) {
@@ -240,10 +300,20 @@ function updateWaitingRoom(gameState) {
     
     // Update admin controls
     const adminControls = document.getElementById('admin-controls');
+    const roomCodeDisplay = document.getElementById('room-code-display');
+    
     if (App.isAdmin) {
         adminControls.classList.remove('hidden');
         const canStart = gameState.players.filter(p => !p.is_spectator).length >= 2;
         document.getElementById('btn-start-game').disabled = !canStart;
+        
+        // Show access code for private rooms
+        if (App.currentRoom?.access_code) {
+            roomCodeDisplay.classList.remove('hidden');
+            document.getElementById('display-access-code').textContent = App.currentRoom.access_code;
+        } else {
+            roomCodeDisplay.classList.add('hidden');
+        }
     } else {
         adminControls.classList.add('hidden');
     }

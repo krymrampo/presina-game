@@ -9,7 +9,6 @@ from flask_socketio import emit, join_room, leave_room
 from game.player import Player
 from game.presina_game import GamePhase
 from rooms.room_manager import room_manager
-from .rate_limiter import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -126,15 +125,16 @@ def register_lobby_events(socketio):
         emit('rooms_list', {'rooms': [r.to_dict() for r in rooms]})
     
     @socketio.on('create_room')
-    @rate_limit(max_requests=3, window_seconds=60, error_message="Troppe stanze create, rallenta")
     def handle_create_room(data):
         """
         Create a new room.
-        Data: { player_id, player_name, room_name }
+        Data: { player_id, player_name, room_name, is_public?, access_code? }
         """
         player_id = data.get('player_id')
         player_name = data.get('player_name', 'Anonimo')
         room_name = data.get('room_name', 'Nuova stanza')
+        is_public = data.get('is_public', True)
+        access_code = data.get('access_code') if not is_public else None
         
         if not player_id:
             emit('error', {'message': 'ID giocatore mancante'})
@@ -160,15 +160,17 @@ def register_lobby_events(socketio):
         
         # Create player and room
         player = Player(player_id, player_name, request.sid)
-        room = room_manager.create_room(room_name, player)
+        room = room_manager.create_room(room_name, player, is_public=is_public, access_code=access_code)
         
         # Join socket room
         join_room(room.room_id)
         
         state = room.game.get_state_for_player(player_id)
         state['admin_id'] = room.admin_id
+        # Include access code in response for private rooms (admin needs to share it)
+        room_dict = room.to_dict_with_code() if not is_public else room.to_dict()
         emit('room_created', {
-            'room': room.to_dict(),
+            'room': room_dict,
             'game_state': state
         })
         
@@ -178,15 +180,15 @@ def register_lobby_events(socketio):
         })
     
     @socketio.on('join_room')
-    @rate_limit(max_requests=10, window_seconds=60, error_message="Tentativi di accesso eccessivi")
     def handle_join_room(data):
         """
         Join an existing room.
-        Data: { player_id, player_name, room_id }
+        Data: { player_id, player_name, room_id, access_code? }
         """
         player_id = data.get('player_id')
         player_name = data.get('player_name', 'Anonimo')
         room_id = data.get('room_id')
+        access_code = data.get('access_code')
         
         if not player_id or not room_id:
             emit('error', {'message': 'Dati mancanti'})
@@ -206,7 +208,7 @@ def register_lobby_events(socketio):
         # Create player
         player = Player(player_id, player_name, request.sid)
         
-        success, message = room_manager.join_room(room_id, player)
+        success, message = room_manager.join_room(room_id, player, access_code=access_code)
         
         if not success:
             emit('error', {'message': message})
@@ -363,67 +365,4 @@ def register_lobby_events(socketio):
             'player_id': player_id
         }, room=room.room_id, include_self=False)
 
-    @socketio.on('add_dummy_player')
-    def handle_add_dummy_player(data):
-        """
-        Add a dummy (offline) player to the current room for local testing.
-        Data: { admin_id, name? }
-        """
-        admin_id = data.get('admin_id')
-        desired_name = data.get('name')
 
-        if not admin_id:
-            emit('error', {'message': 'ID admin mancante'})
-            return
-
-        if not current_app.config.get('ENABLE_DUMMY_PLAYERS', False):
-            emit('error', {'message': 'Opzione non disponibile in questo ambiente'})
-            return
-
-        if not _ensure_player_socket(admin_id, request.sid):
-            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
-            return
-
-        room = room_manager.get_player_room(admin_id)
-        if not room:
-            emit('error', {'message': 'Non sei in nessuna stanza'})
-            return
-
-        if room.admin_id != admin_id:
-            emit('error', {'message': 'Solo l\'admin può aggiungere giocatori fittizi'})
-            return
-
-        if room.game.phase != GamePhase.WAITING:
-            emit('error', {'message': 'Puoi aggiungere giocatori fittizi solo in attesa'})
-            return
-
-        if room.player_count >= room.game.MAX_PLAYERS:
-            emit('error', {'message': 'Stanza piena'})
-            return
-
-        # Generate a unique dummy player
-        existing_bots = [p for p in room.game.players.values() if p.name.lower().startswith('bot')]
-        bot_number = len(existing_bots) + 1
-        bot_name = desired_name.strip()[:MAX_NAME_LENGTH] if isinstance(desired_name, str) and desired_name.strip() else f"Bot {bot_number}"
-        bot_id = f"bot_{uuid.uuid4().hex[:8]}"
-
-        bot_player = Player(bot_id, bot_name, sid=None)
-        bot_player.is_online = False
-
-        if not room.game.add_player(bot_player):
-            emit('error', {'message': 'Impossibile aggiungere il giocatore fittizio'})
-            return
-
-        room_manager.player_rooms[bot_id] = room.room_id
-
-        _emit_room_state(
-            socketio,
-            room,
-            'player_joined',
-            extra={'player_id': bot_id, 'player_name': bot_name},
-            exclude_player_id=None
-        )
-
-        socketio.emit('rooms_list', {
-            'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
-        })

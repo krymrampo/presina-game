@@ -20,6 +20,7 @@ class Room:
     created_at: float = field(default_factory=time.time)
     last_activity: float = field(default_factory=time.time)
     is_public: bool = True
+    access_code: Optional[str] = None  # Code for private rooms
     game: PresinaGameOnline = None
     chat_messages: List[dict] = field(default_factory=list)
     
@@ -68,8 +69,15 @@ class Room:
             'player_count': self.player_count,
             'max_players': PresinaGameOnline.MAX_PLAYERS,
             'is_public': self.is_public,
+            'is_private': not self.is_public,
             'created_at': self.created_at
         }
+    
+    def to_dict_with_code(self) -> dict:
+        """Serialize room including access code (for admin only)."""
+        data = self.to_dict()
+        data['access_code'] = self.access_code
+        return data
 
 
 class RoomManager:
@@ -106,7 +114,7 @@ class RoomManager:
     
     # ==================== Room Management ====================
     
-    def create_room(self, name: str, admin_player: Player) -> Room:
+    def create_room(self, name: str, admin_player: Player, is_public: bool = True, access_code: Optional[str] = None) -> Room:
         """
         Create a new room.
         
@@ -120,7 +128,8 @@ class RoomManager:
         room_id = str(uuid.uuid4())[:8]
         while room_id in self.rooms:
             room_id = str(uuid.uuid4())[:8]
-        room = Room(room_id=room_id, name=name, admin_id=admin_player.player_id)
+        room = Room(room_id=room_id, name=name, admin_id=admin_player.player_id, 
+                    is_public=is_public, access_code=access_code)
         
         # Add admin to the room
         room.game.add_player(admin_player)
@@ -155,7 +164,7 @@ class RoomManager:
     
     # ==================== Player Management ====================
     
-    def join_room(self, room_id: str, player: Player) -> tuple[bool, str]:
+    def join_room(self, room_id: str, player: Player, access_code: Optional[str] = None) -> tuple[bool, str]:
         """
         Join a room.
         
@@ -173,6 +182,13 @@ class RoomManager:
         # Update activity
         room.update_activity()
 
+        # Check access code for private rooms
+        if not room.is_public:
+            if room.access_code is None:
+                return False, "Stanza privata non configurata correttamente"
+            if access_code != room.access_code:
+                return False, "Codice di accesso errato"
+        
         # Disallow joining finished games
         if room.game.phase == GamePhase.GAME_OVER:
             return False, "Partita finita"

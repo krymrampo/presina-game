@@ -19,13 +19,11 @@ class Config:
     MAX_CHAT_MESSAGES = 100
     MAX_NAME_LENGTH = 30
     MAX_ROOM_NAME_LENGTH = 50
-    ENABLE_DUMMY_PLAYERS = False
 
 
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
-    ENABLE_DUMMY_PLAYERS = True
 
 
 class ProductionConfig(Config):

@@ -43,6 +43,16 @@ const SocketClient = {
         
         socket.on('error', (data) => {
             console.error('Socket error:', data);
+            
+            // If we were trying to play a card and got an error, re-enable the confirm button
+            if (App.selectedCard) {
+                const confirmBtn = document.getElementById('btn-confirm-card');
+                const cardConfirm = document.getElementById('card-confirm');
+                if (confirmBtn && cardConfirm && !cardConfirm.classList.contains('hidden')) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = '✓ Gioca';
+                }
+            }
         });
         
         // Registration
@@ -60,6 +70,11 @@ const SocketClient = {
             App.gameState = data.game_state;
             showScreen('waiting-room');
             updateWaitingRoom(data.game_state);
+        });
+        
+        socket.on('join_error', (data) => {
+            // Handle join errors (e.g., wrong access code)
+            alert(data.message || 'Errore durante l\'accesso alla stanza');
         });
         
         socket.on('room_joined', (data) => {
@@ -148,14 +163,21 @@ const SocketClient = {
         });
         
         socket.on('game_state', (data) => {
+            // Save previous state before updating (needed for card play detection)
+            const previousPlayerId = App.gameState?.current_player_id;
+            const previousPlayer = App.gameState?.players?.find(p => p.player_id === App.playerId);
+            const previousHandSize = previousPlayer?.hand?.length || 0;
+            
             App.gameState = data.game_state;
             
             if (data.game_state.phase === 'game_over') {
                 showScreen('game-over');
                 GameUI.updateGameOver(data.game_state);
+                clearCardSelection();
             } else if (data.game_state.phase === 'waiting') {
                 showScreen('waiting-room');
                 updateWaitingRoom(data.game_state);
+                clearCardSelection();
             } else if (data.game_state.phase === 'trick_complete') {
                 // Trick just completed - show cards for 3 seconds then advance
                 if (App.currentScreen !== 'game') {
@@ -187,11 +209,24 @@ const SocketClient = {
                 if (App.currentScreen !== 'game') {
                     showScreen('game');
                 }
-                GameUI.updateGameScreen(data.game_state);
-                // Clear card selection after successful state update
-                if (typeof clearCardSelection === 'function') {
-                    clearCardSelection();
+                
+                // Check if we should clear card selection BEFORE updating UI
+                // Only clear if: a card was played (hand size decreased) or turn changed to another player
+                if (App.selectedCard && typeof clearCardSelection === 'function') {
+                    const myPlayer = data.game_state.players?.find(p => p.player_id === App.playerId);
+                    const currentHandSize = myPlayer?.hand?.length || 0;
+                    
+                    const cardWasPlayed = currentHandSize < previousHandSize;
+                    const isMyTurn = data.game_state.current_player_id === App.playerId;
+                    const turnChanged = previousPlayerId === App.playerId && !isMyTurn;
+                    
+                    // Only close the popup if the card was actually played or turn changed
+                    if (cardWasPlayed || turnChanged) {
+                        clearCardSelection();
+                    }
                 }
+                
+                GameUI.updateGameScreen(data.game_state);
             }
         });
         
@@ -230,19 +265,22 @@ const SocketClient = {
         this.socket.emit('search_rooms', { query });
     },
     
-    createRoom(roomName) {
+    createRoom(roomName, isPublic = true, accessCode = null) {
         this.socket.emit('create_room', {
             player_id: App.playerId,
             player_name: App.playerName,
-            room_name: roomName
+            room_name: roomName,
+            is_public: isPublic,
+            access_code: accessCode
         });
     },
     
-    joinRoom(roomId) {
+    joinRoom(roomId, accessCode = null) {
         this.socket.emit('join_room', {
             player_id: App.playerId,
             player_name: App.playerName,
-            room_id: roomId
+            room_id: roomId,
+            access_code: accessCode
         });
     },
     
@@ -259,11 +297,7 @@ const SocketClient = {
         });
     },
 
-    addDummyPlayer() {
-        this.socket.emit('add_dummy_player', {
-            admin_id: App.playerId
-        });
-    },
+
     
     rejoinGame() {
         this.socket.emit('rejoin_game', {

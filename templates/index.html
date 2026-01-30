@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presina - Gioco di Carte Online</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260129g">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260130a">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
@@ -101,9 +101,36 @@
                         <label for="room-name">Nome stanza:</label>
                         <input type="text" id="room-name" maxlength="30" placeholder="Nome della stanza...">
                     </div>
+                    <div class="input-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="room-private-check">
+                            <span>🔒 Stanza privata (richiede codice)</span>
+                        </label>
+                    </div>
+                    <div id="room-code-group" class="input-group hidden">
+                        <label for="room-access-code">Codice di accesso:</label>
+                        <input type="text" id="room-access-code" maxlength="10" placeholder="Inserisci un codice...">
+                        <p class="hint-text">Condividi questo codice solo con chi vuoi invitare</p>
+                    </div>
                     <div class="button-group">
                         <button id="btn-confirm-create" class="btn btn-primary">Crea</button>
                         <button id="btn-cancel-create" class="btn btn-secondary">Annulla</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Join Private Room Modal -->
+            <div id="join-private-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>🔒 Stanza Privata</h3>
+                    <p>Questa stanza richiede un codice di accesso.</p>
+                    <div class="input-group">
+                        <label for="join-access-code">Codice:</label>
+                        <input type="text" id="join-access-code" maxlength="10" placeholder="Inserisci il codice...">
+                    </div>
+                    <div class="button-group">
+                        <button id="btn-confirm-join-private" class="btn btn-primary">Entra</button>
+                        <button id="btn-cancel-join-private" class="btn btn-secondary">Annulla</button>
                     </div>
                 </div>
             </div>
@@ -124,7 +151,10 @@
                 <div id="admin-controls" class="admin-controls hidden">
                     <button id="btn-start-game" class="btn btn-primary btn-large">▶ Avvia Partita</button>
                     <p class="hint">Servono almeno 2 giocatori</p>
-                    <button id="btn-add-dummy" class="btn btn-secondary">🤖 Aggiungi giocatore fittizio</button>
+                    <div id="room-code-display" class="room-code-display hidden">
+                        <span>🔒 Codice: <strong id="display-access-code"></strong></span>
+                        <p class="hint">Condividi questo codice per invitare</p>
+                    </div>
                 </div>
                 
                 <div class="waiting-actions">
@@ -278,9 +308,9 @@
         </div>
     </div>
     
-    <script src="/static/js/main.js?v=20260129g"></script>
-    <script src="/static/js/socket_client.js?v=20260129g"></script>
-    <script src="/static/js/game_ui.js?v=20260129g"></script>
-    <script src="/static/js/chat.js?v=20260129g"></script>
+    <script src="/static/js/main.js?v=20260130a"></script>
+    <script src="/static/js/socket_client.js?v=20260130a"></script>
+    <script src="/static/js/game_ui.js?v=20260130a"></script>
+    <script src="/static/js/chat.js?v=20260130a"></script>
 </body>
 </html>

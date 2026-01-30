@@ -6,7 +6,6 @@ from flask_socketio import emit
 
 from rooms.room_manager import room_manager
 from game.presina_game import GamePhase
-from .rate_limiter import rate_limit
 
 def _verify_player_socket(player_id: str, sid: str) -> bool:
     """
@@ -67,7 +66,6 @@ def register_game_events(socketio):
         })
     
     @socketio.on('make_bet')
-    @rate_limit(max_requests=5, window_seconds=10, error_message="Troppe puntate, rallenta")
     def handle_make_bet(data):
         """
         Make a bet.
@@ -111,7 +109,6 @@ def register_game_events(socketio):
         _broadcast_game_state(socketio, room)
     
     @socketio.on('play_card')
-    @rate_limit(max_requests=5, window_seconds=10, error_message="Troppe carte giocate, rallenta")
     def handle_play_card(data):
         """
         Play a card.
@@ -160,7 +157,6 @@ def register_game_events(socketio):
             _broadcast_game_state(socketio, room)
     
     @socketio.on('choose_jolly')
-    @rate_limit(max_requests=3, window_seconds=10, error_message="Troppe scelte, rallenta")
     def handle_choose_jolly(data):
         """
         Choose jolly action.
