@@ -510,8 +510,6 @@ class PresinaGameOnline:
         if self.phase != GamePhase.TRICK_COMPLETE:
             return False, "Non è il momento"
         
-        self.current_trick += 1
-        
         # Set winner as next trick starter
         if self.trick_winner_id:
             active = self.get_active_players()
@@ -522,10 +520,12 @@ class PresinaGameOnline:
         
         if self.is_last_trick_of_turn:
             # Last trick of turn - go to turn results
+            # Don't increment current_trick since the turn is ending
             self._end_turn()
             return True, "Fine del turno"
         else:
-            # More tricks to play - clear table and continue
+            # More tricks to play - increment trick counter and continue
+            self.current_trick += 1
             self.cards_on_table = []
             self.phase = GamePhase.PLAYING
             # Reset timer for the first player of the new trick
