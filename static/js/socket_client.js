@@ -26,6 +26,14 @@ const SocketClient = {
         socket.on('connect', () => {
             console.log('Connected to server');
             this.connected = true;
+            
+            // Try to rejoin if we were in a game
+            if (App.playerId && App.currentRoom) {
+                console.log('Attempting to rejoin game...');
+                setTimeout(() => {
+                    this.rejoinGame();
+                }, 500);  // Small delay to ensure socket is ready
+            }
         });
         
         socket.on('disconnect', () => {

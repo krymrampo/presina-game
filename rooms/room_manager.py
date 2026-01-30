@@ -372,6 +372,14 @@ class RoomManager:
                         if p.is_online and pid != player_id:
                             room.admin_id = pid
                             break
+                
+                # Check if all players are offline - close the room if game is in progress
+                if room.game.phase != GamePhase.WAITING and room.game.phase != GamePhase.GAME_OVER:
+                    all_offline = all(not p.is_online for p in room.game.players.values())
+                    if all_offline:
+                        # All players offline - delete the room
+                        self.delete_room(room.room_id)
+                        return
     
     def get_player_by_sid(self, sid: str) -> Optional[str]:
         """Get player ID from socket ID."""
