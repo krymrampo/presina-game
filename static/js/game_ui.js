@@ -359,16 +359,22 @@ const GameUI = {
     showTrickWinner(winnerName, cardName, isWinner = true) {
         const overlay = document.getElementById('trick-winner-overlay');
         const popup = document.getElementById('trick-winner-popup');
+        const titleEl = popup.querySelector('h3');
         const nameEl = document.getElementById('trick-winner-name');
         const cardEl = document.getElementById('trick-winner-card');
         
-        nameEl.textContent = winnerName;
-        cardEl.textContent = `con ${cardName}`;
-        
-        // Set color based on win/lose
         if (isWinner) {
+            // Io ho vinto
+            titleEl.textContent = `Hai vinto la mano col ${cardName}`;
+            nameEl.style.display = 'none';
+            cardEl.style.display = 'none';
             popup.classList.remove('loser');
         } else {
+            // Ha vinto un altro
+            titleEl.textContent = `${winnerName} ha vinto la mano`;
+            nameEl.style.display = 'none';
+            cardEl.textContent = `con ${cardName}`;
+            cardEl.style.display = 'block';
             popup.classList.add('loser');
         }
         
@@ -379,6 +385,9 @@ const GameUI = {
         setTimeout(() => {
             overlay.classList.add('hidden');
             popup.classList.add('hidden');
+            // Reset display properties
+            nameEl.style.display = '';
+            cardEl.style.display = '';
         }, 3000);
     },
     
