@@ -888,51 +888,52 @@ input[type="text"]::placeholder {
 }
 
 /* Card positions around the table - always upright, positioned in front of each player */
+/* Cards are positioned relative to .table-center (420x320) */
 /* Position 0: bottom - in front of player at bottom */
 .played-card-position.pos-0 { 
-    bottom: -60px; 
+    bottom: -50px; 
     left: 50%; 
     transform: translateX(-50%);
 }
 /* Position 1: bottom left - in front of player at bottom left */
 .played-card-position.pos-1 { 
-    bottom: 20px; 
-    left: -30px; 
+    bottom: 30px; 
+    left: -10px; 
     transform: translateX(-50%);
 }
 /* Position 2: left - in front of player at left */
 .played-card-position.pos-2 { 
     top: 50%; 
-    left: -50px; 
+    left: -35px; 
     transform: translateY(-50%);
 }
 /* Position 3: top left - in front of player at top left */
 .played-card-position.pos-3 { 
-    top: -30px; 
+    top: -20px; 
     left: 15%; 
     transform: translateX(-50%);
 }
 /* Position 4: top right - in front of player at top right */
 .played-card-position.pos-4 { 
-    top: -30px; 
+    top: -20px; 
     right: 15%; 
     transform: translateX(50%);
 }
 /* Position 5: right - in front of player at right */
 .played-card-position.pos-5 { 
     top: 50%; 
-    right: -50px; 
+    right: -35px; 
     transform: translateY(-50%);
 }
 /* Position 6: bottom right - in front of player at bottom right */
 .played-card-position.pos-6 { 
-    bottom: 20px; 
-    right: -30px; 
+    bottom: 30px; 
+    right: -10px; 
     transform: translateX(50%);
 }
 /* Position 7: top center - in front of player at top */
 .played-card-position.pos-7 { 
-    top: -60px; 
+    top: -50px; 
     left: 50%; 
     transform: translateX(-50%);
 }
@@ -960,13 +961,14 @@ input[type="text"]::placeholder {
     z-index: 5;
 }
 
-/* Table Positions */
+/* Table Positions - same size as table and centered */
 .table-positions {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px;
+    height: 320px;
     pointer-events: none;
 }
 
@@ -977,14 +979,15 @@ input[type="text"]::placeholder {
     pointer-events: auto;
 }
 
-.table-position.pos-0 { top: 100%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
-.table-position.pos-1 { top: 80%; left: 6%; transform: translate(-50%, -50%); }    /* Bottom left */
-.table-position.pos-2 { top: 50%; left: -1%; transform: translate(-50%, -50%); }   /* Left */
-.table-position.pos-3 { top: 4%; left: 18%; transform: translate(-50%, -50%); }   /* Top left */
-.table-position.pos-4 { top: 4%; left: 82%; transform: translate(-50%, -50%); }   /* Top right */
-.table-position.pos-5 { top: 50%; left: 101%; transform: translate(-50%, -50%); }  /* Right */
-.table-position.pos-6 { top: 80%; left: 94%; transform: translate(-50%, -50%); }   /* Bottom right */
-.table-position.pos-7 { top: -6%; left: 50%; transform: translate(-50%, -50%); }  /* Top center */
+/* Player positions - positioned relative to the table (420x320) */
+.table-position.pos-0 { top: 105%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
+.table-position.pos-1 { top: 85%; left: -5%; transform: translate(-50%, -50%); }   /* Bottom left */
+.table-position.pos-2 { top: 50%; left: -12%; transform: translate(-50%, -50%); }  /* Left */
+.table-position.pos-3 { top: 0%; left: 10%; transform: translate(-50%, -50%); }    /* Top left */
+.table-position.pos-4 { top: 0%; left: 90%; transform: translate(-50%, -50%); }    /* Top right */
+.table-position.pos-5 { top: 50%; left: 112%; transform: translate(-50%, -50%); }  /* Right */
+.table-position.pos-6 { top: 85%; left: 105%; transform: translate(-50%, -50%); }  /* Bottom right */
+.table-position.pos-7 { top: -10%; left: 50%; transform: translate(-50%, -50%); }  /* Top center */
 
 .table-position .player-name {
     font-size: 12px;
