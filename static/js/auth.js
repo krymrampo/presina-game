@@ -59,15 +59,6 @@ const AuthUI = {
                 `Ciao, ${this.currentUser.display_name || this.currentUser.username}!`;
             document.getElementById('user-username').textContent = `@${this.currentUser.username}`;
             
-            // Update stats if available
-            if (this.currentUser.stats) {
-                const stats = this.currentUser.stats;
-                document.getElementById('user-stat-games').textContent = stats.games_played || 0;
-                document.getElementById('user-stat-wins').textContent = stats.games_won || 0;
-                document.getElementById('user-stat-winrate').textContent = 
-                    `${stats.win_rate || 0}%`;
-            }
-            
             // Set player name for game
             App.playerName = this.currentUser.display_name || this.currentUser.username;
             document.getElementById('player-name').value = App.playerName;
@@ -388,6 +379,31 @@ const AuthUI = {
         if (this.authToken) {
             await this.loadUserStats();
         }
+    },
+    
+    // ==================== Navigation ====================
+    enterLobby() {
+        // Assicurati che il nome del giocatore sia impostato correttamente
+        if (this.currentUser) {
+            App.playerName = this.currentUser.display_name || this.currentUser.username;
+            document.getElementById('player-name').value = App.playerName;
+            document.getElementById('player-name-display').textContent = App.playerName;
+        }
+        
+        // Connetti socket e registra
+        SocketClient.connect();
+        SocketClient.registerPlayer();
+        
+        // Mostra la lobby
+        showScreen('lobby');
+        SocketClient.listRooms();
+        
+        // Mostra banner rejoin se c'è una stanza salvata
+        setTimeout(() => {
+            if (typeof checkAndShowRejoinBanner === 'function') {
+                checkAndShowRejoinBanner();
+            }
+        }, 500);
     },
     
     // ==================== Helpers ====================

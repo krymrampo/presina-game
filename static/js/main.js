@@ -137,9 +137,34 @@ function stopGameStatePolling() {
 
 // ==================== Event Listeners ====================
 function setupEventListeners() {
-    // Home screen
-    document.getElementById('btn-enter-lobby').addEventListener('click', enterLobby);
-    document.getElementById('btn-rules').addEventListener('click', () => showScreen('rules'));
+    // Home screen - gestisci entrambi i pulsanti Gioca (loggato e non)
+    const btnEnterLobby = document.getElementById('btn-enter-lobby');
+    const btnEnterLobbyLogged = document.getElementById('btn-enter-lobby-logged');
+    
+    if (btnEnterLobby) {
+        btnEnterLobby.addEventListener('click', enterLobby);
+    }
+    if (btnEnterLobbyLogged) {
+        btnEnterLobbyLogged.addEventListener('click', () => {
+            if (AuthUI && AuthUI.isLoggedIn()) {
+                AuthUI.enterLobby();
+            } else {
+                enterLobby();
+            }
+        });
+    }
+    
+    // Rules buttons
+    const btnRules = document.getElementById('btn-rules');
+    const btnRulesLogged = document.getElementById('btn-rules-logged');
+    
+    if (btnRules) {
+        btnRules.addEventListener('click', () => showScreen('rules'));
+    }
+    if (btnRulesLogged) {
+        btnRulesLogged.addEventListener('click', () => showScreen('rules'));
+    }
+    
     document.getElementById('btn-back-home').addEventListener('click', () => showScreen('home'));
     document.getElementById('btn-back-home-lobby').addEventListener('click', () => showScreen('home'));
     

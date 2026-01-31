@@ -66,25 +66,10 @@
                         <p id="user-username">@username</p>
                     </div>
                     
-                    <div class="user-quick-stats">
-                        <div class="quick-stat">
-                            <span class="quick-stat-value" id="user-stat-games">0</span>
-                            <span class="quick-stat-label">Partite</span>
-                        </div>
-                        <div class="quick-stat">
-                            <span class="quick-stat-value" id="user-stat-wins">0</span>
-                            <span class="quick-stat-label">Vittorie</span>
-                        </div>
-                        <div class="quick-stat">
-                            <span class="quick-stat-value" id="user-stat-winrate">0%</span>
-                            <span class="quick-stat-label">Win Rate</span>
-                        </div>
-                    </div>
-                    
                     <div class="button-group">
-                        <button id="btn-enter-lobby" class="btn btn-primary btn-large">🎮 Gioca</button>
+                        <button id="btn-enter-lobby-logged" class="btn btn-primary btn-large" onclick="AuthUI.enterLobby()">🎮 Gioca</button>
                         <button id="btn-profile" class="btn btn-secondary" onclick="showScreen('profile')">📊 Profilo</button>
-                        <button id="btn-rules" class="btn btn-secondary">📖 Regole</button>
+                        <button id="btn-rules-logged" class="btn btn-secondary" onclick="showScreen('rules')">📖 Regole</button>
                         <button id="btn-logout" class="btn btn-secondary" onclick="AuthUI.logout()">🚪 Esci</button>
                     </div>
                 </div>
