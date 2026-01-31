@@ -59,6 +59,12 @@ const AuthUI = {
                 `Ciao, ${this.currentUser.display_name || this.currentUser.username}!`;
             document.getElementById('user-username').textContent = `@${this.currentUser.username}`;
             
+            // Update avatar
+            const homeImg = document.getElementById('user-avatar-img');
+            if (homeImg && this.currentUser.avatar) {
+                homeImg.src = this.currentUser.avatar;
+            }
+            
             // Set player name for game
             App.playerName = this.currentUser.display_name || this.currentUser.username;
             document.getElementById('player-name').value = App.playerName;
@@ -245,6 +251,14 @@ const AuthUI = {
         document.getElementById('profile-username').textContent = 
             `@${this.currentUser.username}`;
         
+        // Update avatar images
+        const avatarUrl = this.currentUser.avatar || '/static/img/default-avatar.png';
+        const profileImg = document.getElementById('profile-avatar-img');
+        const homeImg = document.getElementById('user-avatar-img');
+        
+        if (profileImg) profileImg.src = avatarUrl;
+        if (homeImg) homeImg.src = avatarUrl;
+        
         // Format member since
         if (this.currentUser.created_at) {
             const date = new Date(this.currentUser.created_at);
@@ -260,6 +274,66 @@ const AuthUI = {
         
         // Load leaderboard
         await this.loadLeaderboard('wins');
+    },
+    
+    // ==================== Avatar Upload ====================
+    async uploadAvatar(input) {
+        if (!input.files || !input.files[0]) return;
+        
+        const file = input.files[0];
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            this.showError('Seleziona un file immagine');
+            return;
+        }
+        
+        // Validate file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            this.showError('Immagine troppo grande (max 2MB)');
+            return;
+        }
+        
+        // Convert to base64
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64Image = e.target.result;
+            
+            try {
+                const response = await fetch('/api/user/avatar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.authToken}`
+                    },
+                    body: JSON.stringify({ image: base64Image })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update current user
+                    this.currentUser.avatar = data.avatar;
+                    localStorage.setItem('presina_user', JSON.stringify(this.currentUser));
+                    
+                    // Update UI
+                    const profileImg = document.getElementById('profile-avatar-img');
+                    const homeImg = document.getElementById('user-avatar-img');
+                    
+                    if (profileImg) profileImg.src = data.avatar;
+                    if (homeImg) homeImg.src = data.avatar;
+                    
+                    this.showSuccess('Foto profilo aggiornata!');
+                } else {
+                    this.showError(data.error || 'Errore upload');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                this.showError('Errore di connessione');
+            }
+        };
+        
+        reader.readAsDataURL(file);
     },
     
     async loadUserStats() {

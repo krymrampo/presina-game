@@ -331,6 +331,44 @@ def api_get_leaderboard():
     })
 
 
+@app.route('/api/user/avatar', methods=['POST'])
+def api_upload_avatar():
+    """Upload user avatar"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    
+    if not token:
+        return jsonify({'success': False, 'error': 'Token mancante'}), 401
+    
+    user = User.get_by_token(token)
+    
+    if not user:
+        return jsonify({'success': False, 'error': 'Sessione scaduta'}), 401
+    
+    data = request.get_json()
+    image_data = data.get('image')
+    
+    if not image_data:
+        return jsonify({'success': False, 'error': 'Nessuna immagine fornita'}), 400
+    
+    success, result = user.update_avatar(image_data)
+    
+    if success:
+        return jsonify({
+            'success': True,
+            'avatar': result
+        })
+    else:
+        return jsonify({'success': False, 'error': result}), 400
+
+
+@app.route('/uploads/<path:filepath>')
+def serve_uploads(filepath):
+    """Serve uploaded files"""
+    from flask import send_from_directory
+    uploads_dir = Path(__file__).parent / "uploads"
+    return send_from_directory(uploads_dir, filepath)
+
+
 # ==================== Main ====================
 
 if __name__ == '__main__':

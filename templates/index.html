@@ -61,7 +61,7 @@
                 <!-- LOGGED IN -->
                 <div id="home-logged" class="home-auth-section hidden">
                     <div class="user-welcome">
-                        <div class="user-avatar-large" id="user-avatar">👤</div>
+                        <img src="/static/img/default-avatar.png" alt="Avatar" class="user-avatar-large" id="user-avatar-img">
                         <h3 id="user-display-name">Benvenuto!</h3>
                         <p id="user-username">@username</p>
                     </div>
@@ -562,7 +562,13 @@
                 </div>
                 
                 <div class="profile-card">
-                    <div class="profile-avatar" id="profile-avatar">👤</div>
+                    <div class="profile-avatar-container">
+                        <img src="/static/img/default-avatar.png" alt="Avatar" class="profile-avatar-img" id="profile-avatar-img">
+                        <label for="avatar-upload" class="avatar-upload-btn" title="Cambia foto">
+                            📷
+                        </label>
+                        <input type="file" id="avatar-upload" accept="image/*" style="display: none;" onchange="AuthUI.uploadAvatar(this)">
+                    </div>
                     <h3 id="profile-display-name">Nome Utente</h3>
                     <p id="profile-username">@username</p>
                     <span id="profile-member-since" class="member-since">Membro dal 2024</span>

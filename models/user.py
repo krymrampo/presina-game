@@ -5,10 +5,16 @@ import sqlite3
 import hashlib
 import secrets
 import time
+import os
+import base64
 from datetime import datetime
 from pathlib import Path
 
 DATABASE_PATH = Path(__file__).parent.parent / "data" / "presina.db"
+UPLOADS_PATH = Path(__file__).parent.parent / "uploads" / "avatars"
+
+# Ensure uploads directory exists
+UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def get_db_connection():
@@ -431,13 +437,64 @@ class User:
         
         return achievements
     
+    def update_avatar(self, image_data):
+        """Update user avatar from base64 image data"""
+        if not image_data:
+            return False
+        
+        try:
+            # Remove data URL prefix if present
+            if ',' in image_data:
+                image_data = image_data.split(',')[1]
+            
+            # Decode base64
+            image_bytes = base64.b64decode(image_data)
+            
+            # Validate size (max 2MB)
+            if len(image_bytes) > 2 * 1024 * 1024:
+                return False, "Immagine troppo grande (max 2MB)"
+            
+            # Generate filename
+            filename = f"user_{self.id}_{int(time.time())}.png"
+            filepath = UPLOADS_PATH / filename
+            
+            # Save file
+            with open(filepath, 'wb') as f:
+                f.write(image_bytes)
+            
+            # Remove old avatar if exists
+            if self.avatar:
+                old_path = Path(__file__).parent.parent / self.avatar.lstrip('/')
+                if old_path.exists() and 'default' not in str(old_path):
+                    try:
+                        old_path.unlink()
+                    except:
+                        pass
+            
+            # Update database
+            avatar_url = f"/uploads/avatars/{filename}"
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE users SET avatar = ? WHERE id = ?',
+                (avatar_url, self.id)
+            )
+            conn.commit()
+            conn.close()
+            
+            self.avatar = avatar_url
+            return True, avatar_url
+            
+        except Exception as e:
+            return False, str(e)
+    
     def to_dict(self, include_stats=False):
         """Convert user to dictionary"""
         data = {
             'id': self.id,
             'username': self.username,
             'display_name': self.display_name,
-            'avatar': self.avatar,
+            'avatar': self.avatar or '/static/img/default-avatar.png',
             'created_at': self.created_at,
             'last_login': self.last_login
         }
