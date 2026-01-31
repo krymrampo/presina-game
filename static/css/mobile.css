@@ -1024,6 +1024,48 @@
     }
 }
 
+/* ==================== Home Screen Mobile ==================== */
+@media (max-width: 768px) {
+    #home-screen {
+        padding: 16px;
+        align-items: flex-start;
+        padding-top: 10vh;
+    }
+    
+    .home-container {
+        min-height: auto;
+        justify-content: flex-start;
+    }
+    
+    .title {
+        font-size: 2.8rem;
+    }
+    
+    .subtitle {
+        font-size: 1rem;
+        margin-bottom: 32px;
+    }
+    
+    .auth-tabs {
+        margin-bottom: 20px;
+    }
+    
+    .user-welcome {
+        padding: 16px 0;
+        margin-bottom: 16px;
+    }
+    
+    .user-avatar-large {
+        width: 72px;
+        height: 72px;
+        font-size: 36px;
+    }
+    
+    .user-welcome h3 {
+        font-size: 1.2rem;
+    }
+}
+
 /* ==================== Small Phones ==================== */
 @media (max-width: 380px) {
     .mobile-hand .card {
