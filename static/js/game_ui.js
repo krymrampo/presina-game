@@ -219,8 +219,11 @@ const GameUI = {
         positions.innerHTML = activePlayers.map((player, index) => {
             const isCurrent = player.player_id === gameState.current_player_id || 
                              player.player_id === gameState.current_better_id;
+            // Determine status: online, away, or offline
             const isOffline = !player.is_online;
+            const isAway = player.is_away && player.is_online; // Away means connected but tab switched
             const isMe = player.player_id === App.playerId;
+            const statusClass = isOffline ? 'offline' : (isAway ? 'away' : '');
             
             // Calculate relative position: offset so "me" is at position 0
             let relativePos;
@@ -323,7 +326,10 @@ const GameUI = {
             const isCurrent = player.player_id === gameState.current_player_id || 
                              player.player_id === gameState.current_better_id;
             const isMe = player.player_id === App.playerId;
-            const statusClass = !player.is_online ? 'offline' : '';
+            // Determine status: online, away, or offline
+            const isOffline = !player.is_online;
+            const isAway = player.is_away && player.is_online;
+            const statusClass = isOffline ? 'offline' : (isAway ? 'away' : '');
             
             // Determine status color based on bet vs tricks won
             let statusColorClass = '';

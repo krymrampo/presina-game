@@ -1,6 +1,7 @@
 """
 Player class for Presina game.
 """
+import time
 from typing import List, Optional
 from .card import Card
 
@@ -25,7 +26,10 @@ class Player:
         self.bet: Optional[int] = None
         self.tricks_won = 0
         self.is_online = True
-        self.offline_since = None  # Timestamp when marked offline
+        self.offline_since = None  # Timestamp when marked offline (socket disconnected)
+        self.is_away = False       # True if user switched tab/minimized (Page Visibility API)
+        self.away_since = None     # Timestamp when marked away
+        self.last_activity = time.time()  # Last ping/activity timestamp
         self.is_spectator = False
         self.join_next_turn = False  # For players joining mid-game
         self.ready_for_next_turn = False
@@ -111,6 +115,11 @@ class Player:
         """Check if player is eliminated (0 lives)."""
         return self.lives <= 0
     
+    @property
+    def is_effectively_online(self) -> bool:
+        """Check if player is effectively online (connected or just away)."""
+        return self.is_online or (self.is_away and self.last_activity > time.time() - 120)
+    
     def to_dict(self, include_hand: bool = False, others_hand_visible: bool = False) -> dict:
         """
         Serialize player for JSON transmission.
@@ -119,13 +128,17 @@ class Player:
             include_hand: Include full hand info (for the player themselves)
             others_hand_visible: Include hand info for special turn (1 card)
         """
+        # For UI: show as 'online' if effectively online, or show 'away' status
+        display_online = self.is_effectively_online
+        
         data = {
             'player_id': self.player_id,
             'name': self.name,
             'lives': self.lives,
             'bet': self.bet,
             'tricks_won': self.tricks_won,
-            'is_online': self.is_online,
+            'is_online': display_online,
+            'is_away': self.is_away,
             'is_spectator': self.is_spectator,
             'join_next_turn': self.join_next_turn,
             'ready_for_next_turn': self.ready_for_next_turn,

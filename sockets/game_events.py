@@ -1,6 +1,7 @@
 """
 Game Socket.IO events.
 """
+import time
 from flask import request
 from flask_socketio import emit
 
@@ -283,19 +284,119 @@ def register_game_events(socketio):
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
         
+        # Update player's sid if it changed (reconnection)
+        player = room.game.get_player(player_id)
+        if player and player.sid != request.sid:
+            player.sid = request.sid
+            player.is_online = True
+            player.offline_since = None
+        
         state = room.game.get_state_for_player(player_id)
         state['admin_id'] = room.admin_id
         emit('game_state', {
             'game_state': state
         })
+    
+    @socketio.on('ping')
+    def handle_ping(data):
+        """
+        Heartbeat/ping from client to keep connection alive.
+        Data: { player_id }
+        """
+        player_id = data.get('player_id')
+        if player_id:
+            room = room_manager.get_player_room(player_id)
+            if room:
+                player = room.game.get_player(player_id)
+                if player:
+                    player.is_online = True
+                    player.offline_since = None
+                    player.last_activity = time.time()
+                    if player.sid != request.sid:
+                        player.sid = request.sid
+                    # Also update room manager's sid mapping
+                    room_manager.register_socket(request.sid, player_id)
+        emit('pong', {'timestamp': time.time()})
+    
+    @socketio.on('visibility_change')
+    def handle_visibility_change(data):
+        """
+        Handle page visibility change from client.
+        Data: { player_id, is_visible: bool }
+        """
+        player_id = data.get('player_id')
+        is_visible = data.get('is_visible', True)
+        
+        if not player_id:
+            return
+        
+        # Verify player identity
+        if not _verify_player_socket(player_id, request.sid):
+            return
+        
+        room = room_manager.get_player_room(player_id)
+        if not room:
+            return
+        
+        player = room.game.get_player(player_id)
+        if not player:
+            return
+        
+        if is_visible:
+            # User came back to the page
+            player.is_away = False
+            player.away_since = None
+            player.is_online = True
+            player.offline_since = None
+            player.last_activity = time.time()
+        else:
+            # User switched tab or minimized
+            player.is_away = True
+            player.away_since = time.time()
+            # Note: is_online remains True - they're still connected!
+        
+        # Broadcast updated state so other players see the away status
+        _broadcast_game_state(socketio, room)
 
 
-def _broadcast_game_state(socketio, room):
-    """Broadcast game state to all players in a room."""
+def _broadcast_game_state(socketio, room, include_offline=False):
+    """Broadcast game state to all players in a room.
+    
+    Args:
+        socketio: SocketIO instance
+        room: Room object
+        include_offline: If True, also try to send to offline players (in case they reconnected)
+    """
     for pid, player in room.game.players.items():
+        # Send to online players with valid sid
         if player.sid and player.is_online:
-            state = room.game.get_state_for_player(pid)
-            state['admin_id'] = room.admin_id
-            socketio.emit('game_state', {
-                'game_state': state
-            }, room=player.sid)
+            try:
+                state = room.game.get_state_for_player(pid)
+                state['admin_id'] = room.admin_id
+                socketio.emit('game_state', {
+                    'game_state': state
+                }, room=player.sid)
+            except Exception as e:
+                # Log error but don't stop broadcasting to others
+                import logging
+                logging.getLogger(__name__).error(f"Error broadcasting to {pid}: {e}")
+        elif include_offline and player.sid:
+            # Try to send to offline players too (they might have reconnected)
+            try:
+                state = room.game.get_state_for_player(pid)
+                state['admin_id'] = room.admin_id
+                socketio.emit('game_state', {
+                    'game_state': state
+                }, room=player.sid)
+            except:
+                pass  # Ignore errors for offline players
+
+
+def _broadcast_to_room(socketio, room, event, data, include_offline=False):
+    """Broadcast an event to all players in a room."""
+    for pid, player in room.game.players.items():
+        if player.sid and (player.is_online or include_offline):
+            try:
+                socketio.emit(event, data, room=player.sid)
+            except:
+                pass

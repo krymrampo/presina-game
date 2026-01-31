@@ -50,20 +50,35 @@ def _ensure_player_socket(player_id: str, sid: str) -> bool:
         return True
     return registered_player == player_id
 
-def _emit_room_state(socketio, room, event: str, extra: dict = None, exclude_player_id: str = None):
-    """Emit per-player room state to avoid leaking private info."""
+def _emit_room_state(socketio, room, event: str, extra: dict = None, exclude_player_id: str = None, include_offline: bool = True):
+    """Emit per-player room state to avoid leaking private info.
+    
+    Args:
+        socketio: SocketIO instance
+        room: Room object
+        event: Event name
+        extra: Extra data to include
+        exclude_player_id: Player ID to exclude
+        include_offline: Also emit to offline players (for sync purposes)
+    """
     if not room:
         return
     for pid, player in room.game.players.items():
         if exclude_player_id and pid == exclude_player_id:
             continue
-        if player.sid and player.is_online:
-            state = room.game.get_state_for_player(pid)
-            state['admin_id'] = room.admin_id
-            payload = {'game_state': state}
-            if extra:
-                payload.update(extra)
-            socketio.emit(event, payload, room=player.sid)
+        # Always try to emit if player has a sid, regardless of online status
+        # This ensures reconnected players get updates
+        if player.sid:
+            try:
+                state = room.game.get_state_for_player(pid)
+                state['admin_id'] = room.admin_id
+                payload = {'game_state': state}
+                if extra:
+                    payload.update(extra)
+                socketio.emit(event, payload, room=player.sid)
+            except Exception:
+                # Ignore emit errors (player may have disconnected)
+                pass
 
 def register_lobby_events(socketio):
     """Register all lobby-related socket events."""
@@ -87,8 +102,17 @@ def register_lobby_events(socketio):
         # Notify room if player was in one
         room = room_manager.get_player_room(player_id) if player_id else None
         if player_id and room:
-            # Broadcast updated per-player state so UIs reflect offline status
-            _emit_room_state(socketio, room, 'game_state')
+            # Small delay to allow for quick reconnections
+            import threading
+            def delayed_broadcast():
+                import time
+                time.sleep(2)  # Wait 2 seconds for quick reconnect
+                # Check if player is still offline
+                player = room.game.get_player(player_id)
+                if player and not player.is_online:
+                    _emit_room_state(socketio, room, 'game_state')
+            
+            threading.Thread(target=delayed_broadcast, daemon=True).start()
         
         # Broadcast updated room list (may clean up offline ghosts)
         socketio.emit('rooms_list', {

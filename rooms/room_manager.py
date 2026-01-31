@@ -86,7 +86,7 @@ class RoomManager:
     MAX_CHAT_MESSAGES = 100
     ROOM_MAX_AGE_HOURS = 24.0  # Delete inactive rooms after 24h
     FINISHED_ROOM_MAX_AGE_MINUTES = 30.0  # Delete finished games after 30min
-    OFFLINE_GRACE_SECONDS_WAITING = 30.0  # Grace period before removing offline players in lobby
+    OFFLINE_GRACE_SECONDS_WAITING = 300.0  # Grace period: 5 minutes (was 30s - too short!)
     
     def __init__(self):
         self.rooms: Dict[str, Room] = {}
@@ -131,21 +131,21 @@ class RoomManager:
                 deleted += 1
                 continue
 
-            if any(p.is_online for p in players):
-                continue  # keep rooms with at least one online player
+            # Check for effectively online players (including those who are just 'away')
+            if any(p.is_effectively_online for p in players):
+                continue  # keep rooms with at least one effectively online player
 
             # All players offline - check grace
-            latest_offline = 0.0
+            latest_offline = now  # Default to now if unknown
             for player in players:
                 offline_since = getattr(player, 'offline_since', None)
-                if offline_since is None:
-                    # Unknown offline timestamp - treat as stale to avoid ghosts
-                    latest_offline = 0.0
-                    break
-                if offline_since > latest_offline:
+                if offline_since is not None and offline_since < latest_offline:
                     latest_offline = offline_since
-
-            if latest_offline == 0.0 or now - latest_offline >= self.OFFLINE_GRACE_SECONDS_WAITING:
+                # If offline_since is None, player just went offline - use current time
+                if offline_since is None:
+                    player.offline_since = now
+                    
+            if now - latest_offline >= self.OFFLINE_GRACE_SECONDS_WAITING:
                 self.delete_room(room_id)
                 deleted += 1
 
@@ -222,11 +222,12 @@ class RoomManager:
         # Update activity
         room.update_activity()
 
-        # Check access code for private rooms
+        # Check access code for private rooms (case-insensitive)
         if not room.is_public:
             if room.access_code is None:
                 return False, "Stanza privata non configurata correttamente"
-            if access_code != room.access_code:
+            # Case-insensitive comparison
+            if access_code is None or access_code.upper() != room.access_code.upper():
                 return False, "Codice di accesso errato"
         
         # Disallow joining finished games
@@ -441,6 +442,16 @@ class RoomManager:
         player.sid = new_sid
         player.is_online = True
         player.offline_since = None
+        player.is_away = False
+        player.away_since = None
+        player.last_activity = time.time()
+        
+        # Update socket mapping
+        self.sid_to_player[new_sid] = player_id
+        
+        # If game was waiting because this player was offline, check if we can continue
+        if room.game.phase in (GamePhase.PLAYING, GamePhase.BETTING, GamePhase.WAITING_JOLLY):
+            room.game.check_and_handle_offline_player()
         
         return True, "Riconnesso alla stanza", room
     
@@ -464,23 +475,27 @@ class RoomManager:
                     player.is_online = False
                     player.offline_since = time.time()
                     player.sid = None
-                    room.game.auto_advance_offline()
+                    # Trigger auto-skip check for offline players
+                    room.game.check_and_handle_offline_player()
                 
                 # Handle admin reassignment if admin disconnects
+                # BUT only if game is in waiting phase - during game, keep admin
                 if room.admin_id == player_id:
-                    # Find another online player
-                    for pid, p in room.game.players.items():
-                        if p.is_online and pid != player_id:
-                            room.admin_id = pid
-                            break
+                    if room.game.phase == GamePhase.WAITING:
+                        # Find another online player
+                        for pid, p in room.game.players.items():
+                            if p.is_online and pid != player_id:
+                                room.admin_id = pid
+                                break
+                    # During game, admin stays assigned even if offline
                 
                 # Check if all players are offline - close the room if game is in progress
                 if room.game.phase != GamePhase.WAITING and room.game.phase != GamePhase.GAME_OVER:
                     all_offline = all(not p.is_online for p in room.game.players.values())
                     if all_offline:
-                        # All players offline - delete the room
-                        self.delete_room(room.room_id)
-                        return
+                        # All players offline - delete the room after a short delay
+                        # (give time for reconnection)
+                        pass  # Don't delete immediately, let cleanup handle it
     
     def get_player_by_sid(self, sid: str) -> Optional[str]:
         """Get player ID from socket ID."""

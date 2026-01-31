@@ -6,6 +6,9 @@
 const SocketClient = {
     socket: null,
     connected: false,
+    heartbeatInterval: null,
+    lastPongTime: null,
+    reconnectAttempts: 0,
     
     // ==================== Connection ====================
     connect() {
@@ -13,10 +16,76 @@ const SocketClient = {
         
         this.socket = io({
             transports: ['polling'],
-            upgrade: false
+            upgrade: false,
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000
         });
         
         this.setupEventHandlers();
+    },
+    
+    // ==================== Heartbeat ====================
+    startHeartbeat() {
+        // Send ping every 10 seconds to keep connection alive
+        this.heartbeatInterval = setInterval(() => {
+            if (this.connected && App.playerId) {
+                this.socket.emit('ping', { player_id: App.playerId });
+            }
+        }, 10000);
+    },
+    
+    stopHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+    },
+    
+    // Request fresh game state from server
+    requestGameState() {
+        if (this.connected && App.playerId && App.currentRoom) {
+            this.socket.emit('get_game_state', { player_id: App.playerId });
+        }
+    },
+    
+    // ==================== Page Visibility ====================
+    visibilityHandler: null,
+    
+    setupVisibilityHandler() {
+        // Use Page Visibility API to detect tab changes/minimize
+        if (typeof document.hidden !== 'undefined') {
+            this.visibilityHandler = () => {
+                if (!App.playerId) return;
+                
+                const isVisible = !document.hidden;
+                console.log(`Page visibility changed: ${isVisible ? 'visible' : 'hidden'}`);
+                
+                // Notify server about visibility change
+                if (this.connected) {
+                    this.socket.emit('visibility_change', {
+                        player_id: App.playerId,
+                        is_visible: isVisible
+                    });
+                }
+                
+                // When becoming visible again, request fresh game state
+                if (isVisible && App.currentRoom) {
+                    console.log('Tab visible again, requesting game state...');
+                    this.requestGameState();
+                }
+            };
+            
+            document.addEventListener('visibilitychange', this.visibilityHandler);
+        }
+    },
+    
+    removeVisibilityHandler() {
+        if (this.visibilityHandler) {
+            document.removeEventListener('visibilitychange', this.visibilityHandler);
+            this.visibilityHandler = null;
+        }
     },
     
     setupEventHandlers() {
@@ -26,11 +95,31 @@ const SocketClient = {
         socket.on('connect', () => {
             console.log('Connected to server');
             this.connected = true;
+            this.reconnectAttempts = 0;
+            this.startHeartbeat();
+            this.setupVisibilityHandler();
+            
+            // If we have a saved room, try to rejoin automatically
+            if (App.currentRoom && App.playerId) {
+                console.log('Auto-rejoining room after connection...');
+                this.rejoinGame();
+            }
         });
         
         socket.on('disconnect', () => {
             console.log('Disconnected from server');
             this.connected = false;
+            this.stopHeartbeat();
+            this.removeVisibilityHandler();
+        });
+        
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+            this.reconnectAttempts++;
+        });
+        
+        socket.on('pong', (data) => {
+            this.lastPongTime = data.timestamp;
         });
         
         socket.on('error', (data) => {
@@ -183,8 +272,15 @@ const SocketClient = {
             const previousPlayerId = App.gameState?.current_player_id;
             const previousPlayer = App.gameState?.players?.find(p => p.player_id === App.playerId);
             const previousHandSize = previousPlayer?.hand?.length || 0;
+            const previousCardsOnTable = App.gameState?.cards_on_table || [];
             
             App.gameState = data.game_state;
+            
+            // Check if cards on table changed (someone played)
+            const currentCardsOnTable = data.game_state.cards_on_table || [];
+            if (currentCardsOnTable.length !== previousCardsOnTable.length) {
+                console.log(`Cards on table: ${previousCardsOnTable.length} -> ${currentCardsOnTable.length}`);
+            }
             
             if (data.game_state.phase === 'game_over') {
                 showScreen('game-over');

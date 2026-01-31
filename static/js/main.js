@@ -13,7 +13,8 @@ const App = {
     isAdmin: false,
     selectedCard: null,
     trickAdvanceScheduled: false,
-    pendingJoinRoomId: null
+    pendingJoinRoomId: null,
+    gameStatePollInterval: null  // For polling game state when needed
 };
 
 // ==================== Initialization ====================
@@ -89,6 +90,35 @@ function showScreen(screenId) {
         } else {
             gameChat.classList.add('hidden');
         }
+    }
+    
+    // Start/stop game state polling based on screen
+    if (screenId === 'game') {
+        startGameStatePolling();
+    } else {
+        stopGameStatePolling();
+    }
+}
+
+// ==================== Game State Polling ====================
+// Poll game state every 3 seconds when in game screen
+// This ensures we stay in sync even if socket events are missed
+function startGameStatePolling() {
+    stopGameStatePolling(); // Clear any existing interval
+    App.gameStatePollInterval = setInterval(() => {
+        if (App.currentScreen === 'game' && App.currentRoom) {
+            // Don't poll if user is selecting a card (to avoid UI disruption)
+            if (!App.selectedCard) {
+                SocketClient.requestGameState();
+            }
+        }
+    }, 3000);
+}
+
+function stopGameStatePolling() {
+    if (App.gameStatePollInterval) {
+        clearInterval(App.gameStatePollInterval);
+        App.gameStatePollInterval = null;
     }
 }
 
@@ -410,16 +440,32 @@ function updateWaitingRoom(gameState) {
     
     // Update players grid
     const container = document.getElementById('waiting-players');
-    container.innerHTML = gameState.players.map(player => `
-        <div class="player-card ${player.player_id === gameState.admin_id ? 'admin' : ''} ${!player.is_online ? 'offline' : ''}">
+    container.innerHTML = gameState.players.map(player => {
+        // Determine status: online, away, or offline
+        let statusClass = 'online';
+        let statusText = 'Online';
+        let statusDotClass = 'online';
+        
+        if (!player.is_online) {
+            statusClass = 'offline';
+            statusText = 'Offline';
+            statusDotClass = 'offline';
+        } else if (player.is_away) {
+            statusClass = 'away';
+            statusText = 'Assente';
+            statusDotClass = 'away'; // yellow/amber color
+        }
+        
+        return `
+        <div class="player-card ${player.player_id === gameState.admin_id ? 'admin' : ''} ${statusClass}">
             ${App.isAdmin && player.player_id !== App.playerId ? `<button class="kick-btn" onclick="kickPlayer('${player.player_id}')">✕</button>` : ''}
             <div class="player-name">${escapeHtml(player.name)}</div>
             <div class="player-status">
-                <span class="online-dot ${player.is_online ? 'online' : 'offline'}"></span>
-                ${player.is_online ? 'Online' : 'Offline'}
+                <span class="online-dot ${statusDotClass}"></span>
+                ${statusText}
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 // ==================== Game Functions ====================

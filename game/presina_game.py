@@ -59,6 +59,7 @@ class PresinaGameOnline:
         self.last_turn_all_correct: bool = False  # Track if last turn had no mistakes
         
         self.messages: List[dict] = []        # Game event messages
+        self._last_offline_check: float = 0   # Last time we checked for offline players
     
     # ==================== Player Management ====================
     
@@ -214,6 +215,85 @@ class PresinaGameOnline:
     def auto_advance_offline(self):
         """Auto-play disabled - game waits for players indefinitely."""
         pass
+    
+    def check_and_handle_offline_player(self, force_check: bool = False):
+        """
+        Check if the current player is offline and handle it.
+        If player is offline for too long during their turn, auto-skip or auto-play.
+        
+        Note: Players who are just 'away' (tab switched/minimized) are NOT auto-skipped.
+        Only truly disconnected players (socket closed) are auto-skipped.
+        
+        Args:
+            force_check: If True, check immediately even if we checked recently
+        """
+        OFFLINE_TIMEOUT_SECONDS = 60  # 1 minute timeout for turn
+        CHECK_INTERVAL = 5  # Check every 5 seconds max
+        
+        now = time.time()
+        
+        # Rate limit checks unless forced
+        if not force_check and now - self._last_offline_check < CHECK_INTERVAL:
+            return
+        self._last_offline_check = now
+        
+        if self.phase == GamePhase.WAITING or self.phase == GamePhase.GAME_OVER:
+            return
+        
+        if self.phase == GamePhase.BETTING:
+            current = self.get_current_better()
+        elif self.phase in (GamePhase.PLAYING, GamePhase.WAITING_JOLLY):
+            current = self.get_current_player()
+        else:
+            return
+        
+        if not current:
+            return
+        
+        # IMPORTANT: Only auto-skip if player is truly offline (socket disconnected)
+        # Do NOT auto-skip if player is just 'away' (tab switched/minimized)
+        if not current.is_online and not current.is_away and current.offline_since:
+            offline_duration = now - current.offline_since
+            if offline_duration >= OFFLINE_TIMEOUT_SECONDS:
+                self._auto_skip_player(current.player_id)
+    
+    def _auto_skip_player(self, player_id: str):
+        """
+        Automatically skip a player's turn when they're offline too long.
+        For betting: bet 0
+        For playing: play first available card
+        """
+        player = self.get_player(player_id)
+        if not player:
+            return
+        
+        self._add_message('system', f"{player.name} è offline - turno automatico")
+        
+        if self.phase == GamePhase.BETTING:
+            # Auto-bet 0 (safest bet)
+            cards_this_turn = self.CARDS_PER_TURN[self.current_turn]
+            # Check if 0 is allowed (not forbidden)
+            forbidden = self.get_forbidden_bet()
+            if forbidden == 0:
+                # Bet 1 instead if 0 is forbidden
+                self.make_bet(player_id, 1)
+            else:
+                self.make_bet(player_id, 0)
+                
+        elif self.phase == GamePhase.PLAYING:
+            # Auto-play first available card
+            if player.hand:
+                card = player.hand[0]  # Play first card
+                # Check if it's jolly
+                if card.is_jolly:
+                    # Default to 'prende'
+                    self.play_card(player_id, card.suit, card.value, 'prende')
+                else:
+                    self.play_card(player_id, card.suit, card.value)
+                    
+        elif self.phase == GamePhase.WAITING_JOLLY and self.pending_jolly_player == player_id:
+            # Auto-choose 'prende' for jolly
+            self.play_card(player_id, None, None, 'prende')
     
     # ==================== Betting Phase ====================
     
@@ -559,6 +639,9 @@ class PresinaGameOnline:
     
     def get_state_for_player(self, player_id: str) -> dict:
         """Get the game state from a specific player's perspective."""
+        # Check for offline players periodically
+        self.check_and_handle_offline_player()
+        
         player = self.get_player(player_id)
         is_spectator = player is None or player.is_spectator if player else True
         
