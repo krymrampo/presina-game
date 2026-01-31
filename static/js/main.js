@@ -27,7 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedPlayerId && savedPlayerName) {
         App.playerId = savedPlayerId;
         App.playerName = savedPlayerName;
-        document.getElementById('player-name').value = savedPlayerName;
+        const playerNameInput = document.getElementById('player-name');
+        if (playerNameInput) {
+            playerNameInput.value = savedPlayerName;
+        }
         
         // Restore room info if exists
         if (savedRoom) {
@@ -77,7 +80,10 @@ function autoEnterLobbyIfSaved() {
     // Ensure state is restored
     App.playerId = savedPlayerId;
     App.playerName = savedPlayerName;
-    document.getElementById('player-name').value = savedPlayerName;
+    const playerNameInput = document.getElementById('player-name');
+    if (playerNameInput) {
+        playerNameInput.value = savedPlayerName;
+    }
     
     // Go straight to lobby list on refresh
     SocketClient.connect();
@@ -168,15 +174,18 @@ function setupEventListeners() {
     document.getElementById('btn-back-home').addEventListener('click', () => showScreen('home'));
     document.getElementById('btn-back-home-lobby').addEventListener('click', () => showScreen('home'));
     
-    // Player name
-    document.getElementById('player-name').addEventListener('input', (e) => {
-        App.playerName = e.target.value.trim();
-        sessionStorage.setItem('presina_player_name', App.playerName);
-    });
-    
-    document.getElementById('player-name').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') enterLobby();
-    });
+    // Player name (solo se l'elemento esiste - lobby screen)
+    const playerNameInput = document.getElementById('player-name');
+    if (playerNameInput) {
+        playerNameInput.addEventListener('input', (e) => {
+            App.playerName = e.target.value.trim();
+            sessionStorage.setItem('presina_player_name', App.playerName);
+        });
+        
+        playerNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') enterLobby();
+        });
+    }
     
     // Lobby
     document.getElementById('btn-create-room').addEventListener('click', showCreateRoomModal);
@@ -259,7 +268,10 @@ function enterLobby() {
     
     App.playerName = name;
     sessionStorage.setItem('presina_player_name', name);
-    document.getElementById('player-name-display').textContent = name;
+    const playerNameDisplay = document.getElementById('player-name-display');
+    if (playerNameDisplay) {
+        playerNameDisplay.textContent = name;
+    }
     
     // Connect socket and register
     SocketClient.connect();

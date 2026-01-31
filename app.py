@@ -7,6 +7,7 @@ from urllib.parse import parse_qs
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from werkzeug.wrappers import Response
 from flask_socketio import SocketIO
+from pathlib import Path
 
 from config import get_config
 from sockets import register_lobby_events, register_game_events, register_chat_events

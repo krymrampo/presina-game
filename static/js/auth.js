@@ -67,7 +67,10 @@ const AuthUI = {
             
             // Set player name for game
             App.playerName = this.currentUser.display_name || this.currentUser.username;
-            document.getElementById('player-name').value = App.playerName;
+            const playerNameInput = document.getElementById('player-name');
+            if (playerNameInput) {
+                playerNameInput.value = App.playerName;
+            }
             
         } else {
             // Show not logged in UI
@@ -460,8 +463,14 @@ const AuthUI = {
         // Assicurati che il nome del giocatore sia impostato correttamente
         if (this.currentUser) {
             App.playerName = this.currentUser.display_name || this.currentUser.username;
-            document.getElementById('player-name').value = App.playerName;
-            document.getElementById('player-name-display').textContent = App.playerName;
+            const playerNameInput = document.getElementById('player-name');
+            const playerNameDisplay = document.getElementById('player-name-display');
+            if (playerNameInput) {
+                playerNameInput.value = App.playerName;
+            }
+            if (playerNameDisplay) {
+                playerNameDisplay.textContent = App.playerName;
+            }
         }
         
         // Connetti socket e registra

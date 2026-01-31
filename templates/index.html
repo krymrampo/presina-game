@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presina - Gioco di Carte Online</title>
+    <link rel="icon" type="image/png" href="/static/img/logo.png">
     <link rel="stylesheet" href="/static/css/style.css?v=20260130d">
     <link rel="stylesheet" href="/static/css/mobile.css?v=20260130d">
     <link rel="stylesheet" href="/static/css/auth.css?v=20260130d">
@@ -14,7 +15,10 @@
         <!-- HOME SCREEN -->
         <div id="home-screen" class="screen active">
             <div class="home-container">
-                <h1 class="title">🃏 Presina</h1>
+                <div class="logo-container">
+                    <img src="/static/img/logo.png" alt="Presina Logo" class="logo-img">
+                </div>
+                <h1 class="title">Presina</h1>
                 <p class="subtitle">Il gioco di carte napoletano online</p>
                 
                 <!-- NOT LOGGED IN -->
@@ -112,7 +116,7 @@
                     <h3>Vittoria</h3>
                     <p>Dopo il turno da 1 carta (ripetuto finché qualcuno sbaglia), vince chi ha più vite!</p>
                 </div>
-                <button id="btn-back-home" class="btn btn-secondary">← Torna alla Home</button>
+                <button id="btn-back-home" class="btn btn-secondary" onclick="showScreen('home')">← Torna alla Home</button>
             </div>
         </div>
 
@@ -123,6 +127,9 @@
                     <h2>🏠 Lobby</h2>
                     <span id="player-name-display" class="player-badge"></span>
                 </div>
+                
+                <!-- Hidden input for player name compatibility -->
+                <input type="hidden" id="player-name" value="">
                 
                 <div id="existing-room-banner" class="banner hidden">
                     <span>Sei già in una stanza!</span>
