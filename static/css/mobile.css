@@ -1,0 +1,1092 @@
+/**
+ * Presina - Mobile UI Styles
+ * Responsive design for mobile gameplay
+ */
+
+/* ==================== Mobile Detection ==================== */
+.mobile-detector {
+    display: none;
+}
+
+/* ==================== Mobile Game Layout ==================== */
+@media (max-width: 768px) {
+    /* Hide desktop-only elements on mobile */
+    .desktop-only {
+        display: none !important;
+    }
+    
+    /* Show mobile-only elements */
+    .mobile-only {
+        display: block !important;
+    }
+    
+    /* Game screen mobile layout */
+    #game-screen {
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .game-container {
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile */
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Mobile Header - Compact */
+    .game-header {
+        padding: 8px 12px;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+    
+    .turn-info {
+        display: flex;
+        gap: 12px;
+        font-size: 13px;
+    }
+    
+    .turn-info span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    #turn-number::before { content: '🃏'; }
+    #cards-info::before { content: '📊'; }
+    #trick-info::before { content: '🏆'; }
+    
+    .phase-indicator {
+        padding: 4px 10px;
+        font-size: 11px;
+        border-radius: 12px;
+    }
+    
+    /* Mobile Menu Button */
+    .mobile-menu-btn {
+        background: var(--bg-light);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .mobile-menu-btn:active {
+        background: var(--bg-medium);
+        transform: scale(0.95);
+    }
+    
+    /* Mobile Game Main - Vertical Stack */
+    .game-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* Table Area - Simplified */
+    .table-area {
+        flex: 1;
+        padding: 8px;
+        min-height: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Simplified table for mobile */
+    .table-center {
+        width: 100%;
+        max-width: 340px;
+        height: 200px;
+        border-radius: 16px;
+        box-shadow: 
+            inset 0 2px 15px rgba(0, 0, 0, 0.5),
+            0 4px 15px rgba(0, 0, 0, 0.4),
+            0 0 0 4px rgba(60, 40, 20, 0.8);
+    }
+    
+    .table-center::before {
+        width: 90%;
+        height: 85%;
+        border-radius: 12px;
+    }
+    
+    /* Played cards - scaled for mobile */
+    .played-card-position {
+        width: 50px;
+        height: 75px;
+    }
+    
+    .played-card-position.pos-0 { bottom: -40px; }
+    .played-card-position.pos-1 { bottom: 30px; left: 5px; }
+    .played-card-position.pos-2 { top: 50%; left: -25px; }
+    .played-card-position.pos-3 { top: -10px; left: 15%; }
+    .played-card-position.pos-4 { top: -10px; right: 15%; }
+    .played-card-position.pos-5 { top: 50%; right: -25px; }
+    .played-card-position.pos-6 { bottom: 30px; right: 5px; }
+    .played-card-position.pos-7 { top: -40px; }
+    
+    /* Table positions - smaller text */
+    .table-positions {
+        width: 340px;
+        height: 200px;
+    }
+    
+    .table-position {
+        width: 80px;
+    }
+    
+    .table-position.pos-0 { top: 108%; left: 50%; }
+    .table-position.pos-1 { top: 85%; left: 5%; }
+    .table-position.pos-2 { top: 50%; left: -5%; }
+    .table-position.pos-3 { top: 5%; left: 15%; }
+    .table-position.pos-4 { top: 5%; left: 85%; }
+    .table-position.pos-5 { top: 50%; left: 105%; }
+    .table-position.pos-6 { top: 85%; left: 95%; }
+    .table-position.pos-7 { top: -5%; left: 50%; }
+    
+    .table-position .player-name {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    .table-position .player-bet {
+        font-size: 10px;
+        padding: 2px 5px;
+    }
+    
+    /* Hide desktop panels on mobile */
+    .hand-panel,
+    .players-panel {
+        display: none;
+    }
+    
+    /* Mobile Player Status Bar */
+    .mobile-player-bar {
+        background: var(--bg-card);
+        border-top: 1px solid var(--border-color);
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+    
+    .mobile-player-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+    }
+    
+    .mobile-player-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+    
+    .mobile-player-details {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .mobile-player-name {
+        font-weight: 600;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .mobile-player-stats {
+        display: flex;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    
+    .mobile-player-stats span {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+    }
+    
+    /* Mobile Quick Actions */
+    .mobile-quick-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .mobile-quick-btn {
+        background: var(--bg-light);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        white-space: nowrap;
+    }
+    
+    .mobile-quick-btn:active {
+        background: var(--bg-medium);
+        transform: scale(0.95);
+    }
+    
+    .mobile-quick-btn.primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    /* Mobile Hand - Horizontal Scroll */
+    .mobile-hand-container {
+        background: var(--bg-dark);
+        border-top: 1px solid var(--border-color);
+        padding: 12px;
+        flex-shrink: 0;
+    }
+    
+    .mobile-hand-title {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .mobile-hand {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE */
+    }
+    
+    .mobile-hand::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+    }
+    
+    .mobile-hand .card {
+        width: 75px;
+        height: 112px;
+        flex-shrink: 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        transition: transform 0.2s ease;
+    }
+    
+    .mobile-hand .card:active {
+        transform: translateY(-4px);
+    }
+    
+    .mobile-hand .card.selected {
+        transform: translateY(-8px);
+        box-shadow: 0 0 0 2px var(--primary), 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Mobile Bottom Tab Bar */
+    .mobile-tab-bar {
+        background: var(--bg-card);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-around;
+        padding: 8px 0;
+        flex-shrink: 0;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    
+    .mobile-tab-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 16px;
+        font-size: 10px;
+        cursor: pointer;
+        transition: var(--transition);
+        position: relative;
+    }
+    
+    .mobile-tab-btn.active {
+        color: var(--primary);
+    }
+    
+    .mobile-tab-btn .icon {
+        font-size: 20px;
+    }
+    
+    .mobile-tab-badge {
+        position: absolute;
+        top: 0;
+        right: 8px;
+        background: var(--danger);
+        color: white;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        font-size: 10px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Mobile Bottom Sheet (Drawer) */
+    .mobile-sheet-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 200;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    
+    .mobile-sheet-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .mobile-sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 80vh;
+        background: var(--bg-card);
+        border-radius: 20px 20px 0 0;
+        z-index: 201;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .mobile-sheet.active {
+        transform: translateY(0);
+    }
+    
+    .mobile-sheet-handle {
+        width: 40px;
+        height: 4px;
+        background: var(--border-color);
+        border-radius: 2px;
+        margin: 12px auto;
+        flex-shrink: 0;
+    }
+    
+    .mobile-sheet-header {
+        padding: 0 16px 12px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    .mobile-sheet-title {
+        font-size: 16px;
+        font-weight: 600;
+    }
+    
+    .mobile-sheet-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 4px;
+    }
+    
+    .mobile-sheet-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+    }
+    
+    /* Mobile Players List in Sheet */
+    .mobile-players-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .mobile-player-item {
+        background: var(--bg-medium);
+        padding: 12px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .mobile-player-item.current {
+        border-color: var(--primary);
+        background: rgba(212, 175, 55, 0.1);
+    }
+    
+    .mobile-player-item.me {
+        border-color: var(--primary);
+    }
+    
+    .mobile-player-item.spectator {
+        opacity: 0.6;
+    }
+    
+    .mobile-player-item.offline {
+        opacity: 0.4;
+    }
+    
+    .mobile-player-item-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    
+    .mobile-player-item-dot.online { background: var(--success); }
+    .mobile-player-item-dot.offline { background: var(--danger); }
+    .mobile-player-item-dot.away { background: var(--warning); }
+    
+    .mobile-player-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .mobile-player-item-name {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .mobile-player-item-status {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    
+    .mobile-player-item-stats {
+        text-align: right;
+        font-size: 13px;
+    }
+    
+    .mobile-player-item-lives {
+        color: var(--danger);
+        font-weight: 600;
+    }
+    
+    .mobile-player-item-bet {
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+    
+    /* Mobile Chat in Sheet */
+    .mobile-chat-messages {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .mobile-chat-message {
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 16px;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+    
+    .mobile-chat-message.own {
+        align-self: flex-end;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+    
+    .mobile-chat-message.other {
+        align-self: flex-start;
+        background: var(--bg-medium);
+        border-bottom-left-radius: 4px;
+    }
+    
+    .mobile-chat-message .msg-name {
+        font-size: 11px;
+        font-weight: 700;
+        margin-bottom: 2px;
+        opacity: 0.8;
+    }
+    
+    .mobile-chat-input-area {
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-medium);
+    }
+    
+    .mobile-chat-input-area input {
+        flex: 1;
+        padding: 12px 16px;
+        border-radius: 20px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-light);
+        color: var(--text-primary);
+        font-size: 14px;
+    }
+    
+    .mobile-chat-input-area input:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+    
+    .mobile-chat-send-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    /* Mobile Betting Sheet */
+    .mobile-betting-content h4 {
+        text-align: center;
+        margin-bottom: 16px;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+    
+    .mobile-bet-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    
+    .mobile-bet-btn {
+        aspect-ratio: 1;
+        border-radius: 12px;
+        border: 2px solid var(--border-color);
+        background: var(--bg-medium);
+        color: var(--text-primary);
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .mobile-bet-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .mobile-bet-btn:not(.forbidden):active,
+    .mobile-bet-btn:not(.forbidden).active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    .mobile-bet-btn.forbidden {
+        background: var(--danger);
+        opacity: 0.3;
+        text-decoration: line-through;
+        cursor: not-allowed;
+    }
+    
+    .mobile-bet-forbidden-note {
+        text-align: center;
+        color: var(--danger);
+        font-size: 13px;
+        padding: 12px;
+        background: rgba(196, 30, 58, 0.1);
+        border-radius: 8px;
+    }
+    
+    /* Mobile Turn Results */
+    .mobile-turn-results {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--bg-card);
+        z-index: 300;
+        display: flex;
+        flex-direction: column;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .mobile-turn-results.active {
+        transform: translateY(0);
+    }
+    
+    .mobile-turn-results-header {
+        padding: 16px;
+        background: var(--bg-medium);
+        border-bottom: 1px solid var(--border-color);
+        text-align: center;
+    }
+    
+    .mobile-turn-results-header h3 {
+        font-size: 18px;
+        color: var(--primary);
+    }
+    
+    .mobile-turn-results-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+    }
+    
+    .mobile-result-card {
+        background: var(--bg-medium);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border-left: 4px solid var(--border-color);
+    }
+    
+    .mobile-result-card.correct {
+        border-left-color: var(--success);
+    }
+    
+    .mobile-result-card.wrong {
+        border-left-color: var(--danger);
+    }
+    
+    .mobile-result-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .mobile-result-card-name {
+        font-weight: 600;
+        font-size: 15px;
+    }
+    
+    .mobile-result-card-status {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        background: var(--bg-light);
+    }
+    
+    .mobile-result-card-status.correct {
+        background: rgba(34, 197, 94, 0.2);
+        color: var(--success);
+    }
+    
+    .mobile-result-card-status.wrong {
+        background: rgba(196, 30, 58, 0.2);
+        color: var(--danger);
+    }
+    
+    .mobile-result-card-stats {
+        display: flex;
+        gap: 20px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+    
+    .mobile-turn-results-footer {
+        padding: 16px;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-medium);
+    }
+    
+    /* Mobile Card Confirm Modal */
+    .mobile-card-confirm {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 400;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    
+    .mobile-card-confirm-card {
+        width: 160px;
+        height: 240px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        margin-bottom: 24px;
+    }
+    
+    .mobile-card-confirm-text {
+        font-size: 18px;
+        margin-bottom: 24px;
+        text-align: center;
+    }
+    
+    .mobile-card-confirm-actions {
+        display: flex;
+        gap: 12px;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .mobile-card-confirm-actions .btn {
+        flex: 1;
+        padding: 16px;
+        font-size: 16px;
+    }
+    
+    /* Mobile Jolly Choice */
+    .mobile-jolly-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 500;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    
+    .mobile-jolly-title {
+        font-size: 22px;
+        color: var(--primary);
+        margin-bottom: 8px;
+        text-align: center;
+    }
+    
+    .mobile-jolly-subtitle {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 32px;
+        text-align: center;
+    }
+    
+    .mobile-jolly-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+        max-width: 280px;
+    }
+    
+    .mobile-jolly-btn {
+        padding: 18px 24px;
+        border-radius: 12px;
+        border: 2px solid;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .mobile-jolly-btn.prende {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: var(--success);
+        color: var(--success);
+    }
+    
+    .mobile-jolly-btn.lascia {
+        background: rgba(196, 30, 58, 0.2);
+        border-color: var(--danger);
+        color: var(--danger);
+    }
+    
+    .mobile-jolly-btn:active {
+        transform: scale(0.98);
+    }
+    
+    /* Mobile Trick Winner Popup */
+    .mobile-trick-popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+        padding: 32px;
+        border-radius: 20px;
+        text-align: center;
+        z-index: 450;
+        min-width: 280px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .mobile-trick-popup.active {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    
+    .mobile-trick-popup.loser {
+        background: linear-gradient(135deg, #c41e3a 0%, #a01830 100%);
+    }
+    
+    .mobile-trick-popup-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+    }
+    
+    .mobile-trick-popup-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    
+    .mobile-trick-popup-card {
+        font-size: 14px;
+        opacity: 0.9;
+    }
+    
+    /* Mobile Spectator Banner */
+    .mobile-spectator-banner {
+        background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.1) 100%);
+        border-bottom: 1px solid var(--primary);
+        padding: 10px 16px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--primary);
+    }
+    
+    /* Mobile Special Turn Note */
+    .mobile-special-note {
+        background: rgba(217, 119, 6, 0.15);
+        border: 1px solid var(--warning);
+        color: var(--warning);
+        padding: 10px 16px;
+        border-radius: 8px;
+        margin: 8px 12px;
+        font-size: 12px;
+        text-align: center;
+    }
+    
+    /* Mobile Others Cards (Special Turn) */
+    .mobile-others-cards {
+        padding: 12px;
+    }
+    
+    .mobile-others-cards-title {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .mobile-others-cards-list {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 16px;
+    }
+    
+    .mobile-other-card {
+        text-align: center;
+    }
+    
+    .mobile-other-card-name {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+    }
+    
+    .mobile-other-card img {
+        width: 50px;
+        height: 75px;
+        border-radius: 6px;
+    }
+    
+    /* Mobile Betting Overlay on Table */
+    .mobile-table-bets {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(13, 31, 26, 0.95);
+        padding: 20px;
+        border-radius: 16px;
+        border: 2px solid var(--primary);
+        text-align: center;
+        z-index: 50;
+        min-width: 260px;
+    }
+    
+    .mobile-table-bets h4 {
+        color: var(--primary);
+        margin-bottom: 12px;
+        font-size: 14px;
+    }
+    
+    .mobile-table-bets-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .mobile-table-bet-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--bg-card);
+        border-radius: 8px;
+        font-size: 13px;
+    }
+    
+    .mobile-table-bet-item.current {
+        border: 1px solid var(--primary);
+        background: rgba(212, 175, 55, 0.15);
+    }
+    
+    .mobile-table-bet-total {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        font-weight: 600;
+    }
+    
+    /* Hide desktop chat on mobile */
+    .game-chat {
+        display: none !important;
+    }
+    
+    /* Mobile Empty States */
+    .mobile-empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+    }
+    
+    .mobile-empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+    }
+    
+    .mobile-empty-state-text {
+        font-size: 14px;
+    }
+}
+
+/* ==================== Small Phones ==================== */
+@media (max-width: 380px) {
+    .mobile-hand .card {
+        width: 65px;
+        height: 97px;
+    }
+    
+    .table-center {
+        max-width: 300px;
+        height: 180px;
+    }
+    
+    .table-positions {
+        width: 300px;
+        height: 180px;
+    }
+    
+    .mobile-player-bar {
+        padding: 8px;
+    }
+    
+    .mobile-player-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+    
+    .turn-info {
+        font-size: 11px;
+        gap: 8px;
+    }
+    
+    .mobile-bet-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* ==================== Landscape Mobile ==================== */
+@media (max-height: 500px) and (orientation: landscape) {
+    .game-header {
+        padding: 6px 12px;
+        min-height: 40px;
+    }
+    
+    .mobile-player-bar {
+        padding: 6px 12px;
+    }
+    
+    .mobile-hand-container {
+        padding: 8px;
+    }
+    
+    .mobile-hand .card {
+        width: 55px;
+        height: 82px;
+    }
+    
+    .mobile-tab-bar {
+        padding: 4px 0;
+    }
+    
+    .table-center {
+        max-width: 400px;
+        height: 160px;
+    }
+}

@@ -347,7 +347,13 @@ const SocketClient = {
             if (typeof clearCardSelection === 'function') {
                 clearCardSelection();
             }
-            document.getElementById('jolly-choice').classList.remove('hidden');
+            
+            // Show appropriate jolly choice UI (desktop or mobile)
+            if (window.MobileUI && MobileUI.isMobile && MobileUI.isMobile()) {
+                document.getElementById('mobile-jolly-choice').classList.remove('hidden');
+            } else {
+                document.getElementById('jolly-choice').classList.remove('hidden');
+            }
         });
         
         // Chat events

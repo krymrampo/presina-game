@@ -19,6 +19,11 @@ const GameUI = {
         this.updateBettingArea(gameState);
         this.updateJollyChoice(gameState);
         this.updateTurnResults(gameState);
+        
+        // Also update mobile UI if available
+        if (window.MobileUI) {
+            MobileUI.updateGameScreen(gameState);
+        }
     },
     
     // ==================== Header ====================
@@ -485,6 +490,12 @@ const GameUI = {
     
     // ==================== Trick Winner Popup ====================
     showTrickWinner(winnerName, cardName, isWinner = true) {
+        // Show mobile popup if on mobile
+        if (window.MobileUI && MobileUI.isMobile && MobileUI.isMobile()) {
+            MobileUI.showTrickWinner(winnerName, cardName, isWinner);
+            return;
+        }
+        
         const overlay = document.getElementById('trick-winner-overlay');
         const popup = document.getElementById('trick-winner-popup');
         const titleEl = popup.querySelector('h3');

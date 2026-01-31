@@ -1,0 +1,493 @@
+/**
+ * Presina - Authentication & Profile Styles
+ */
+
+/* ==================== Auth Tabs ==================== */
+.auth-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    background: var(--bg-medium);
+    padding: 4px;
+    border-radius: 12px;
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.auth-tab:hover {
+    color: var(--text-primary);
+}
+
+.auth-tab.active {
+    background: var(--primary);
+    color: white;
+}
+
+/* ==================== Auth Forms ==================== */
+.auth-form {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.auth-form.active {
+    display: block;
+}
+
+.auth-form .input-group {
+    margin-bottom: 16px;
+}
+
+.auth-form input[type="password"] {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-size: 15px;
+    transition: var(--transition);
+}
+
+.auth-form input[type="password"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+.auth-form .btn {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+/* ==================== User Welcome (Logged In) ==================== */
+.user-welcome {
+    text-align: center;
+    padding: 24px 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 24px;
+}
+
+.user-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin: 0 auto 16px;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.user-welcome h3 {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+}
+
+.user-welcome p {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* ==================== Quick Stats ==================== */
+.user-quick-stats {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding: 16px;
+    background: var(--bg-medium);
+    border-radius: 12px;
+}
+
+.quick-stat {
+    text-align: center;
+}
+
+.quick-stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.quick-stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ==================== Profile Screen ==================== */
+.profile-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px;
+    min-height: 100vh;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.profile-header h2 {
+    font-size: 1.5rem;
+}
+
+.btn-back {
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: var(--transition);
+}
+
+.btn-back:hover {
+    background: var(--bg-medium);
+    border-color: var(--primary);
+}
+
+.profile-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    margin-bottom: 24px;
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 50px;
+    margin: 0 auto 16px;
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.3);
+}
+
+.profile-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+}
+
+.profile-card p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.member-since {
+    display: inline-block;
+    background: var(--bg-medium);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ==================== Stats Grid ==================== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    padding: 20px 12px;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.stat-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ==================== Profile Sections ==================== */
+.profile-section {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 24px;
+}
+
+.profile-section h4 {
+    font-size: 16px;
+    margin-bottom: 16px;
+    color: var(--primary);
+}
+
+/* ==================== Game History ==================== */
+.game-history {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-medium);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--border-color);
+}
+
+.history-item.win {
+    border-left-color: var(--success);
+}
+
+.history-item.loss {
+    border-left-color: var(--danger);
+}
+
+.history-result {
+    font-size: 24px;
+    margin-right: 12px;
+}
+
+.history-details {
+    flex: 1;
+}
+
+.history-room {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.history-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.history-stats {
+    text-align: right;
+    font-size: 12px;
+}
+
+.history-lives {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+/* ==================== Leaderboard ==================== */
+.leaderboard-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.lb-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: var(--bg-medium);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.lb-tab.active {
+    background: var(--primary);
+    color: white;
+}
+
+.leaderboard {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.lb-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-medium);
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+.lb-item.me {
+    background: rgba(212, 175, 55, 0.15);
+    border: 1px solid var(--primary);
+}
+
+.lb-rank {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    margin-right: 12px;
+}
+
+.lb-rank.gold {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #333;
+}
+
+.lb-rank.silver {
+    background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+    color: #333;
+}
+
+.lb-rank.bronze {
+    background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+    color: white;
+}
+
+.lb-info {
+    flex: 1;
+}
+
+.lb-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.lb-stats {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.lb-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+/* ==================== Profile Actions ==================== */
+.profile-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+.profile-actions .btn {
+    flex: 1;
+}
+
+/* ==================== Error Messages ==================== */
+.auth-error {
+    background: rgba(196, 30, 58, 0.2);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.auth-success {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid var(--success);
+    color: var(--success);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+/* ==================== Loading State ==================== */
+.auth-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 600px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .stat-value {
+        font-size: 22px;
+    }
+    
+    .profile-card {
+        padding: 24px;
+    }
+    
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        font-size: 40px;
+    }
+    
+    .profile-section {
+        padding: 16px;
+    }
+    
+    .user-quick-stats {
+        gap: 16px;
+    }
+    
+    .quick-stat-value {
+        font-size: 20px;
+    }
+}

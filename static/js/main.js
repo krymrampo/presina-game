@@ -50,6 +50,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function generatePlayerId() {
+    // Check if user is logged in from localStorage
+    const savedUser = localStorage.getItem('presina_user');
+    if (savedUser) {
+        try {
+            const user = JSON.parse(savedUser);
+            if (user && user.id) {
+                return String(user.id);
+            }
+        } catch (e) {
+            console.error('Error parsing saved user:', e);
+        }
+    }
+    // Otherwise generate a random guest ID
     return 'p_' + Math.random().toString(36).substr(2, 9);
 }
 

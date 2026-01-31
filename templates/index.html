@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presina - Gioco di Carte Online</title>
     <link rel="stylesheet" href="/static/css/style.css?v=20260130d">
+    <link rel="stylesheet" href="/static/css/mobile.css?v=20260130d">
+    <link rel="stylesheet" href="/static/css/auth.css?v=20260130d">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
@@ -15,14 +17,76 @@
                 <h1 class="title">🃏 Presina</h1>
                 <p class="subtitle">Il gioco di carte napoletano online</p>
                 
-                <div class="input-group">
-                    <label for="player-name">Il tuo nome:</label>
-                    <input type="text" id="player-name" maxlength="20" placeholder="Inserisci il tuo nome...">
+                <!-- NOT LOGGED IN -->
+                <div id="home-not-logged" class="home-auth-section">
+                    <div class="auth-tabs">
+                        <button class="auth-tab active" data-tab="login" onclick="AuthUI.switchTab('login')">Accedi</button>
+                        <button class="auth-tab" data-tab="register" onclick="AuthUI.switchTab('register')">Registrati</button>
+                    </div>
+                    
+                    <!-- Login Form -->
+                    <div id="login-form" class="auth-form active">
+                        <div class="input-group">
+                            <label for="login-username">Username</label>
+                            <input type="text" id="login-username" maxlength="20" placeholder="Il tuo username">
+                        </div>
+                        <div class="input-group">
+                            <label for="login-password">Password</label>
+                            <input type="password" id="login-password" placeholder="La tua password">
+                        </div>
+                        <button id="btn-login" class="btn btn-primary btn-large" onclick="AuthUI.login()">Accedi</button>
+                        <button id="btn-guest" class="btn btn-secondary" onclick="AuthUI.guestLogin()">
+                            👤 Gioca come Ospite
+                        </button>
+                    </div>
+                    
+                    <!-- Register Form -->
+                    <div id="register-form" class="auth-form">
+                        <div class="input-group">
+                            <label for="register-username">Username *</label>
+                            <input type="text" id="register-username" maxlength="20" placeholder="Scegli un username">
+                        </div>
+                        <div class="input-group">
+                            <label for="register-password">Password *</label>
+                            <input type="password" id="register-password" placeholder="Minimo 4 caratteri">
+                        </div>
+                        <div class="input-group">
+                            <label for="register-display-name">Nome visualizzato</label>
+                            <input type="text" id="register-display-name" maxlength="20" placeholder="Come ti chiami?">
+                        </div>
+                        <button id="btn-register" class="btn btn-primary btn-large" onclick="AuthUI.register()">Crea Account</button>
+                    </div>
                 </div>
                 
-                <div class="button-group">
-                    <button id="btn-enter-lobby" class="btn btn-primary">Entra nella Lobby</button>
-                    <button id="btn-rules" class="btn btn-secondary">📖 Regole</button>
+                <!-- LOGGED IN -->
+                <div id="home-logged" class="home-auth-section hidden">
+                    <div class="user-welcome">
+                        <div class="user-avatar-large" id="user-avatar">👤</div>
+                        <h3 id="user-display-name">Benvenuto!</h3>
+                        <p id="user-username">@username</p>
+                    </div>
+                    
+                    <div class="user-quick-stats">
+                        <div class="quick-stat">
+                            <span class="quick-stat-value" id="user-stat-games">0</span>
+                            <span class="quick-stat-label">Partite</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="quick-stat-value" id="user-stat-wins">0</span>
+                            <span class="quick-stat-label">Vittorie</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="quick-stat-value" id="user-stat-winrate">0%</span>
+                            <span class="quick-stat-label">Win Rate</span>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="btn-enter-lobby" class="btn btn-primary btn-large">🎮 Gioca</button>
+                        <button id="btn-profile" class="btn btn-secondary" onclick="showScreen('profile')">📊 Profilo</button>
+                        <button id="btn-rules" class="btn btn-secondary">📖 Regole</button>
+                        <button id="btn-logout" class="btn btn-secondary" onclick="AuthUI.logout()">🚪 Esci</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -187,7 +251,23 @@
                         <span id="cards-info">5 carte</span>
                         <span id="trick-info" class="trick-info-header">Mano 1/5</span>
                     </div>
-                    <div id="phase-indicator" class="phase-indicator">Puntate</div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div id="phase-indicator" class="phase-indicator">Puntate</div>
+                        <!-- Mobile Menu Button -->
+                        <button id="mobile-menu-btn" class="mobile-menu-btn mobile-only" onclick="MobileUI.toggleMenu()">
+                            ☰
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mobile Spectator Banner -->
+                <div id="mobile-spectator-banner" class="mobile-spectator-banner mobile-only hidden">
+                    👁️ Sei spettatore. Giocherai dal prossimo turno.
+                </div>
+                
+                <!-- Mobile Special Turn Note -->
+                <div id="mobile-special-note" class="mobile-special-note mobile-only hidden">
+                    ⚠️ Turno speciale: vedi le carte degli altri, non le tue!
                 </div>
                 
                 <!-- Spectator/Join Banner -->
@@ -313,9 +393,167 @@
                 </div>
                 
                 <!-- Footer -->
-                <div class="game-footer">
+                <div class="game-footer desktop-only">
                     powered by Krym_rampo & SopraSteria team
                 </div>
+                
+                <!-- ==================== MOBILE UI ELEMENTS ==================== -->
+                
+                <!-- Mobile Player Bar -->
+                <div id="mobile-player-bar" class="mobile-player-bar mobile-only">
+                    <div class="mobile-player-info">
+                        <div class="mobile-player-avatar">👤</div>
+                        <div class="mobile-player-details">
+                            <div id="mobile-player-name" class="mobile-player-name">Tu</div>
+                            <div class="mobile-player-stats">
+                                <span>❤️ <span id="mobile-player-lives">5</span></span>
+                                <span>🎯 <span id="mobile-player-bet">-</span></span>
+                                <span>🏆 <span id="mobile-player-tricks">0</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mobile-quick-actions" class="mobile-quick-actions">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+                
+                <!-- Mobile Hand - Horizontal Scroll -->
+                <div id="mobile-hand-container" class="mobile-hand-container mobile-only">
+                    <div class="mobile-hand-title">
+                        <span>Le tue carte</span>
+                        <span id="mobile-cards-count">0 carte</span>
+                    </div>
+                    <div id="mobile-hand" class="mobile-hand">
+                        <!-- Cards rendered here -->
+                    </div>
+                </div>
+                
+                <!-- Mobile Bottom Tab Bar -->
+                <div class="mobile-tab-bar mobile-only">
+                    <button class="mobile-tab-btn active" data-tab="game" onclick="MobileUI.switchTab('game')">
+                        <span class="icon">🃏</span>
+                        <span>Gioco</span>
+                    </button>
+                    <button class="mobile-tab-btn" data-tab="players" onclick="MobileUI.openPlayersSheet()">
+                        <span class="icon">👥</span>
+                        <span>Giocatori</span>
+                        <span id="mobile-players-badge" class="mobile-tab-badge hidden">!</span>
+                    </button>
+                    <button class="mobile-tab-btn" data-tab="chat" onclick="MobileUI.openChatSheet()">
+                        <span class="icon">💬</span>
+                        <span>Chat</span>
+                        <span id="mobile-chat-badge" class="mobile-tab-badge hidden">!</span>
+                    </button>
+                    <button id="mobile-bet-tab-btn" class="mobile-tab-btn" data-tab="bet" onclick="MobileUI.openBettingSheet()">
+                        <span class="icon">🎯</span>
+                        <span>Punta</span>
+                    </button>
+                </div>
+                
+                <!-- ==================== MOBILE SHEETS (Bottom Drawers) ==================== -->
+                
+                <!-- Players Sheet -->
+                <div id="mobile-players-sheet-overlay" class="mobile-sheet-overlay mobile-only" onclick="MobileUI.closeSheets()"></div>
+                <div id="mobile-players-sheet" class="mobile-sheet mobile-only">
+                    <div class="mobile-sheet-handle"></div>
+                    <div class="mobile-sheet-header">
+                        <span class="mobile-sheet-title">👥 Giocatori</span>
+                        <button class="mobile-sheet-close" onclick="MobileUI.closeSheets()">✕</button>
+                    </div>
+                    <div id="mobile-players-sheet-content" class="mobile-sheet-content">
+                        <div class="mobile-players-list">
+                            <!-- Players rendered here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Sheet -->
+                <div id="mobile-chat-sheet-overlay" class="mobile-sheet-overlay mobile-only" onclick="MobileUI.closeSheets()"></div>
+                <div id="mobile-chat-sheet" class="mobile-sheet mobile-only">
+                    <div class="mobile-sheet-handle"></div>
+                    <div class="mobile-sheet-header">
+                        <span class="mobile-sheet-title">💬 Chat</span>
+                        <button class="mobile-sheet-close" onclick="MobileUI.closeSheets()">✕</button>
+                    </div>
+                    <div id="mobile-chat-sheet-content" class="mobile-sheet-content">
+                        <div id="mobile-chat-messages" class="mobile-chat-messages">
+                            <!-- Messages rendered here -->
+                        </div>
+                    </div>
+                    <div class="mobile-chat-input-area">
+                        <input type="text" id="mobile-chat-input" maxlength="200" placeholder="Scrivi un messaggio...">
+                        <button class="mobile-chat-send-btn" onclick="MobileUI.sendChatMessage()">→</button>
+                    </div>
+                </div>
+                
+                <!-- Betting Sheet -->
+                <div id="mobile-betting-sheet-overlay" class="mobile-sheet-overlay mobile-only" onclick="MobileUI.closeSheets()"></div>
+                <div id="mobile-betting-sheet" class="mobile-sheet mobile-only">
+                    <div class="mobile-sheet-handle"></div>
+                    <div class="mobile-sheet-header">
+                        <span class="mobile-sheet-title">🎯 Fai la tua puntata</span>
+                        <button class="mobile-sheet-close" onclick="MobileUI.closeSheets()">✕</button>
+                    </div>
+                    <div class="mobile-sheet-content mobile-betting-content">
+                        <h4>Scegli quante mani pensi di vincere</h4>
+                        <div id="mobile-bet-grid" class="mobile-bet-grid">
+                            <!-- Bet buttons rendered here -->
+                        </div>
+                        <div id="mobile-bet-forbidden-note" class="mobile-bet-forbidden-note hidden"></div>
+                    </div>
+                </div>
+                
+                <!-- ==================== MOBILE POPUPS ==================== -->
+                
+                <!-- Mobile Card Confirm -->
+                <div id="mobile-card-confirm" class="mobile-card-confirm mobile-only hidden">
+                    <img id="mobile-card-confirm-img" class="mobile-card-confirm-card" src="" alt="">
+                    <p class="mobile-card-confirm-text">Giocare questa carta?</p>
+                    <div class="mobile-card-confirm-actions">
+                        <button class="btn btn-secondary" onclick="MobileUI.cancelCard()">Annulla</button>
+                        <button class="btn btn-primary" onclick="MobileUI.confirmCard()">✓ Gioca</button>
+                    </div>
+                </div>
+                
+                <!-- Mobile Jolly Choice -->
+                <div id="mobile-jolly-choice" class="mobile-jolly-overlay mobile-only hidden">
+                    <div class="mobile-jolly-title">🃏 Asso di Ori!</div>
+                    <div class="mobile-jolly-subtitle">Scegli come usarlo</div>
+                    <div class="mobile-jolly-buttons">
+                        <button class="mobile-jolly-btn prende" onclick="MobileUI.chooseJolly('prende')">
+                            💪 Prende (Più Forte)
+                        </button>
+                        <button class="mobile-jolly-btn lascia" onclick="MobileUI.chooseJolly('lascia')">
+                            🪶 Lascia (Più Debole)
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mobile Trick Winner Popup -->
+                <div id="mobile-trick-popup" class="mobile-trick-popup mobile-only">
+                    <div class="mobile-trick-popup-icon">🏆</div>
+                    <div id="mobile-trick-popup-title" class="mobile-trick-popup-title">Mano Vinta!</div>
+                    <div id="mobile-trick-popup-card" class="mobile-trick-popup-card"></div>
+                </div>
+                
+                <!-- Mobile Turn Results -->
+                <div id="mobile-turn-results" class="mobile-turn-results mobile-only">
+                    <div class="mobile-turn-results-header">
+                        <h3>📊 Risultati del Turno</h3>
+                    </div>
+                    <div id="mobile-turn-results-content" class="mobile-turn-results-content">
+                        <!-- Results rendered here -->
+                    </div>
+                    <div class="mobile-turn-results-footer">
+                        <button id="mobile-btn-next-turn" class="btn btn-primary btn-large" style="width: 100%;">
+                            Prossimo Turno
+                        </button>
+                        <div id="mobile-ready-count" class="ready-count" style="text-align: center; margin-top: 10px;">
+                            Pronti: 0/0
+                        </div>
+                    </div>
+                </div>
+                
             </div>
         </div>
 
@@ -327,6 +565,74 @@
                     <!-- Final standings -->
                 </div>
                 <button id="btn-back-lobby" class="btn btn-primary">Torna alla Lobby</button>
+            </div>
+        </div>
+
+        <!-- PROFILE SCREEN -->
+        <div id="profile-screen" class="screen">
+            <div class="profile-container">
+                <div class="profile-header">
+                    <button class="btn-back" onclick="showScreen('home')">←</button>
+                    <h2>👤 Profilo</h2>
+                </div>
+                
+                <div class="profile-card">
+                    <div class="profile-avatar" id="profile-avatar">👤</div>
+                    <h3 id="profile-display-name">Nome Utente</h3>
+                    <p id="profile-username">@username</p>
+                    <span id="profile-member-since" class="member-since">Membro dal 2024</span>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value" id="profile-stat-games">0</span>
+                        <span class="stat-label">Partite Giocate</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="profile-stat-wins">0</span>
+                        <span class="stat-label">Vittorie</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="profile-stat-losses">0</span>
+                        <span class="stat-label">Sconfitte</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="profile-stat-winrate">0%</span>
+                        <span class="stat-label">Win Rate</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="profile-stat-lives">0</span>
+                        <span class="stat-label">Vite Perse</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="profile-stat-streak">0</span>
+                        <span class="stat-label">Best Streak</span>
+                    </div>
+                </div>
+                
+                <div class="profile-section">
+                    <h4>📜 Cronologia Partite</h4>
+                    <div id="profile-game-history" class="game-history">
+                        <p class="empty-message">Nessuna partita giocata</p>
+                    </div>
+                </div>
+                
+                <div class="profile-section">
+                    <h4>🏆 Classifica Globale</h4>
+                    <div class="leaderboard-tabs">
+                        <button class="lb-tab active" data-cat="wins" onclick="AuthUI.loadLeaderboard('wins')">Vittorie</button>
+                        <button class="lb-tab" data-cat="win_rate" onclick="AuthUI.loadLeaderboard('win_rate')">Win Rate</button>
+                        <button class="lb-tab" data-cat="streak" onclick="AuthUI.loadLeaderboard('streak')">Streak</button>
+                    </div>
+                    <div id="profile-leaderboard" class="leaderboard">
+                        <!-- Leaderboard rendered here -->
+                    </div>
+                </div>
+                
+                <div class="profile-actions">
+                    <button class="btn btn-secondary" onclick="showScreen('home')">← Torna alla Home</button>
+                    <button class="btn btn-danger" id="profile-btn-logout" onclick="AuthUI.logout()">🚪 Esci</button>
+                </div>
             </div>
         </div>
 
@@ -350,5 +656,7 @@
     <script src="/static/js/socket_client.js?v=20260130d"></script>
     <script src="/static/js/game_ui.js?v=20260130d"></script>
     <script src="/static/js/chat.js?v=20260130d"></script>
+    <script src="/static/js/mobile.js?v=20260130d"></script>
+    <script src="/static/js/auth.js?v=20260130d"></script>
 </body>
 </html>
