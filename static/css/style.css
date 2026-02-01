@@ -1416,29 +1416,44 @@ input[type="text"]::placeholder {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s ease;
+    /* NO display:none here - use opacity only for smooth animation */
 }
 
-.trick-winner-overlay:not(.hidden) {
+.trick-winner-overlay.visible {
     opacity: 1;
     pointer-events: auto;
 }
 
+
+
 .trick-winner-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    /* Center using margin - half of typical width */
+    margin-left: -188px;
+    margin-top: -75px;
+    width: 376px;
     background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
     padding: 32px 48px;
     border-radius: var(--border-radius);
     text-align: center;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(34, 197, 94, 0.5);
-    min-width: 280px;
     border: 1px solid var(--success);
+    z-index: 151;
+    /* Animation properties */
     transform: scale(0.9);
     opacity: 0;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+    visibility: hidden;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.15s ease,
+                visibility 0.15s;
 }
 
-.trick-winner-overlay:not(.hidden) .trick-winner-popup {
+.trick-winner-popup.visible {
     transform: scale(1);
     opacity: 1;
+    visibility: visible;
 }
 
 .trick-winner-popup.loser {
@@ -1452,8 +1467,8 @@ input[type="text"]::placeholder {
 }
 
 @keyframes bounceWin {
-    0% { transform: scale(0.9); }
-    50% { transform: scale(1.05); }
+    0% { transform: scale(1); }
+    40% { transform: scale(1.08); }
     100% { transform: scale(1); }
 }
 
@@ -1950,7 +1965,7 @@ html {
     }
 }
 
-/* Animation handled by .trick-winner-overlay:not(.hidden) .trick-winner-popup */
+/* Trick winner animation handled by .visible class */
 
 .turn-results:not(.hidden) {
     animation: fadeScale 0.3s ease;

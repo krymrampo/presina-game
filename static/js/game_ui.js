@@ -8,6 +8,9 @@ const GameUI = {
     // Cache for previous state to avoid unnecessary re-renders
     _previousHand: null,
     _previousTableCards: null,
+    _trickWinnerTimer: null,  // Timer per chiusura popup
+    _highlightTimer: null,    // Timer per highlight carta
+    _bounceTimer: null,       // Timer per animazione bounce
 
     // ==================== Main Update ====================
     updateGameScreen(gameState) {
@@ -491,13 +494,36 @@ const GameUI = {
         const nameEl = document.getElementById('trick-winner-name');
         const cardEl = document.getElementById('trick-winner-card');
         
+        // Clear existing timers FIRST to avoid duplicates
+        if (this._trickWinnerTimer) {
+            clearTimeout(this._trickWinnerTimer);
+            this._trickWinnerTimer = null;
+        }
+        if (this._highlightTimer) {
+            clearTimeout(this._highlightTimer);
+            this._highlightTimer = null;
+        }
+        if (this._bounceTimer) {
+            clearTimeout(this._bounceTimer);
+            this._bounceTimer = null;
+        }
+        
+        // Reset classes
+        popup.classList.remove('loser', 'animate-bounce');
+        
         if (isWinner) {
             // Io ho vinto
             titleEl.textContent = `Hai vinto la mano col ${cardName}`;
             nameEl.style.display = 'none';
             cardEl.style.display = 'none';
-            popup.classList.remove('loser');
-            popup.classList.add('animate-bounce');
+            // Animate bounce dopo che la transizione fade-in è completata (200ms)
+            this._bounceTimer = setTimeout(() => {
+                this._bounceTimer = null;
+                // Verifica che popup sia ancora aperto
+                if (popup.classList.contains('visible')) {
+                    popup.classList.add('animate-bounce');
+                }
+            }, 200);
         } else {
             // Ha vinto un altro
             titleEl.textContent = `${winnerName} ha vinto la mano`;
@@ -505,31 +531,40 @@ const GameUI = {
             cardEl.textContent = `con ${cardName}`;
             cardEl.style.display = 'block';
             popup.classList.add('loser');
-            popup.classList.remove('animate-bounce');
         }
         
-        overlay.classList.remove('hidden');
-        popup.classList.remove('hidden');
+        // Mostra overlay e popup (transizione GPU-smooth)
+        overlay.classList.add('visible');
+        popup.classList.add('visible');
         
-        // Highlight SOLO la carta vincente con bordo dorato statico (GPU-friendly)
+        // Highlight carta vincente DOPO che l'animazione è completata (300ms)
+        // per non intaccare il frame rate dell'apertura
         if (winnerId) {
-            setTimeout(() => {
+            const highlightTimer = setTimeout(() => {
+                // Verifica che il popup sia ancora aperto
+                if (!popup.classList.contains('visible')) return;
+                
                 const winningCardEl = document.querySelector(`.played-card-position[data-player-id="${winnerId}"]`);
                 if (winningCardEl) {
                     winningCardEl.style.boxShadow = '0 0 0 4px #d4af37, 0 0 20px rgba(212, 175, 55, 0.5)';
                     winningCardEl.style.zIndex = '100';
                     winningCardEl.style.borderRadius = '8px';
                 }
-            }, 100);
+            }, 300);
+            
+            // Salva ref per cleanup
+            this._highlightTimer = highlightTimer;
         }
         
         // Auto hide after 3 seconds
-        setTimeout(() => {
-            overlay.classList.add('hidden');
-            popup.classList.add('hidden');
+        this._trickWinnerTimer = setTimeout(() => {
+            this._trickWinnerTimer = null;
+            overlay.classList.remove('visible');
+            popup.classList.remove('visible');
             // Reset display properties
             nameEl.style.display = '';
             cardEl.style.display = '';
+            popup.classList.remove('animate-bounce');
             // Rimuovi highlight dalla carta vincente
             if (winnerId) {
                 const winningCardEl = document.querySelector(`.played-card-position[data-player-id="${winnerId}"]`);
