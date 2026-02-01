@@ -21,29 +21,11 @@ const Chat = {
         if (!this.isOpen && (App.currentScreen === 'game' || App.currentScreen === 'game-over')) {
             document.getElementById('chat-badge').classList.remove('hidden');
         }
-        
-        // Also add to mobile chat
-        if (window.MobileUI) {
-            const isOwn = msgData.player_id === App.playerId;
-            MobileUI.addChatMessage(msgData.player_name, msgData.message, isOwn);
-        }
     },
     
     loadHistory(messages) {
         this.messages = messages || [];
         this.renderMessages();
-        
-        // Also load into mobile chat
-        if (window.MobileUI) {
-            const container = document.getElementById('mobile-chat-messages');
-            if (container) {
-                container.innerHTML = '';
-                this.messages.forEach(msg => {
-                    const isOwn = msg.player_id === App.playerId;
-                    MobileUI.addChatMessage(msg.player_name, msg.message, isOwn);
-                });
-            }
-        }
     },
     
     renderMessages() {

@@ -23,6 +23,7 @@ class Room:
     access_code: Optional[str] = None  # Code for private rooms
     game: PresinaGameOnline = None
     chat_messages: List[dict] = field(default_factory=list)
+    stats_recorded: bool = False
     
     def __post_init__(self):
         if self.game is None:
@@ -92,6 +93,7 @@ class RoomManager:
         self.rooms: Dict[str, Room] = {}
         self.player_rooms: Dict[str, str] = {}  # player_id -> room_id
         self.sid_to_player: Dict[str, str] = {}  # socket sid -> player_id
+        self.player_auth: Dict[str, dict] = {}  # player_id -> auth payload
     
     def cleanup_stale_rooms(self) -> int:
         """
@@ -190,12 +192,26 @@ class RoomManager:
             for pid in list(room.game.players.keys()):
                 if pid in self.player_rooms:
                     del self.player_rooms[pid]
+                self.player_auth.pop(pid, None)
             del self.rooms[room_id]
     
     def get_public_rooms(self) -> List[Room]:
         """Get all public rooms for the lobby."""
         self.cleanup_offline_players()
         return [r for r in self.rooms.values() if r.is_public]
+
+    # ==================== Auth Mapping ====================
+
+    def set_player_auth(self, player_id: str, auth: Optional[dict]):
+        if not player_id:
+            return
+        if auth:
+            self.player_auth[player_id] = auth
+        else:
+            self.player_auth.pop(player_id, None)
+
+    def get_player_auth(self, player_id: str) -> Optional[dict]:
+        return self.player_auth.get(player_id)
     
     def search_rooms(self, query: str) -> List[Room]:
         """Search rooms by name."""

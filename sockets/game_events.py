@@ -2,9 +2,11 @@
 Game Socket.IO events.
 """
 import time
+import logging
 from flask import request
 from flask_socketio import emit
 
+from models.user import User
 from rooms.room_manager import room_manager
 from game.presina_game import GamePhase
 
@@ -256,14 +258,11 @@ def register_game_events(socketio):
         # Send updated game state to all players
         _broadcast_game_state(socketio, room)
         
-        # If game is over, update room list and save stats
+        # If game is over, update room list
         if room.game.phase == GamePhase.GAME_OVER:
             socketio.emit('rooms_list', {
                 'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
             })
-            
-            # Save game statistics for all players
-            _save_game_stats(room)
     
     @socketio.on('get_game_state')
     def handle_get_game_state(data):
@@ -370,6 +369,9 @@ def _broadcast_game_state(socketio, room, include_offline=False):
         room: Room object
         include_offline: If True, also try to send to offline players (in case they reconnected)
     """
+    if room and room.game.phase == GamePhase.GAME_OVER:
+        _record_game_stats(room)
+
     for pid, player in room.game.players.items():
         # Send to online players with valid sid
         if player.sid and player.is_online:
@@ -405,73 +407,46 @@ def _broadcast_to_room(socketio, room, event, data, include_offline=False):
                 pass
 
 
-def _save_game_stats(room):
-    """
-    Save game statistics for all players when the game ends.
-    This records the results in the database.
-    """
-    import logging
+def _record_game_stats(room):
+    """Persist game stats for authenticated users (once per room)."""
+    if not room or room.stats_recorded:
+        return
+    if room.game.phase != GamePhase.GAME_OVER:
+        return
+
+    room.stats_recorded = True
     logger = logging.getLogger(__name__)
-    
-    try:
-        from models.user import User
-        
-        # Get final standings
-        results = room.game.get_final_standings()
-        
-        for idx, player_result in enumerate(results):
-            player_id = player_result['player_id']
-            player = room.game.get_player(player_id)
-            
-            if not player:
-                continue
-            
-            # Check if this is an authenticated user (not a guest)
-            user = User.get_by_id(int(player_id)) if player_id.isdigit() else None
-            
-            if not user:
-                # Try to find by username if player_id is not a digit
-                # For now, skip non-authenticated users
-                continue
-            
-            # Calculate game stats
-            final_position = idx + 1
-            final_lives = player_result['lives']
-            lives_lost = 5 - final_lives  # Assuming starting lives is 5
-            won = final_position == 1 and final_lives > 0
-            
-            # Count bets and tricks
-            bets_correct = 0
-            bets_wrong = 0
-            tricks_won = player.tricks_won
-            
-            # Check turn results if available
-            if hasattr(room.game, 'turn_results'):
-                for turn in room.game.turn_results:
-                    if player_id in turn:
-                        result = turn[player_id]
-                        if result.get('correct'):
-                            bets_correct += 1
-                        else:
-                            bets_wrong += 1
-            
-            game_result = {
-                'room_name': room.name,
-                'players_count': len(room.game.players),
-                'final_position': final_position,
-                'final_lives': final_lives,
-                'lives_lost': lives_lost,
-                'bets_correct': bets_correct,
-                'bets_wrong': bets_wrong,
-                'tricks_won': tricks_won,
-                'won': won
-            }
-            
-            try:
-                user.update_stats_after_game(game_result)
-                logger.info(f"Saved stats for user {user.username}")
-            except Exception as e:
-                logger.error(f"Error saving stats for user {user.username}: {e}")
-                
-    except Exception as e:
-        logger.error(f"Error saving game stats: {e}")
+
+    results_map = {r.get('player_id'): r for r in (room.game.game_results or [])}
+    eligible_players = [
+        p for p in room.game.players.values()
+        if not p.is_spectator and not p.join_next_turn
+    ]
+    players_count = len(eligible_players)
+
+    for player in eligible_players:
+        if not player.user_id or player.is_guest:
+            continue
+        user = User.get_by_id(player.user_id)
+        if not user:
+            continue
+
+        result = results_map.get(player.player_id, {})
+        final_position = result.get('position', 0)
+        final_lives = result.get('lives', player.lives)
+        game_result = {
+            'room_name': room.name,
+            'players_count': players_count,
+            'final_position': final_position,
+            'final_lives': final_lives,
+            'lives_lost': player.total_lives_lost,
+            'bets_correct': player.total_bets_correct,
+            'bets_wrong': player.total_bets_wrong,
+            'tricks_won': player.total_tricks_won,
+            'won': final_position == 1
+        }
+
+        try:
+            user.update_stats_after_game(game_result)
+        except Exception as e:
+            logger.error(f"Failed to record stats for user {player.user_id}: {e}")

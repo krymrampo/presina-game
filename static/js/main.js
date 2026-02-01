@@ -27,10 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedPlayerId && savedPlayerName) {
         App.playerId = savedPlayerId;
         App.playerName = savedPlayerName;
-        const playerNameInput = document.getElementById('player-name');
-        if (playerNameInput) {
-            playerNameInput.value = savedPlayerName;
-        }
+        document.getElementById('player-name').value = savedPlayerName;
         
         // Restore room info if exists
         if (savedRoom) {
@@ -53,19 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function generatePlayerId() {
-    // Check if user is logged in from localStorage
-    const savedUser = localStorage.getItem('presina_user');
-    if (savedUser) {
-        try {
-            const user = JSON.parse(savedUser);
-            if (user && user.id) {
-                return String(user.id);
-            }
-        } catch (e) {
-            console.error('Error parsing saved user:', e);
-        }
-    }
-    // Otherwise generate a random guest ID
     return 'p_' + Math.random().toString(36).substr(2, 9);
 }
 
@@ -80,10 +64,7 @@ function autoEnterLobbyIfSaved() {
     // Ensure state is restored
     App.playerId = savedPlayerId;
     App.playerName = savedPlayerName;
-    const playerNameInput = document.getElementById('player-name');
-    if (playerNameInput) {
-        playerNameInput.value = savedPlayerName;
-    }
+    document.getElementById('player-name').value = savedPlayerName;
     
     // Go straight to lobby list on refresh
     SocketClient.connect();
@@ -143,49 +124,19 @@ function stopGameStatePolling() {
 
 // ==================== Event Listeners ====================
 function setupEventListeners() {
-    // Home screen - gestisci entrambi i pulsanti Gioca (loggato e non)
-    const btnEnterLobby = document.getElementById('btn-enter-lobby');
-    const btnEnterLobbyLogged = document.getElementById('btn-enter-lobby-logged');
-    
-    if (btnEnterLobby) {
-        btnEnterLobby.addEventListener('click', enterLobby);
-    }
-    if (btnEnterLobbyLogged) {
-        btnEnterLobbyLogged.addEventListener('click', () => {
-            if (AuthUI && AuthUI.isLoggedIn()) {
-                AuthUI.enterLobby();
-            } else {
-                enterLobby();
-            }
-        });
-    }
-    
-    // Rules buttons
-    const btnRules = document.getElementById('btn-rules');
-    const btnRulesLogged = document.getElementById('btn-rules-logged');
-    
-    if (btnRules) {
-        btnRules.addEventListener('click', () => showScreen('rules'));
-    }
-    if (btnRulesLogged) {
-        btnRulesLogged.addEventListener('click', () => showScreen('rules'));
-    }
-    
-    document.getElementById('btn-back-home').addEventListener('click', () => showScreen('home'));
+    // Home screen
+    document.getElementById('btn-enter-lobby').addEventListener('click', enterLobby);
     document.getElementById('btn-back-home-lobby').addEventListener('click', () => showScreen('home'));
     
-    // Player name (solo se l'elemento esiste - lobby screen)
-    const playerNameInput = document.getElementById('player-name');
-    if (playerNameInput) {
-        playerNameInput.addEventListener('input', (e) => {
-            App.playerName = e.target.value.trim();
-            sessionStorage.setItem('presina_player_name', App.playerName);
-        });
-        
-        playerNameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') enterLobby();
-        });
-    }
+    // Player name
+    document.getElementById('player-name').addEventListener('input', (e) => {
+        App.playerName = e.target.value.trim();
+        sessionStorage.setItem('presina_player_name', App.playerName);
+    });
+    
+    document.getElementById('player-name').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') enterLobby();
+    });
     
     // Lobby
     document.getElementById('btn-create-room').addEventListener('click', showCreateRoomModal);
@@ -260,6 +211,10 @@ function setupEventListeners() {
 
 // ==================== Lobby Functions ====================
 function enterLobby() {
+    if (window.AuthUI && AuthUI.isLoggedIn()) {
+        AuthUI.enterLobby();
+        return;
+    }
     const name = document.getElementById('player-name').value.trim();
     if (!name) {
         alert('Inserisci il tuo nome');
@@ -268,10 +223,7 @@ function enterLobby() {
     
     App.playerName = name;
     sessionStorage.setItem('presina_player_name', name);
-    const playerNameDisplay = document.getElementById('player-name-display');
-    if (playerNameDisplay) {
-        playerNameDisplay.textContent = name;
-    }
+    document.getElementById('player-name-display').textContent = name;
     
     // Connect socket and register
     SocketClient.connect();

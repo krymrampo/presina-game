@@ -12,6 +12,7 @@ from pathlib import Path
 
 DATABASE_PATH = Path(__file__).parent.parent / "data" / "presina.db"
 UPLOADS_PATH = Path(__file__).parent.parent / "uploads" / "avatars"
+DEFAULT_AVATAR_URL = "/static/img/logo.png"
 
 # Ensure uploads directory exists
 UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
@@ -336,6 +337,8 @@ class User:
     
     def update_stats_after_game(self, game_result):
         """Update stats after a game"""
+        if self.stats is None:
+            self.get_stats()
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -361,8 +364,10 @@ class User:
             
             # Update aggregated stats
             won = game_result.get('won', False)
-            streak_change = 1 if won else -self.stats.get('current_streak', 0)
-            new_streak = max(0, self.stats.get('current_streak', 0) + (1 if won else 0))
+            if won:
+                new_streak = self.stats.get('current_streak', 0) + 1
+            else:
+                new_streak = 0
             best_streak = max(self.stats.get('best_streak', 0), new_streak)
             
             cursor.execute('''
@@ -464,12 +469,13 @@ class User:
             
             # Remove old avatar if exists
             if self.avatar:
-                old_path = Path(__file__).parent.parent / self.avatar.lstrip('/')
-                if old_path.exists() and 'default' not in str(old_path):
-                    try:
-                        old_path.unlink()
-                    except:
-                        pass
+                if self.avatar.startswith('/uploads/avatars/'):
+                    old_path = Path(__file__).parent.parent / self.avatar.lstrip('/')
+                    if old_path.exists():
+                        try:
+                            old_path.unlink()
+                        except:
+                            pass
             
             # Update database
             avatar_url = f"/uploads/avatars/{filename}"
@@ -494,7 +500,7 @@ class User:
             'id': self.id,
             'username': self.username,
             'display_name': self.display_name,
-            'avatar': self.avatar or '/static/img/default-avatar.png',
+            'avatar': self.avatar or DEFAULT_AVATAR_URL,
             'created_at': self.created_at,
             'last_login': self.last_login
         }

@@ -34,10 +34,3 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
-
-# Database and uploads (persistent data)
-data/
-uploads/
-*.db
-*.sqlite
-*.sqlite3

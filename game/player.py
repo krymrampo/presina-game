@@ -9,7 +9,7 @@ from .card import Card
 class Player:
     INITIAL_LIVES = 5
     
-    def __init__(self, player_id: str, name: str, sid: str = None):
+    def __init__(self, player_id: str, name: str, sid: str = None, user_id: Optional[int] = None, is_guest: bool = False):
         """
         Create a player.
         
@@ -17,14 +17,22 @@ class Player:
             player_id: Unique identifier for the player
             name: Display name
             sid: Socket.IO session ID
+            user_id: Linked authenticated user ID (if any)
+            is_guest: True if player is a guest session
         """
         self.player_id = player_id
         self.name = name
         self.sid = sid
+        self.user_id = user_id
+        self.is_guest = is_guest
         self.lives = self.INITIAL_LIVES
         self.hand: List[Card] = []
         self.bet: Optional[int] = None
         self.tricks_won = 0
+        self.total_tricks_won = 0
+        self.total_bets_correct = 0
+        self.total_bets_wrong = 0
+        self.total_lives_lost = 0
         self.is_online = True
         self.offline_since = None  # Timestamp when marked offline (socket disconnected)
         self.is_away = False       # True if user switched tab/minimized (Page Visibility API)

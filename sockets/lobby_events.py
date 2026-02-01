@@ -6,6 +6,7 @@ import uuid
 from flask import request, current_app
 from flask_socketio import emit, join_room, leave_room
 
+from auth_utils import resolve_token, build_auth_payload
 from game.player import Player
 from game.presina_game import GamePhase
 from rooms.room_manager import room_manager
@@ -127,12 +128,21 @@ def register_lobby_events(socketio):
         """
         player_id = data.get('player_id')
         name = data.get('name', 'Anonimo')
+        auth_token = data.get('auth_token')
         
         if not player_id:
             emit('error', {'message': 'ID giocatore mancante'})
             return
         
         room_manager.register_socket(request.sid, player_id)
+        if auth_token:
+            user, is_guest = resolve_token(auth_token)
+            if user:
+                room_manager.set_player_auth(player_id, build_auth_payload(user, is_guest))
+            else:
+                room_manager.set_player_auth(player_id, None)
+        else:
+            room_manager.set_player_auth(player_id, None)
         emit('registered', {'player_id': player_id, 'name': name})
     
     @socketio.on('list_rooms')
@@ -162,6 +172,7 @@ def register_lobby_events(socketio):
         room_name = data.get('room_name', 'Nuova stanza')
         is_public = data.get('is_public', True)
         access_code = data.get('access_code') if not is_public else None
+        auth_token = data.get('auth_token')
         
         if not player_id:
             emit('error', {'message': 'ID giocatore mancante'})
@@ -171,6 +182,18 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
+        # Prefer authenticated display name if available
+        auth = room_manager.get_player_auth(player_id)
+        if not auth and auth_token:
+            user, is_guest = resolve_token(auth_token)
+            if user:
+                auth = build_auth_payload(user, is_guest)
+                room_manager.set_player_auth(player_id, auth)
+        if auth:
+            auth_name = auth.get('display_name') or auth.get('username')
+            if auth_name:
+                player_name = auth_name
+
         # Validate names
         try:
             player_name = _validate_name(player_name, MAX_NAME_LENGTH)
@@ -186,7 +209,9 @@ def register_lobby_events(socketio):
             return
         
         # Create player and room
-        player = Player(player_id, player_name, request.sid)
+        user_id = auth.get('user_id') if auth and not auth.get('is_guest') else None
+        is_guest = auth.get('is_guest', False) if auth else False
+        player = Player(player_id, player_name, request.sid, user_id=user_id, is_guest=is_guest)
         room = room_manager.create_room(room_name, player, is_public=is_public, access_code=access_code)
         
         # Join socket room
@@ -216,6 +241,7 @@ def register_lobby_events(socketio):
         player_name = data.get('player_name', 'Anonimo')
         room_id = data.get('room_id')
         access_code = data.get('access_code')
+        auth_token = data.get('auth_token')
         
         if not player_id or not room_id:
             emit('error', {'message': 'Dati mancanti'})
@@ -225,6 +251,18 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
+        # Prefer authenticated display name if available
+        auth = room_manager.get_player_auth(player_id)
+        if not auth and auth_token:
+            user, is_guest = resolve_token(auth_token)
+            if user:
+                auth = build_auth_payload(user, is_guest)
+                room_manager.set_player_auth(player_id, auth)
+        if auth:
+            auth_name = auth.get('display_name') or auth.get('username')
+            if auth_name:
+                player_name = auth_name
+
         # Validate player name
         try:
             player_name = _validate_name(player_name, MAX_NAME_LENGTH)
@@ -233,7 +271,9 @@ def register_lobby_events(socketio):
             return
         
         # Create player
-        player = Player(player_id, player_name, request.sid)
+        user_id = auth.get('user_id') if auth and not auth.get('is_guest') else None
+        is_guest = auth.get('is_guest', False) if auth else False
+        player = Player(player_id, player_name, request.sid, user_id=user_id, is_guest=is_guest)
         
         success, message = room_manager.join_room(room_id, player, access_code=access_code)
         
@@ -432,5 +472,3 @@ def register_lobby_events(socketio):
         
         # Broadcast updated per-player state so online status is refreshed
         _emit_room_state(socketio, room, 'game_state')
-
-

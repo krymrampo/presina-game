@@ -347,13 +347,7 @@ const SocketClient = {
             if (typeof clearCardSelection === 'function') {
                 clearCardSelection();
             }
-            
-            // Show appropriate jolly choice UI (desktop or mobile)
-            if (window.MobileUI && MobileUI.isMobile && MobileUI.isMobile()) {
-                document.getElementById('mobile-jolly-choice').classList.remove('hidden');
-            } else {
-                document.getElementById('jolly-choice').classList.remove('hidden');
-            }
+            document.getElementById('jolly-choice').classList.remove('hidden');
         });
         
         // Chat events
@@ -368,9 +362,11 @@ const SocketClient = {
     
     // ==================== Player Actions ====================
     registerPlayer() {
+        const authToken = window.AuthUI?.getAuthToken?.();
         this.socket.emit('register_player', {
             player_id: App.playerId,
-            name: App.playerName
+            name: App.playerName,
+            auth_token: authToken
         });
     },
     
@@ -384,21 +380,25 @@ const SocketClient = {
     },
     
     createRoom(roomName, isPublic = true, accessCode = null) {
+        const authToken = window.AuthUI?.getAuthToken?.();
         this.socket.emit('create_room', {
             player_id: App.playerId,
             player_name: App.playerName,
             room_name: roomName,
             is_public: isPublic,
-            access_code: accessCode
+            access_code: accessCode,
+            auth_token: authToken
         });
     },
     
     joinRoom(roomId, accessCode = null) {
+        const authToken = window.AuthUI?.getAuthToken?.();
         this.socket.emit('join_room', {
             player_id: App.playerId,
             player_name: App.playerName,
             room_id: roomId,
-            access_code: accessCode
+            access_code: accessCode,
+            auth_token: authToken
         });
     },
     

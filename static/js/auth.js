@@ -15,10 +15,22 @@ const AuthUI = {
         
         if (savedToken && savedUser) {
             this.authToken = savedToken;
-            this.currentUser = JSON.parse(savedUser);
-            this.validateSession();
+            try {
+                this.currentUser = JSON.parse(savedUser);
+                if (this.currentUser) {
+                    this.currentUser.avatar = this.normalizeAvatar(this.currentUser.avatar);
+                }
+            } catch (e) {
+                localStorage.removeItem('presina_auth_token');
+                localStorage.removeItem('presina_user');
+                this.authToken = null;
+                this.currentUser = null;
+            }
+            if (this.authToken) {
+                this.validateSession();
+            }
         }
-        
+        this.bindEvents();
         this.updateUI();
     },
     
@@ -34,7 +46,13 @@ const AuthUI = {
             
             if (data.success) {
                 this.currentUser = data.user;
+                this.currentUser.avatar = this.normalizeAvatar(this.currentUser.avatar);
                 localStorage.setItem('presina_user', JSON.stringify(this.currentUser));
+                if (data.user?.is_guest) {
+                    localStorage.setItem('presina_is_guest', 'true');
+                } else {
+                    localStorage.removeItem('presina_is_guest');
+                }
                 this.updateUI();
             } else {
                 this.logout();
@@ -48,6 +66,7 @@ const AuthUI = {
     updateUI() {
         const notLoggedSection = document.getElementById('home-not-logged');
         const loggedSection = document.getElementById('home-logged');
+        const profileBtn = document.getElementById('btn-profile');
         
         if (this.currentUser) {
             // Show logged in UI
@@ -61,21 +80,34 @@ const AuthUI = {
             
             // Update avatar
             const homeImg = document.getElementById('user-avatar-img');
-            if (homeImg && this.currentUser.avatar) {
-                homeImg.src = this.currentUser.avatar;
+            if (homeImg) {
+                homeImg.src = this.normalizeAvatar(this.currentUser.avatar);
             }
             
             // Set player name for game
             App.playerName = this.currentUser.display_name || this.currentUser.username;
+            sessionStorage.setItem('presina_player_name', App.playerName);
             const playerNameInput = document.getElementById('player-name');
             if (playerNameInput) {
                 playerNameInput.value = App.playerName;
+                playerNameInput.disabled = true;
+            }
+            
+            if (profileBtn) {
+                profileBtn.classList.toggle('hidden', this.isGuest());
+            }
+            
+            if (!this.isGuest()) {
+                this.loadUserStats();
             }
             
         } else {
             // Show not logged in UI
             notLoggedSection.classList.remove('hidden');
             loggedSection.classList.add('hidden');
+            if (profileBtn) profileBtn.classList.add('hidden');
+            const playerNameInput = document.getElementById('player-name');
+            if (playerNameInput) playerNameInput.disabled = false;
         }
     },
     
@@ -114,9 +146,11 @@ const AuthUI = {
             if (data.success) {
                 this.authToken = data.token;
                 this.currentUser = data.user;
+                this.currentUser.avatar = this.normalizeAvatar(this.currentUser.avatar);
                 
                 localStorage.setItem('presina_auth_token', this.authToken);
                 localStorage.setItem('presina_user', JSON.stringify(this.currentUser));
+                localStorage.removeItem('presina_is_guest');
                 
                 this.updateUI();
                 this.showSuccess('Accesso effettuato!');
@@ -190,9 +224,11 @@ const AuthUI = {
         this.setLoading('btn-guest', true);
         
         try {
+            const guestName = document.getElementById('player-name')?.value?.trim();
             const response = await fetch('/api/auth/guest', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ display_name: guestName })
             });
             
             const data = await response.json();
@@ -200,6 +236,7 @@ const AuthUI = {
             if (data.success) {
                 this.authToken = data.token;
                 this.currentUser = data.user;
+                this.currentUser.avatar = this.normalizeAvatar(this.currentUser.avatar);
                 
                 localStorage.setItem('presina_auth_token', this.authToken);
                 localStorage.setItem('presina_user', JSON.stringify(this.currentUser));
@@ -239,6 +276,8 @@ const AuthUI = {
         localStorage.removeItem('presina_auth_token');
         localStorage.removeItem('presina_user');
         localStorage.removeItem('presina_is_guest');
+        sessionStorage.removeItem('presina_player_name');
+        App.playerName = '';
         
         this.updateUI();
         showScreen('home');
@@ -255,7 +294,7 @@ const AuthUI = {
             `@${this.currentUser.username}`;
         
         // Update avatar images
-        const avatarUrl = this.currentUser.avatar || '/static/img/default-avatar.png';
+        const avatarUrl = this.normalizeAvatar(this.currentUser.avatar);
         const profileImg = document.getElementById('profile-avatar-img');
         const homeImg = document.getElementById('user-avatar-img');
         
@@ -268,6 +307,28 @@ const AuthUI = {
             document.getElementById('profile-member-since').textContent = 
                 `Membro dal ${date.toLocaleDateString('it-IT')}`;
         }
+        
+        // Guests have no stats/profile features
+        if (this.isGuest()) {
+            const history = document.getElementById('profile-game-history');
+            if (history) {
+                history.innerHTML = '<p class="empty-message">Accedi per vedere le statistiche</p>';
+            }
+            const leaderboard = document.getElementById('profile-leaderboard');
+            if (leaderboard) {
+                leaderboard.innerHTML = '<p class="empty-message">Disponibile solo per utenti registrati</p>';
+            }
+            const avatarInput = document.getElementById('avatar-upload-input');
+            if (avatarInput) avatarInput.disabled = true;
+            const avatarBtn = document.querySelector('label[for="avatar-upload-input"]');
+            if (avatarBtn) avatarBtn.classList.add('hidden');
+            return;
+        }
+        
+        const avatarInput = document.getElementById('avatar-upload-input');
+        if (avatarInput) avatarInput.disabled = false;
+        const avatarBtn = document.querySelector('label[for="avatar-upload-input"]');
+        if (avatarBtn) avatarBtn.classList.remove('hidden');
         
         // Load fresh stats
         await this.loadUserStats();
@@ -357,6 +418,13 @@ const AuthUI = {
                 document.getElementById('profile-stat-winrate').textContent = `${stats.win_rate || 0}%`;
                 document.getElementById('profile-stat-lives').textContent = stats.total_lives_lost || 0;
                 document.getElementById('profile-stat-streak').textContent = stats.best_streak || 0;
+                
+                const homeGames = document.getElementById('home-stat-games');
+                const homeWins = document.getElementById('home-stat-wins');
+                const homeRate = document.getElementById('home-stat-winrate');
+                if (homeGames) homeGames.textContent = stats.games_played || 0;
+                if (homeWins) homeWins.textContent = stats.games_won || 0;
+                if (homeRate) homeRate.textContent = `${stats.win_rate || 0}%`;
             }
         } catch (error) {
             console.error('Load stats error:', error);
@@ -463,6 +531,7 @@ const AuthUI = {
         // Assicurati che il nome del giocatore sia impostato correttamente
         if (this.currentUser) {
             App.playerName = this.currentUser.display_name || this.currentUser.username;
+            sessionStorage.setItem('presina_player_name', App.playerName);
             const playerNameInput = document.getElementById('player-name');
             const playerNameDisplay = document.getElementById('player-name-display');
             if (playerNameInput) {
@@ -490,6 +559,66 @@ const AuthUI = {
     },
     
     // ==================== Helpers ====================
+    normalizeAvatar(url) {
+        if (!url || url.includes('default-avatar.png')) {
+            return '/static/img/logo.png';
+        }
+        return url;
+    },
+
+    bindEvents() {
+        document.querySelectorAll('.auth-tab').forEach(btn => {
+            btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
+        });
+        
+        const loginBtn = document.getElementById('btn-login');
+        if (loginBtn) loginBtn.addEventListener('click', () => this.login());
+        
+        const registerBtn = document.getElementById('btn-register');
+        if (registerBtn) registerBtn.addEventListener('click', () => this.register());
+        
+        const guestBtn = document.getElementById('btn-guest');
+        if (guestBtn) guestBtn.addEventListener('click', () => this.guestLogin());
+        
+        const logoutBtn = document.getElementById('btn-logout');
+        if (logoutBtn) logoutBtn.addEventListener('click', () => this.logout());
+        
+        const logoutProfileBtn = document.getElementById('btn-logout-profile');
+        if (logoutProfileBtn) logoutProfileBtn.addEventListener('click', () => this.logout());
+        
+        const profileBtn = document.getElementById('btn-profile');
+        if (profileBtn) profileBtn.addEventListener('click', () => showScreen('profile'));
+        
+        const backProfileBtn = document.getElementById('btn-back-profile');
+        if (backProfileBtn) backProfileBtn.addEventListener('click', () => showScreen('home'));
+        
+        const backHomeProfileBtn = document.getElementById('btn-back-home-profile');
+        if (backHomeProfileBtn) backHomeProfileBtn.addEventListener('click', () => showScreen('home'));
+        
+        const avatarInput = document.getElementById('avatar-upload-input');
+        if (avatarInput) {
+            avatarInput.addEventListener('change', (e) => this.uploadAvatar(e.target));
+        }
+        
+        document.querySelectorAll('.lb-tab').forEach(btn => {
+            btn.addEventListener('click', () => this.loadLeaderboard(btn.dataset.cat));
+        });
+        
+        // Enter key submits login/register
+        const loginPassword = document.getElementById('login-password');
+        if (loginPassword) {
+            loginPassword.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.login();
+            });
+        }
+        const registerPassword = document.getElementById('register-password');
+        if (registerPassword) {
+            registerPassword.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.register();
+            });
+        }
+    },
+
     setLoading(btnId, loading) {
         const btn = document.getElementById(btnId);
         if (!btn) return;

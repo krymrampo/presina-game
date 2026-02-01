@@ -546,6 +546,14 @@ class PresinaGameOnline:
                 'correct': change == 0
             })
             
+            # Track per-game totals for stats
+            player.total_tricks_won += player.tricks_won
+            if change == 0:
+                player.total_bets_correct += 1
+            else:
+                player.total_bets_wrong += 1
+                player.total_lives_lost += abs(change)
+            
             if change == 0:
                 self._add_message('result', f"{player.name}: puntata corretta!")
             else:
