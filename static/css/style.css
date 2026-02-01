@@ -29,7 +29,7 @@
     --border-radius-lg: 12px;
     --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
-    --transition: all 0.2s ease;
+    --transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     
     --glass: rgba(30, 51, 43, 0.95);
     --glass-border: rgba(212, 175, 55, 0.2);
@@ -795,8 +795,8 @@ input[type="text"]::placeholder {
     background-position: center;
     border: 1px solid transparent;
     position: relative;
-    /* Ottimizzazione GPU */
-    will-change: transform;
+    /* GPU acceleration on demand via JS */
+    /* will-change: transform; */ /* Removed: add dynamically when animating */
 }
 
 .hand-area .card:hover {
@@ -831,8 +831,8 @@ input[type="text"]::placeholder {
     background-position: center;
     border: 1px solid transparent;
     position: relative;
-    /* Ottimizzazione GPU per animazioni fluide */
-    will-change: transform;
+    /* GPU acceleration on demand via JS */
+    /* will-change: transform; */ /* Removed: add dynamically when animating */
 }
 
 .card:hover {
@@ -1094,8 +1094,7 @@ input[type="text"]::placeholder {
 
 .table-position.current-turn .player-name {
     background: rgba(212, 175, 55, 0.2);
-    border-color: var(--primary);
-    box-shadow: 0 0 0 1px var(--primary);
+    border: 2px solid var(--primary);
 }
 
 .table-position.offline .player-name {
@@ -1162,7 +1161,7 @@ input[type="text"]::placeholder {
 }
 
 .player-info-card.current {
-    border-color: var(--primary);
+    border: 2px solid var(--primary);
     background: rgba(212, 175, 55, 0.15);
 }
 
@@ -1805,6 +1804,21 @@ input[type="text"]::placeholder {
 /* ==================== Hidden ==================== */
 .hidden {
     display: none !important;
+}
+
+/* ==================== Smooth Scrolling ==================== */
+html {
+    scroll-behavior: smooth;
+}
+
+.chat-messages,
+.players-panel,
+.hand-panel,
+.game-history,
+.leaderboard {
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ==================== Scrollbar ==================== */
