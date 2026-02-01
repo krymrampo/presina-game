@@ -340,6 +340,9 @@ const GameUI = {
     // ==================== Players Panel ====================
     updatePlayersPanel(gameState) {
         const container = document.getElementById('players-info');
+        if (!container) {
+            return;
+        }
         
         container.innerHTML = gameState.players.map(player => {
             const isCurrent = player.player_id === gameState.current_player_id || 

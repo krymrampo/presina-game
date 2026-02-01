@@ -1164,29 +1164,7 @@ input[type="text"]::placeholder {
     border: 1px solid var(--danger);
 }
 
-/* Players Panel */
-.players-panel {
-    width: 160px;
-    padding: 12px;
-    background: var(--bg-card);
-    border-left: 1px solid var(--border-color);
-    overflow-y: auto;
-}
-
-.players-panel h3 {
-    margin-bottom: 14px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 600;
-}
-
-.players-info {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
+/* Players Panel removed */
 
 .player-info-card {
     background: var(--bg-medium);
@@ -1907,7 +1885,6 @@ html {
 }
 
 .chat-messages,
-.players-panel,
 .hand-panel,
 .game-history,
 .leaderboard {
@@ -2082,16 +2059,11 @@ html {
         flex-direction: column;
     }
     
-    .hand-panel, .players-panel {
+    .hand-panel {
         width: 100%;
         max-height: 180px;
         border: none;
         border-bottom: 1px solid var(--border-color);
-    }
-    
-    .players-panel {
-        border-bottom: none;
-        border-top: 1px solid var(--border-color);
     }
     
     .hand-area {
