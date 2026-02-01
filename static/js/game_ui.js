@@ -287,7 +287,7 @@ const GameUI = {
                     const jollyText = card.jolly_choice ? ` (${card.jolly_choice})` : '';
                     
                     return `
-                        <div class="played-card-position pos-${posIndex}" title="${player?.name}: ${card.display_name}${jollyText}">
+                        <div class="played-card-position pos-${posIndex}" data-player-id="${playerId}" title="${player?.name}: ${card.display_name}${jollyText}">
                             <img src="/carte_napoletane/${card.suit}/${card.suit}_${card.value}.jpg" 
                                  class="card" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
                         </div>
@@ -484,7 +484,7 @@ const GameUI = {
     },
     
     // ==================== Trick Winner Popup ====================
-    showTrickWinner(winnerName, cardName, isWinner = true) {
+    showTrickWinner(winnerName, cardName, isWinner = true, winnerId = null) {
         const overlay = document.getElementById('trick-winner-overlay');
         const popup = document.getElementById('trick-winner-popup');
         const titleEl = popup.querySelector('h3');
@@ -511,14 +511,17 @@ const GameUI = {
         overlay.classList.remove('hidden');
         popup.classList.remove('hidden');
         
-        // Highlight winning card with glow animation
-        setTimeout(() => {
-            const winningCards = document.querySelectorAll('.played-card-position');
-            winningCards.forEach(cardEl => {
-                // Add glow to all cards on table (the winner will be obvious from popup)
-                cardEl.classList.add('animate-glow');
-            });
-        }, 100);
+        // Highlight SOLO la carta vincente con bordo dorato statico (GPU-friendly)
+        if (winnerId) {
+            setTimeout(() => {
+                const winningCardEl = document.querySelector(`.played-card-position[data-player-id="${winnerId}"]`);
+                if (winningCardEl) {
+                    winningCardEl.style.boxShadow = '0 0 0 4px #d4af37, 0 0 20px rgba(212, 175, 55, 0.5)';
+                    winningCardEl.style.zIndex = '100';
+                    winningCardEl.style.borderRadius = '8px';
+                }
+            }, 100);
+        }
         
         // Auto hide after 3 seconds
         setTimeout(() => {
@@ -527,11 +530,14 @@ const GameUI = {
             // Reset display properties
             nameEl.style.display = '';
             cardEl.style.display = '';
-            // Remove glow from cards
-            const winningCards = document.querySelectorAll('.played-card-position');
-            winningCards.forEach(cardEl => {
-                cardEl.classList.remove('animate-glow');
-            });
+            // Rimuovi highlight dalla carta vincente
+            if (winnerId) {
+                const winningCardEl = document.querySelector(`.played-card-position[data-player-id="${winnerId}"]`);
+                if (winningCardEl) {
+                    winningCardEl.style.boxShadow = '';
+                    winningCardEl.style.zIndex = '';
+                }
+            }
         }, 3000);
     },
     

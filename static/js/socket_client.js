@@ -306,7 +306,8 @@ const SocketClient = {
                     GameUI.showTrickWinner(
                         data.game_state.trick_winner.player_name,
                         data.game_state.trick_winner.card?.display_name || '',
-                        isCurrentPlayerWinner
+                        isCurrentPlayerWinner,
+                        data.game_state.trick_winner.player_id
                     );
                 }
                 // After 3 seconds, advance (only one client needs to trigger this)
