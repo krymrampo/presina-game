@@ -21,6 +21,11 @@ env/
 # Logs
 *.log
 
+# Local databases
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
 # Testing
 .pytest_cache/
 htmlcov/
