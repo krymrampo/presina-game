@@ -207,6 +207,14 @@ input[type="text"]::placeholder {
     text-align: center;
 }
 
+.home-logo {
+    display: block;
+    width: 220px;
+    max-width: 70vw;
+    height: auto;
+    margin: 0 auto 16px;
+}
+
 .title {
     font-size: 3.5rem;
     margin-bottom: 12px;
