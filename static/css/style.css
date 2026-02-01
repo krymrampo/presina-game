@@ -1035,11 +1035,12 @@ input[type="text"]::placeholder {
 }
 
 @keyframes cardPlay {
-    0% { 
+    from { 
         transform: scale(0.8) translateY(-30px); 
         opacity: 0; 
     }
-    100% { 
+    to { 
+        transform: scale(1) translateY(0); 
         opacity: 1; 
     }
 }
@@ -1955,11 +1956,11 @@ html {
 
 /* Fade scale per notifiche */
 @keyframes fadeScale {
-    0% { 
+    from { 
         opacity: 0; 
         transform: scale(0.8);
     }
-    100% { 
+    to { 
         opacity: 1; 
         transform: scale(1);
     }
@@ -1969,6 +1970,55 @@ html {
 
 .turn-results:not(.hidden) {
     animation: fadeScale 0.3s ease;
+}
+
+/* ==================== Reduced Motion (Accessibility) ==================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    /* Disabilita animazioni specifiche del gioco */
+    .card,
+    .played-card-position,
+    .btn,
+    .room-item,
+    .player-card,
+    .stat-card {
+        transform: none !important;
+        transition: none !important;
+    }
+    
+    /* Mantiene visibilità ma senza animazione */
+    .current-turn-pulse {
+        animation: none !important;
+        border: 2px solid var(--primary);
+        box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.3);
+    }
+    
+    /* Popup appaiono immediatamente */
+    .trick-winner-popup,
+    .trick-winner-overlay {
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+    
+    /* Chat badge senza pulse */
+    .chat-badge {
+        animation: none !important;
+    }
+    
+    /* Online dot senza animazione */
+    .online-dot.away {
+        animation: none !important;
+        opacity: 0.6;
+    }
 }
 
 /* ==================== Responsive ==================== */

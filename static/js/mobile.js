@@ -43,6 +43,23 @@ const MobileUI = {
         
         // Swipe to close sheets
         this.setupSwipeGestures();
+        
+        // Passive event listeners per scroll fluido su container scrollabili
+        // Ottimizza le performance touch senza bloccare il main thread
+        const scrollContainers = [
+            '.mobile-hand',
+            '.mobile-chat-messages',
+            '.mobile-players-list',
+            '.mobile-sheet-content'
+        ];
+        
+        scrollContainers.forEach(selector => {
+            const el = document.querySelector(selector);
+            if (el) {
+                el.addEventListener('touchstart', () => {}, { passive: true });
+                el.addEventListener('touchmove', () => {}, { passive: true });
+            }
+        });
     },
     
     setupSwipeGestures() {
