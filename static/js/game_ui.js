@@ -228,6 +228,18 @@ const GameUI = {
             const isMe = player.player_id === App.playerId;
             const statusClass = isOffline ? 'offline' : (isAway ? 'away' : '');
             
+            // Determine status color based on bet vs tricks won (same as right panel)
+            let statusColorClass = '';
+            if (player.bet !== null && gameState.phase !== 'betting') {
+                if (player.tricks_won < player.bet) {
+                    statusColorClass = 'status-pending'; // Orange: still needs tricks
+                } else if (player.tricks_won === player.bet) {
+                    statusColorClass = 'status-achieved'; // Green: achieved bet
+                } else {
+                    statusColorClass = 'status-exceeded'; // Red: exceeded bet
+                }
+            }
+            
             // Calculate relative position: offset so "me" is at position 0
             let relativePos;
             if (myIndex >= 0) {
@@ -265,10 +277,14 @@ const GameUI = {
                 }
             }
             
+            if (!player.is_spectator) {
+                betInfo = `${betInfo}<span class="lives-line">❤️ ${player.lives}</span>`;
+            }
+            
             const spectatorBadge = player.is_spectator ? ' 👁️' : '';
             
             return `
-                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn current-turn-pulse' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''}">
+                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn current-turn-pulse' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''} ${statusColorClass}">
                     <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}</div>
                     <div class="player-bet">${betInfo}</div>
                 </div>

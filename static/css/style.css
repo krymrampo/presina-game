@@ -928,14 +928,14 @@ input[type="text"]::placeholder {
 
 .table-center {
     position: relative;
-    width: 520px;
-    height: 380px;
+    width: 600px;
+    height: 440px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: linear-gradient(145deg, #1a4d3a 0%, #0d3328 100%);
-    border-radius: 260px / 190px;
+    border-radius: 300px / 220px;
     box-shadow: 
         inset 0 4px 30px rgba(0, 0, 0, 0.5),
         0 8px 30px rgba(0, 0, 0, 0.4),
@@ -953,7 +953,7 @@ input[type="text"]::placeholder {
     width: 88%;
     height: 82%;
     border: 1px dashed rgba(255, 255, 255, 0.1);
-    border-radius: 230px / 155px;
+    border-radius: 265px / 180px;
     pointer-events: none;
 }
 
@@ -969,8 +969,8 @@ input[type="text"]::placeholder {
 
 .played-card-position {
     position: absolute;
-    width: 70px;
-    height: 105px;
+    width: 78px;
+    height: 117px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     border-radius: 6px;
     transition: none;
@@ -986,52 +986,52 @@ input[type="text"]::placeholder {
 }
 
 /* Card positions around the table - always upright, positioned in front of each player */
-/* Cards are positioned relative to .table-center (520x380) */
+/* Cards are positioned relative to .table-center (600x440) */
 /* Position 0: bottom - in front of player at bottom */
 .played-card-position.pos-0 { 
-    bottom: -60px; 
+    bottom: -70px; 
     left: 50%; 
     transform: translateX(-50%);
 }
 /* Position 1: bottom left - in front of player at bottom left */
 .played-card-position.pos-1 { 
-    bottom: 50px; 
-    left: 10px; 
+    bottom: 65px; 
+    left: 12px; 
     transform: translateX(-50%);
 }
 /* Position 2: left - in front of player at left */
 .played-card-position.pos-2 { 
     top: 50%; 
-    left: -40px; 
+    left: -50px; 
     transform: translateY(-50%);
 }
 /* Position 3: top left - in front of player at top left */
 .played-card-position.pos-3 { 
-    top: -20px; 
-    left: 18%; 
+    top: -25px; 
+    left: 20%; 
     transform: translateX(-50%);
 }
 /* Position 4: top right - in front of player at top right */
 .played-card-position.pos-4 { 
-    top: -20px; 
-    right: 18%; 
+    top: -25px; 
+    right: 20%; 
     transform: translateX(50%);
 }
 /* Position 5: right - in front of player at right */
 .played-card-position.pos-5 { 
     top: 50%; 
-    right: -40px; 
+    right: -50px; 
     transform: translateY(-50%);
 }
 /* Position 6: bottom right - in front of player at bottom right */
 .played-card-position.pos-6 { 
-    bottom: 50px; 
-    right: 10px; 
+    bottom: 65px; 
+    right: 12px; 
     transform: translateX(50%);
 }
 /* Position 7: top center - in front of player at top */
 .played-card-position.pos-7 { 
-    top: -60px; 
+    top: -70px; 
     left: 50%; 
     transform: translateX(-50%);
 }
@@ -1060,37 +1060,37 @@ input[type="text"]::placeholder {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 520px;
-    height: 380px;
+    width: 600px;
+    height: 440px;
     pointer-events: none;
 }
 
 .table-position {
     position: absolute;
-    width: 100px;
+    width: 120px;
     text-align: center;
     pointer-events: auto;
 }
 
-/* Player positions - positioned relative to the table (520x380) */
-.table-position.pos-0 { top: 106%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
-.table-position.pos-1 { top: 88%; left: 2%; transform: translate(-50%, -50%); }    /* Bottom left */
-.table-position.pos-2 { top: 50%; left: -8%; transform: translate(-50%, -50%); }   /* Left */
-.table-position.pos-3 { top: 2%; left: 12%; transform: translate(-50%, -50%); }    /* Top left */
-.table-position.pos-4 { top: 2%; left: 88%; transform: translate(-50%, -50%); }    /* Top right */
-.table-position.pos-5 { top: 50%; left: 108%; transform: translate(-50%, -50%); }  /* Right */
-.table-position.pos-6 { top: 88%; left: 98%; transform: translate(-50%, -50%); }   /* Bottom right */
-.table-position.pos-7 { top: -8%; left: 50%; transform: translate(-50%, -50%); }   /* Top center */
+/* Player positions - positioned relative to the table (600x440) */
+.table-position.pos-0 { top: 108%; left: 50%; transform: translate(-50%, -50%); }  /* Bottom center - ME */
+.table-position.pos-1 { top: 90%; left: 4%; transform: translate(-50%, -50%); }    /* Bottom left */
+.table-position.pos-2 { top: 50%; left: -10%; transform: translate(-50%, -50%); }  /* Left */
+.table-position.pos-3 { top: 2%; left: 16%; transform: translate(-50%, -50%); }    /* Top left */
+.table-position.pos-4 { top: 2%; left: 84%; transform: translate(-50%, -50%); }    /* Top right */
+.table-position.pos-5 { top: 50%; left: 110%; transform: translate(-50%, -50%); }  /* Right */
+.table-position.pos-6 { top: 90%; left: 96%; transform: translate(-50%, -50%); }   /* Bottom right */
+.table-position.pos-7 { top: -10%; left: 50%; transform: translate(-50%, -50%); }  /* Top center */
 
 .table-position .player-name {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     background: var(--bg-card);
     color: var(--text-primary);
-    padding: 5px 10px;
+    padding: 6px 10px;
     border-radius: 6px;
     border: 1px solid var(--border-color);
 }
@@ -1114,11 +1114,18 @@ input[type="text"]::placeholder {
 .table-position .player-bet {
     font-size: 12px;
     color: var(--text-secondary);
-    margin-top: 4px;
+    margin-top: 6px;
     background: rgba(0, 0, 0, 0.4);
-    padding: 4px 8px;
+    padding: 5px 8px;
     border-radius: 4px;
     display: inline-block;
+}
+
+.table-position .lives-line {
+    display: block;
+    margin-top: 4px;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 .table-position .player-bet strong {
@@ -1126,10 +1133,41 @@ input[type="text"]::placeholder {
     font-weight: 700;
 }
 
+/* Table player status colors based on bet vs tricks */
+.table-position.status-pending .player-name {
+    background: rgba(217, 119, 6, 0.25);
+    border-color: var(--warning);
+}
+
+.table-position.status-achieved .player-name {
+    background: rgba(34, 197, 94, 0.25);
+    border-color: var(--success);
+}
+
+.table-position.status-exceeded .player-name {
+    background: rgba(196, 30, 58, 0.25);
+    border-color: var(--danger);
+}
+
+.table-position.status-pending .player-bet {
+    background: rgba(217, 119, 6, 0.15);
+    border: 1px solid var(--warning);
+}
+
+.table-position.status-achieved .player-bet {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid var(--success);
+}
+
+.table-position.status-exceeded .player-bet {
+    background: rgba(196, 30, 58, 0.15);
+    border: 1px solid var(--danger);
+}
+
 /* Players Panel */
 .players-panel {
-    width: 200px;
-    padding: 16px;
+    width: 160px;
+    padding: 12px;
     background: var(--bg-card);
     border-left: 1px solid var(--border-color);
     overflow-y: auto;
