@@ -969,8 +969,8 @@ input[type="text"]::placeholder {
 
 .played-card-position {
     position: absolute;
-    width: 78px;
-    height: 117px;
+    width: 72px;
+    height: 108px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     border-radius: 6px;
     transition: none;
@@ -989,49 +989,49 @@ input[type="text"]::placeholder {
 /* Cards are positioned relative to .table-center (600x440) */
 /* Position 0: bottom - in front of player at bottom */
 .played-card-position.pos-0 { 
-    bottom: -70px; 
+    bottom: -52px; 
     left: 50%; 
     transform: translateX(-50%);
 }
 /* Position 1: bottom left - in front of player at bottom left */
 .played-card-position.pos-1 { 
-    bottom: 65px; 
-    left: 12px; 
+    bottom: 72px; 
+    left: 24px; 
     transform: translateX(-50%);
 }
 /* Position 2: left - in front of player at left */
 .played-card-position.pos-2 { 
     top: 50%; 
-    left: -50px; 
+    left: -32px; 
     transform: translateY(-50%);
 }
 /* Position 3: top left - in front of player at top left */
 .played-card-position.pos-3 { 
-    top: -25px; 
-    left: 20%; 
+    top: -10px; 
+    left: 22%; 
     transform: translateX(-50%);
 }
 /* Position 4: top right - in front of player at top right */
 .played-card-position.pos-4 { 
-    top: -25px; 
-    right: 20%; 
+    top: -10px; 
+    right: 22%; 
     transform: translateX(50%);
 }
 /* Position 5: right - in front of player at right */
 .played-card-position.pos-5 { 
     top: 50%; 
-    right: -50px; 
+    right: -32px; 
     transform: translateY(-50%);
 }
 /* Position 6: bottom right - in front of player at bottom right */
 .played-card-position.pos-6 { 
-    bottom: 65px; 
-    right: 12px; 
+    bottom: 72px; 
+    right: 24px; 
     transform: translateX(50%);
 }
 /* Position 7: top center - in front of player at top */
 .played-card-position.pos-7 { 
-    top: -70px; 
+    top: -52px; 
     left: 50%; 
     transform: translateX(-50%);
 }

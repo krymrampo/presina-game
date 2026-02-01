@@ -5,7 +5,7 @@
 
 const Chat = {
     messages: [],
-    isOpen: true,
+    isOpen: false,
     
     addMessage(msgData) {
         this.messages.push(msgData);
