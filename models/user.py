@@ -149,9 +149,9 @@ class User:
         
         try:
             # Check if username exists
-        cursor.execute('SELECT id FROM users WHERE username = %s', (username.lower(),))
-        if cursor.fetchone():
-            return None, "Username già in uso"
+            cursor.execute('SELECT id FROM users WHERE username = %s', (username.lower(),))
+            if cursor.fetchone():
+                return None, "Username già in uso"
             
             # Create user
             password_hash = cls.hash_password(password)
