@@ -6,6 +6,21 @@
 const Chat = {
     messages: [],
     isOpen: false,
+    nameColors: [
+        '#f59e0b',
+        '#22c55e',
+        '#3b82f6',
+        '#ef4444',
+        '#a855f7',
+        '#14b8a6',
+        '#e11d48',
+        '#84cc16',
+        '#f97316',
+        '#6366f1',
+        '#06b6d4',
+        '#d946ef'
+    ],
+    _nameColorCache: {},
     
     addMessage(msgData) {
         this.messages.push(msgData);
@@ -51,15 +66,31 @@ const Chat = {
                 hour: '2-digit',
                 minute: '2-digit'
             });
+            const nameKey = msg.player_id || msg.player_name || '';
+            const nameColor = this.getNameColor(nameKey);
             
             return `
                 <div class="chat-message ${isOwn ? 'own' : ''}">
-                    <span class="msg-name">${escapeHtml(msg.player_name)}</span>
+                    <span class="msg-name" style="color: ${nameColor};">${escapeHtml(msg.player_name)}</span>
                     <span class="msg-time">[${time}]</span>:
                     <span class="msg-text">${escapeHtml(msg.message)}</span>
                 </div>
             `;
         }).join('');
+    },
+
+    getNameColor(key) {
+        if (!key) return 'var(--accent)';
+        if (this._nameColorCache[key]) return this._nameColorCache[key];
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) {
+            hash = ((hash << 5) - hash) + key.charCodeAt(i);
+            hash |= 0;
+        }
+        const idx = Math.abs(hash) % this.nameColors.length;
+        const color = this.nameColors[idx];
+        this._nameColorCache[key] = color;
+        return color;
     },
     
     toggle() {

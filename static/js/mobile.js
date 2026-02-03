@@ -435,14 +435,18 @@ const MobileUI = {
         }
     },
     
-    addChatMessage(name, message, isOwn = false) {
+    addChatMessage(name, message, isOwn = false, playerId = null) {
         const container = document.getElementById('mobile-chat-messages');
         if (!container) return;
         
         const msgDiv = document.createElement('div');
         msgDiv.className = `mobile-chat-message ${isOwn ? 'own' : 'other'}`;
+        const nameKey = playerId || name || '';
+        const nameColor = (window.Chat && typeof window.Chat.getNameColor === 'function')
+            ? window.Chat.getNameColor(nameKey)
+            : 'var(--accent)';
         msgDiv.innerHTML = `
-            ${!isOwn ? `<div class="msg-name">${escapeHtml(name)}</div>` : ''}
+            ${!isOwn ? `<div class="msg-name" style="color: ${nameColor};">${escapeHtml(name)}</div>` : ''}
             <div>${escapeHtml(message)}</div>
         `;
         
