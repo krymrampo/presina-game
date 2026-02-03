@@ -20,7 +20,7 @@ UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
 def get_db_connection():
     """Get a database connection"""
-    database_url = os.environ.get("DATABASE_URL")
+    database_url = (os.environ.get("DATABASE_URL") or "").strip()
     if not database_url:
         raise RuntimeError("DATABASE_URL non impostata. Impostala per usare Postgres.")
     conn = psycopg2.connect(database_url, sslmode="require")
