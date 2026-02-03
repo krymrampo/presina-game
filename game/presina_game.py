@@ -33,6 +33,7 @@ class PresinaGameOnline:
     CARDS_PER_TURN = [5, 4, 3, 2, 1]
     MIN_PLAYERS = 2
     MAX_PLAYERS = 8
+    TURN_TIMEOUT_SECONDS = 30
     
     def __init__(self, room_id: str):
         self.room_id = room_id
@@ -60,6 +61,11 @@ class PresinaGameOnline:
         
         self.messages: List[dict] = []        # Game event messages
         self._last_offline_check: float = 0   # Last time we checked for offline players
+
+        # Turn timer (betting/playing/jolly)
+        self.turn_timer_deadline: Optional[float] = None
+        self.turn_timer_player_id: Optional[str] = None
+        self.turn_timer_type: Optional[str] = None  # 'betting' | 'playing' | 'jolly'
     
     # ==================== Player Management ====================
     
@@ -128,6 +134,7 @@ class PresinaGameOnline:
             if active and len(self.cards_on_table) >= len(active):
                 self._resolve_trick()
 
+        self._sync_turn_timer()
         return True
     
     def get_player(self, player_id: str) -> Optional[Player]:
@@ -211,10 +218,83 @@ class PresinaGameOnline:
         
         self.phase = GamePhase.BETTING
         self._add_message('system', f"Turno {self.current_turn + 1}: {cards_this_turn} carte")
+        self._sync_turn_timer()
 
     def auto_advance_offline(self):
         """Auto-play disabled - game waits for players indefinitely."""
         pass
+
+    def _clear_turn_timer(self):
+        self.turn_timer_deadline = None
+        self.turn_timer_player_id = None
+        self.turn_timer_type = None
+
+    def _set_turn_timer(self, player_id: Optional[str], timer_type: str):
+        if not player_id:
+            self._clear_turn_timer()
+            return
+        self.turn_timer_player_id = player_id
+        self.turn_timer_type = timer_type
+        self.turn_timer_deadline = time.time() + self.TURN_TIMEOUT_SECONDS
+
+    def _sync_turn_timer(self):
+        """Ensure timer is aligned with current game state without resetting unnecessarily."""
+        if self.phase == GamePhase.BETTING:
+            current = self.get_current_better()
+            current_id = current.player_id if current else None
+            timer_type = 'betting'
+        elif self.phase == GamePhase.PLAYING:
+            current = self.get_current_player()
+            current_id = current.player_id if current else None
+            timer_type = 'playing'
+        elif self.phase == GamePhase.WAITING_JOLLY:
+            current_id = self.pending_jolly_player
+            timer_type = 'jolly'
+        else:
+            self._clear_turn_timer()
+            return
+
+        if current_id is None:
+            self._clear_turn_timer()
+            return
+
+        if self.turn_timer_player_id != current_id or self.turn_timer_type != timer_type:
+            self._set_turn_timer(current_id, timer_type)
+
+    def check_and_handle_turn_timeout(self) -> bool:
+        """Auto-advance a turn if the active player exceeds the time limit."""
+        if self.phase not in (GamePhase.BETTING, GamePhase.PLAYING, GamePhase.WAITING_JOLLY):
+            self._clear_turn_timer()
+            return False
+
+        if not self.turn_timer_deadline or not self.turn_timer_player_id or not self.turn_timer_type:
+            self._sync_turn_timer()
+            return False
+
+        if time.time() < self.turn_timer_deadline:
+            return False
+
+        # Timer expired: verify still same active player
+        if self.phase == GamePhase.BETTING:
+            current = self.get_current_better()
+            current_id = current.player_id if current else None
+        elif self.phase == GamePhase.PLAYING:
+            current = self.get_current_player()
+            current_id = current.player_id if current else None
+        else:
+            current_id = self.pending_jolly_player
+
+        if not current_id:
+            self._clear_turn_timer()
+            return False
+
+        if current_id != self.turn_timer_player_id:
+            self._sync_turn_timer()
+            return False
+
+        self._auto_timeout_player(current_id)
+        self._sync_turn_timer()
+        return True
     
     def check_and_handle_offline_player(self, force_check: bool = False):
         """
@@ -294,6 +374,33 @@ class PresinaGameOnline:
         elif self.phase == GamePhase.WAITING_JOLLY and self.pending_jolly_player == player_id:
             # Auto-choose 'prende' for jolly
             self.play_card(player_id, None, None, 'prende')
+
+    def _auto_timeout_player(self, player_id: str):
+        """
+        Automatically act when a player exceeds the turn timer.
+        For betting: bet 0 (or 1 if 0 forbidden)
+        For playing: play first available card (jolly -> 'prende')
+        For jolly: auto-choose 'prende'
+        """
+        player = self.get_player(player_id)
+        if not player:
+            return
+
+        self._add_message('system', f"{player.name} ha finito il tempo - turno automatico")
+
+        if self.phase == GamePhase.BETTING:
+            forbidden = self.get_forbidden_bet()
+            auto_bet = 1 if forbidden == 0 else 0
+            self.make_bet(player_id, auto_bet)
+        elif self.phase == GamePhase.PLAYING:
+            if player.hand:
+                card = player.hand[0]
+                if card.is_jolly:
+                    self.play_card(player_id, card.suit, card.value, 'prende')
+                else:
+                    self.play_card(player_id, card.suit, card.value)
+        elif self.phase == GamePhase.WAITING_JOLLY and self.pending_jolly_player == player_id:
+            self.play_card(player_id, None, None, 'prende')
     
     # ==================== Betting Phase ====================
     
@@ -369,6 +476,10 @@ class PresinaGameOnline:
         # Check if all bets are made
         if len(self.bets_made) == len(self.get_active_players()):
             self._start_playing()
+        else:
+            next_better = self.get_current_better()
+            if next_better:
+                self._set_turn_timer(next_better.player_id, 'betting')
         
         return True, "Puntata registrata"
     
@@ -380,6 +491,11 @@ class PresinaGameOnline:
             self.trick_starter_index = self.first_better_index
             self.current_player_index = self.trick_starter_index
         self._add_message('system', "Fase di gioco iniziata")
+        current = self.get_current_player()
+        if current:
+            self._set_turn_timer(current.player_id, 'playing')
+        else:
+            self._clear_turn_timer()
     
     # ==================== Playing Phase ====================
     
@@ -431,7 +547,8 @@ class PresinaGameOnline:
             if not jolly_choice:
                 self.pending_jolly_player = player_id
                 self.phase = GamePhase.WAITING_JOLLY
-                # No timer for jolly choice - player must decide
+                # Timer for jolly choice
+                self._set_turn_timer(player_id, 'jolly')
                 return True, "Scegli: prende o lascia?"
             card.jolly_choice = jolly_choice
         
@@ -443,6 +560,10 @@ class PresinaGameOnline:
         active = self.get_active_players()
         if len(self.cards_on_table) == len(active):
             self._resolve_trick()
+        else:
+            next_player = self.get_current_player()
+            if next_player:
+                self._set_turn_timer(next_player.player_id, 'playing')
         
         return True, "Carta giocata"
     
@@ -479,6 +600,10 @@ class PresinaGameOnline:
         active = self.get_active_players()
         if len(self.cards_on_table) == len(active):
             self._resolve_trick()
+        else:
+            next_player = self.get_current_player()
+            if next_player:
+                self._set_turn_timer(next_player.player_id, 'playing')
         
         return True, f"Jolly: {choice}"
     
@@ -504,6 +629,7 @@ class PresinaGameOnline:
         
         # Enter TRICK_COMPLETE phase - cards stay visible for 3 seconds
         self.phase = GamePhase.TRICK_COMPLETE
+        self._clear_turn_timer()
     
     def advance_from_trick_complete(self) -> Tuple[bool, str]:
         """Advance from TRICK_COMPLETE phase after 3 second delay."""
@@ -528,6 +654,9 @@ class PresinaGameOnline:
             self.current_trick += 1
             self.cards_on_table = []
             self.phase = GamePhase.PLAYING
+            current = self.get_current_player()
+            if current:
+                self._set_turn_timer(current.player_id, 'playing')
             return True, "Prossima mano"
     
     def _end_turn(self):
@@ -563,6 +692,7 @@ class PresinaGameOnline:
         self.last_turn_all_correct = all(r.get('correct') for r in self.turn_results)
 
         self.phase = GamePhase.TURN_RESULTS
+        self._clear_turn_timer()
 
         # Check for game over
         active = self.get_active_players()
@@ -608,6 +738,7 @@ class PresinaGameOnline:
     def _end_game(self):
         """End the game and calculate final standings."""
         self.phase = GamePhase.GAME_OVER
+        self._clear_turn_timer()
         
         # Sort players by lives (descending)
         all_players = list(self.players.values())
@@ -649,6 +780,7 @@ class PresinaGameOnline:
         """Get the game state from a specific player's perspective."""
         # Check for offline players periodically
         self.check_and_handle_offline_player()
+        self.check_and_handle_turn_timeout()
         
         player = self.get_player(player_id)
         is_spectator = player is None or player.is_spectator if player else True
@@ -686,6 +818,11 @@ class PresinaGameOnline:
                     'card': winning_card.to_dict() if winning_card else None
                 }
         
+        now = time.time()
+        seconds_left = None
+        if self.turn_timer_deadline:
+            seconds_left = max(0, int(self.turn_timer_deadline - now))
+
         return {
             'room_id': self.room_id,
             'phase': self.phase.value,
@@ -705,7 +842,14 @@ class PresinaGameOnline:
             'game_results': self.game_results,
             'is_spectator': is_spectator,
             'messages': self.messages[-20:],  # Last 20 messages
-            'trick_winner': trick_winner_info
+            'trick_winner': trick_winner_info,
+            'turn_timer': {
+                'active': self.turn_timer_deadline is not None and self.turn_timer_player_id is not None,
+                'player_id': self.turn_timer_player_id,
+                'type': self.turn_timer_type,
+                'deadline': self.turn_timer_deadline,
+                'seconds_left': seconds_left
+            }
         }
     
     def to_dict(self) -> dict:

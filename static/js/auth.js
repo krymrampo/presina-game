@@ -290,6 +290,10 @@ const AuthUI = {
         // Update profile info
         document.getElementById('profile-display-name').textContent = 
             this.currentUser.display_name || this.currentUser.username;
+        const displayNameInput = document.getElementById('display-name-input');
+        if (displayNameInput) {
+            displayNameInput.value = this.currentUser.display_name || this.currentUser.username;
+        }
         document.getElementById('profile-username').textContent = 
             `@${this.currentUser.username}`;
         
@@ -308,8 +312,14 @@ const AuthUI = {
                 `Membro dal ${date.toLocaleDateString('it-IT')}`;
         }
         
+        const editNameBtn = document.getElementById('btn-edit-display-name');
+        const nameEditor = document.getElementById('display-name-editor');
+        if (nameEditor) nameEditor.classList.add('hidden');
+
         // Guests have no stats/profile features
         if (this.isGuest()) {
+            if (editNameBtn) editNameBtn.classList.add('hidden');
+            if (nameEditor) nameEditor.classList.add('hidden');
             const history = document.getElementById('profile-game-history');
             if (history) {
                 history.innerHTML = '<p class="empty-message">Accedi per vedere le statistiche</p>';
@@ -325,6 +335,7 @@ const AuthUI = {
             return;
         }
         
+        if (editNameBtn) editNameBtn.classList.remove('hidden');
         const avatarInput = document.getElementById('avatar-upload-input');
         if (avatarInput) avatarInput.disabled = false;
         const avatarBtn = document.querySelector('label[for="avatar-upload-input"]');
@@ -398,6 +409,85 @@ const AuthUI = {
         };
         
         reader.readAsDataURL(file);
+    },
+
+    // ==================== Display Name ====================
+    startEditDisplayName() {
+        if (!this.currentUser || this.isGuest()) return;
+        const editor = document.getElementById('display-name-editor');
+        const input = document.getElementById('display-name-input');
+        const editBtn = document.getElementById('btn-edit-display-name');
+        if (input) {
+            input.value = this.currentUser.display_name || this.currentUser.username;
+            input.focus();
+            input.select();
+        }
+        if (editor) editor.classList.remove('hidden');
+        if (editBtn) editBtn.classList.add('hidden');
+    },
+
+    cancelEditDisplayName() {
+        const editor = document.getElementById('display-name-editor');
+        const editBtn = document.getElementById('btn-edit-display-name');
+        if (editor) editor.classList.add('hidden');
+        if (editBtn && !this.isGuest()) editBtn.classList.remove('hidden');
+    },
+
+    async saveDisplayName() {
+        if (!this.authToken || !this.currentUser || this.isGuest()) return;
+        const input = document.getElementById('display-name-input');
+        const newName = (input?.value || '').trim();
+        if (!newName) {
+            this.showError('Nome non valido');
+            return;
+        }
+        if (newName.length > 20) {
+            this.showError('Nome troppo lungo (max 20 caratteri)');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/user/display_name', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                },
+                body: JSON.stringify({ display_name: newName })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.currentUser.display_name = data.display_name;
+                localStorage.setItem('presina_user', JSON.stringify(this.currentUser));
+
+                const displayNameEl = document.getElementById('profile-display-name');
+                if (displayNameEl) displayNameEl.textContent = data.display_name;
+
+                // Update home UI + player name
+                const userDisplay = document.getElementById('user-display-name');
+                if (userDisplay) {
+                    userDisplay.textContent = `Ciao, ${data.display_name}!`;
+                }
+                App.playerName = data.display_name;
+                sessionStorage.setItem('presina_player_name', App.playerName);
+                const playerNameInput = document.getElementById('player-name');
+                if (playerNameInput) {
+                    playerNameInput.value = App.playerName;
+                }
+                const playerNameDisplay = document.getElementById('player-name-display');
+                if (playerNameDisplay) {
+                    playerNameDisplay.textContent = App.playerName;
+                }
+
+                this.cancelEditDisplayName();
+                this.showSuccess('Nome aggiornato!');
+            } else {
+                this.showError(data.error || 'Errore aggiornamento');
+            }
+        } catch (error) {
+            console.error('Update display name error:', error);
+            this.showError('Errore di connessione');
+        }
     },
     
     async loadUserStats() {
@@ -598,6 +688,19 @@ const AuthUI = {
         const avatarInput = document.getElementById('avatar-upload-input');
         if (avatarInput) {
             avatarInput.addEventListener('change', (e) => this.uploadAvatar(e.target));
+        }
+
+        const editNameBtn = document.getElementById('btn-edit-display-name');
+        if (editNameBtn) editNameBtn.addEventListener('click', () => this.startEditDisplayName());
+        const saveNameBtn = document.getElementById('btn-save-display-name');
+        if (saveNameBtn) saveNameBtn.addEventListener('click', () => this.saveDisplayName());
+        const cancelNameBtn = document.getElementById('btn-cancel-display-name');
+        if (cancelNameBtn) cancelNameBtn.addEventListener('click', () => this.cancelEditDisplayName());
+        const displayNameInput = document.getElementById('display-name-input');
+        if (displayNameInput) {
+            displayNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.saveDisplayName();
+            });
         }
         
         document.querySelectorAll('.lb-tab').forEach(btn => {

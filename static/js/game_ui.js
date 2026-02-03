@@ -282,10 +282,13 @@ const GameUI = {
             }
             
             const spectatorBadge = player.is_spectator ? ' 👁️' : '';
+            const timerInfo = gameState.turn_timer;
+            const hasTimer = timerInfo && timerInfo.active && timerInfo.player_id === player.player_id && timerInfo.seconds_left !== null;
+            const timerText = hasTimer ? ` <span class="turn-timer">⏱ ${timerInfo.seconds_left}s</span>` : '';
             
             return `
                 <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn current-turn-pulse' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''} ${statusColorClass}">
-                    <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}</div>
+                    <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}${timerText}</div>
                     <div class="player-bet">${betInfo}</div>
                 </div>
             `;

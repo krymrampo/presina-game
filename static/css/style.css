@@ -1103,9 +1103,22 @@ input[type="text"]::placeholder {
     border: 1px solid var(--border-color);
 }
 
+.turn-timer {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary);
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(212, 175, 55, 0.5);
+}
+
 .table-position.current-turn .player-name {
     background: rgba(212, 175, 55, 0.2);
     border: 2px solid var(--primary);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
 }
 
 .table-position.offline .player-name {
@@ -1967,17 +1980,19 @@ html {
 /* Pulse per turno giocatore */
 @keyframes pulse-turn {
     0%, 100% { 
-        box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
-        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45), 0 0 12px rgba(212, 175, 55, 0.35);
     }
     50% { 
-        box-shadow: 0 0 0 10px rgba(212, 175, 55, 0);
-        transform: scale(1.02);
+        box-shadow: 0 0 0 10px rgba(212, 175, 55, 0), 0 0 18px rgba(212, 175, 55, 0.6);
     }
 }
 
 .current-turn-pulse {
     animation: none;
+}
+
+.current-turn-pulse .player-name {
+    animation: pulse-turn 1.4s ease-in-out infinite;
 }
 
 /* Glow per mano vincente */
@@ -2038,6 +2053,11 @@ html {
     .current-turn-pulse {
         animation: none !important;
         border: 2px solid var(--primary);
+        box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.3);
+    }
+
+    .current-turn-pulse .player-name {
+        animation: none !important;
         box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.3);
     }
     

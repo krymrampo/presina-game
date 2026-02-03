@@ -252,13 +252,16 @@ const MobileUI = {
             }
             
             const dotClass = isOffline ? 'offline' : (isAway ? 'away' : 'online');
+            const timerInfo = gameState.turn_timer;
+            const hasTimer = timerInfo && timerInfo.active && timerInfo.player_id === player.player_id && timerInfo.seconds_left !== null;
+            const timerText = hasTimer ? ` <span class="turn-timer">⏱ ${timerInfo.seconds_left}s</span>` : '';
             
             return `
                 <div class="mobile-player-item ${isCurrent ? 'current' : ''} ${isMe ? 'me' : ''} ${player.is_spectator ? 'spectator' : ''} ${isOffline ? 'offline' : ''}">
                     <div class="mobile-player-item-dot ${dotClass}"></div>
                     <div class="mobile-player-item-info">
                         <div class="mobile-player-item-name">
-                            ${player.name} ${isMe ? '(Tu)' : ''} ${player.is_spectator ? '👁️' : ''}
+                            ${player.name} ${isMe ? '(Tu)' : ''} ${player.is_spectator ? '👁️' : ''}${timerText}
                         </div>
                         <div class="mobile-player-item-status">${statusText}</div>
                     </div>

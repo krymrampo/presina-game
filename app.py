@@ -7,10 +7,12 @@ from urllib.parse import parse_qs
 from flask import Flask, render_template, send_from_directory, request, jsonify, g
 from werkzeug.wrappers import Response
 from flask_socketio import SocketIO
+from psycopg2 import extras
 
 from config import get_config
 from auth_utils import (
     create_guest_session,
+    _sanitize_display_name,
     resolve_token,
     serialize_user,
     invalidate_token
@@ -215,6 +217,18 @@ def api_user_avatar():
     return jsonify({'success': True, 'avatar': result})
 
 
+@app.route('/api/user/display_name', methods=['POST'])
+@_require_auth(allow_guest=False)
+def api_user_display_name():
+    user = g.current_user
+    data = request.get_json(silent=True) or {}
+    display_name = _sanitize_display_name(data.get('display_name'))
+    if not display_name:
+        return jsonify({'success': False, 'error': 'Nome non valido'}), 400
+    user.update_display_name(display_name)
+    return jsonify({'success': True, 'display_name': display_name, 'user': user.to_dict()})
+
+
 # ==================== Leaderboard ====================
 
 @app.route('/api/leaderboard', methods=['GET'])
@@ -234,7 +248,7 @@ def api_leaderboard():
     order_by = order_map.get(category, order_map['wins'])
 
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
     cursor.execute(f'''
         SELECT 
             u.username,
@@ -251,7 +265,7 @@ def api_leaderboard():
         JOIN user_stats s ON s.user_id = u.id
         WHERE u.is_active = 1
         ORDER BY {order_by}
-        LIMIT ?
+        LIMIT %s
     ''', (limit,))
     rows = cursor.fetchall()
     conn.close()

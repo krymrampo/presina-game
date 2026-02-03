@@ -8,6 +8,9 @@ python-socketio>=5.8.0
 # Production server
 gunicorn>=21.0.0
 
+# Database
+psycopg2-binary>=2.9.9
+
 # Development
 python-dotenv>=1.0.0
 

@@ -1,7 +1,6 @@
 """
 User model and authentication system for Presina
 """
-import sqlite3
 import hashlib
 import secrets
 import time
@@ -10,7 +9,8 @@ import base64
 from datetime import datetime
 from pathlib import Path
 
-DATABASE_PATH = Path(__file__).parent.parent / "data" / "presina.db"
+import psycopg2
+from psycopg2 import extras
 UPLOADS_PATH = Path(__file__).parent.parent / "uploads" / "avatars"
 DEFAULT_AVATAR_URL = "/static/img/logo.png"
 
@@ -20,21 +20,22 @@ UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
 def get_db_connection():
     """Get a database connection"""
-    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DATABASE_PATH))
-    conn.row_factory = sqlite3.Row
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL non impostata. Impostala per usare Postgres.")
+    conn = psycopg2.connect(database_url, sslmode="require")
     return conn
 
 
 def init_database():
     """Initialize the database with required tables"""
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
     
     # Users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             email TEXT,
@@ -42,9 +43,9 @@ def init_database():
             avatar TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP,
-            is_active BOOLEAN DEFAULT 1,
+            is_active BOOLEAN DEFAULT TRUE,
             session_token TEXT,
-            session_expires TIMESTAMP
+            session_expires BIGINT
         )
     ''')
     
@@ -71,7 +72,7 @@ def init_database():
     # Game history table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS game_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             room_name TEXT,
             players_count INTEGER,
@@ -90,7 +91,7 @@ def init_database():
     # Achievements table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS achievements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             achievement_id TEXT NOT NULL,
             achievement_name TEXT,
@@ -144,26 +145,27 @@ class User:
     def register(cls, username, password, email=None, display_name=None):
         """Register a new user"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         try:
             # Check if username exists
-            cursor.execute('SELECT id FROM users WHERE username = ?', (username.lower(),))
-            if cursor.fetchone():
-                return None, "Username già in uso"
+        cursor.execute('SELECT id FROM users WHERE username = %s', (username.lower(),))
+        if cursor.fetchone():
+            return None, "Username già in uso"
             
             # Create user
             password_hash = cls.hash_password(password)
             cursor.execute('''
                 INSERT INTO users (username, password_hash, email, display_name)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
             ''', (username.lower(), password_hash, email, display_name or username))
             
-            user_id = cursor.lastrowid
+            user_id = cursor.fetchone()['id']
             
             # Initialize stats
             cursor.execute('''
-                INSERT INTO user_stats (user_id) VALUES (?)
+                INSERT INTO user_stats (user_id) VALUES (%s)
             ''', (user_id,))
             
             conn.commit()
@@ -180,12 +182,12 @@ class User:
     def login(cls, username, password):
         """Login a user"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         cursor.execute('''
             SELECT id, username, password_hash, display_name, avatar, 
                    created_at, last_login, is_active
-            FROM users WHERE username = ? AND is_active = 1
+            FROM users WHERE username = %s AND is_active = TRUE
         ''', (username.lower(),))
         
         row = cursor.fetchone()
@@ -217,11 +219,11 @@ class User:
     def get_by_id(cls, user_id):
         """Get user by ID"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         cursor.execute('''
             SELECT id, username, display_name, avatar, created_at, last_login, is_active
-            FROM users WHERE id = ?
+            FROM users WHERE id = %s
         ''', (user_id,))
         
         row = cursor.fetchone()
@@ -244,12 +246,12 @@ class User:
     def get_by_token(cls, token):
         """Get user by session token"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         cursor.execute('''
             SELECT id, username, display_name, avatar, created_at, last_login, is_active
             FROM users 
-            WHERE session_token = ? AND session_expires > ?
+            WHERE session_token = %s AND session_expires > %s
         ''', (token, int(time.time())))
         
         row = cursor.fetchone()
@@ -274,12 +276,12 @@ class User:
         expires = int(time.time()) + (duration_days * 24 * 60 * 60)
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         cursor.execute('''
             UPDATE users 
-            SET session_token = ?, session_expires = ?, last_login = CURRENT_TIMESTAMP
-            WHERE id = ?
+            SET session_token = %s, session_expires = %s, last_login = CURRENT_TIMESTAMP
+            WHERE id = %s
         ''', (token, expires, self.id))
         
         conn.commit()
@@ -290,11 +292,11 @@ class User:
     def logout(self):
         """Clear session"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         cursor.execute('''
             UPDATE users SET session_token = NULL, session_expires = NULL
-            WHERE id = ?
+            WHERE id = %s
         ''', (self.id,))
         
         conn.commit()
@@ -306,10 +308,10 @@ class User:
             return self.stats
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         cursor.execute('''
-            SELECT * FROM user_stats WHERE user_id = ?
+            SELECT * FROM user_stats WHERE user_id = %s
         ''', (self.id,))
         
         row = cursor.fetchone()
@@ -340,7 +342,7 @@ class User:
         if self.stats is None:
             self.get_stats()
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         try:
             # Update game history
@@ -348,7 +350,7 @@ class User:
                 INSERT INTO game_history 
                 (user_id, room_name, players_count, final_position, final_lives,
                  lives_lost, bets_correct, bets_wrong, tricks_won, won)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 self.id,
                 game_result.get('room_name', 'Unknown'),
@@ -373,17 +375,17 @@ class User:
             cursor.execute('''
                 UPDATE user_stats SET
                     games_played = games_played + 1,
-                    games_won = games_won + ?,
-                    games_lost = games_lost + ?,
-                    total_lives_lost = total_lives_lost + ?,
-                    total_lives_remaining = total_lives_remaining + ?,
-                    total_bets_correct = total_bets_correct + ?,
-                    total_bets_wrong = total_bets_wrong + ?,
-                    total_tricks_won = total_tricks_won + ?,
-                    current_streak = ?,
-                    best_streak = ?,
+                    games_won = games_won + %s,
+                    games_lost = games_lost + %s,
+                    total_lives_lost = total_lives_lost + %s,
+                    total_lives_remaining = total_lives_remaining + %s,
+                    total_bets_correct = total_bets_correct + %s,
+                    total_bets_wrong = total_bets_wrong + %s,
+                    total_tricks_won = total_tricks_won + %s,
+                    current_streak = %s,
+                    best_streak = %s,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
+                WHERE user_id = %s
             ''', (
                 1 if won else 0,
                 0 if won else 1,
@@ -412,13 +414,13 @@ class User:
     def get_recent_games(self, limit=10):
         """Get recent game history"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         cursor.execute('''
             SELECT * FROM game_history 
-            WHERE user_id = ?
+            WHERE user_id = %s
             ORDER BY played_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (self.id, limit))
         
         games = [dict(row) for row in cursor.fetchall()]
@@ -429,11 +431,11 @@ class User:
     def get_achievements(self):
         """Get user achievements"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
         cursor.execute('''
             SELECT * FROM achievements 
-            WHERE user_id = ?
+            WHERE user_id = %s
             ORDER BY unlocked_at DESC
         ''', (self.id,))
         
@@ -480,9 +482,9 @@ class User:
             # Update database
             avatar_url = f"/uploads/avatars/{filename}"
             conn = get_db_connection()
-            cursor = conn.cursor()
+            cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
             cursor.execute(
-                'UPDATE users SET avatar = ? WHERE id = ?',
+                'UPDATE users SET avatar = %s WHERE id = %s',
                 (avatar_url, self.id)
             )
             conn.commit()
@@ -493,6 +495,18 @@ class User:
             
         except Exception as e:
             return False, str(e)
+
+    def update_display_name(self, display_name):
+        """Update user display name"""
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+        cursor.execute(
+            'UPDATE users SET display_name = %s WHERE id = %s',
+            (display_name, self.id)
+        )
+        conn.commit()
+        conn.close()
+        self.display_name = display_name
     
     def to_dict(self, include_stats=False):
         """Convert user to dictionary"""

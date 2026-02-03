@@ -42,6 +42,9 @@ def register_game_events(socketio):
         if not room:
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
+
+        if room.game.check_and_handle_turn_timeout():
+            _broadcast_game_state(socketio, room)
         
         if room.admin_id != player_id:
             emit('error', {'message': 'Solo l\'admin può avviare la partita'})
@@ -89,6 +92,9 @@ def register_game_events(socketio):
         if not room:
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
+
+        if room.game.check_and_handle_turn_timeout():
+            _broadcast_game_state(socketio, room)
         
         try:
             bet_value = int(bet)
@@ -132,6 +138,9 @@ def register_game_events(socketio):
         if not room:
             emit('error', {'message': 'Non sei in nessuna stanza'})
             return
+
+        if room.game.check_and_handle_turn_timeout():
+            _broadcast_game_state(socketio, room)
         
         try:
             card_value = int(value)
