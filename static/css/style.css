@@ -764,7 +764,7 @@ input[type="text"]::placeholder {
 
 /* Hand Panel */
 .hand-panel {
-    width: 240px;
+    width: 280px;
     padding: 16px;
     background: var(--bg-card);
     border-right: 1px solid var(--border-color);
@@ -932,18 +932,20 @@ input[type="text"]::placeholder {
     padding: 20px;
     position: relative;
     min-height: 350px;
+    --table-width: min(600px, 100%);
+    --table-height: calc(var(--table-width) * 0.733333);
 }
 
 .table-center {
     position: relative;
-    width: 600px;
-    height: 440px;
+    width: var(--table-width);
+    height: var(--table-height);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: linear-gradient(145deg, #1a4d3a 0%, #0d3328 100%);
-    border-radius: 300px / 220px;
+    border-radius: 50%;
     box-shadow: 
         inset 0 4px 30px rgba(0, 0, 0, 0.5),
         0 8px 30px rgba(0, 0, 0, 0.4),
@@ -961,7 +963,7 @@ input[type="text"]::placeholder {
     width: 88%;
     height: 82%;
     border: 1px dashed rgba(255, 255, 255, 0.1);
-    border-radius: 265px / 180px;
+    border-radius: 44% / 41%;
     pointer-events: none;
 }
 
@@ -977,8 +979,8 @@ input[type="text"]::placeholder {
 
 .played-card-position {
     position: absolute;
-    width: 72px;
-    height: 108px;
+    width: calc(var(--table-width) * 0.12);
+    height: calc(var(--table-height) * 0.2454545);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     border-radius: 6px;
     transition: none;
@@ -997,49 +999,49 @@ input[type="text"]::placeholder {
 /* Cards are positioned relative to .table-center (600x440) */
 /* Position 0: bottom - in front of player at bottom */
 .played-card-position.pos-0 { 
-    bottom: -52px; 
+    bottom: calc(var(--table-height) * -0.1181818); 
     left: 50%; 
     transform: translateX(-50%);
 }
 /* Position 1: bottom left - in front of player at bottom left */
 .played-card-position.pos-1 { 
-    bottom: 72px; 
-    left: 24px; 
+    bottom: calc(var(--table-height) * 0.1636364); 
+    left: calc(var(--table-width) * 0.04); 
     transform: translateX(-50%);
 }
 /* Position 2: left - in front of player at left */
 .played-card-position.pos-2 { 
     top: 50%; 
-    left: -32px; 
+    left: calc(var(--table-width) * -0.0533333); 
     transform: translateY(-50%);
 }
 /* Position 3: top left - in front of player at top left */
 .played-card-position.pos-3 { 
-    top: -10px; 
+    top: calc(var(--table-height) * -0.0227273); 
     left: 22%; 
     transform: translateX(-50%);
 }
 /* Position 4: top right - in front of player at top right */
 .played-card-position.pos-4 { 
-    top: -10px; 
+    top: calc(var(--table-height) * -0.0227273); 
     right: 22%; 
     transform: translateX(50%);
 }
 /* Position 5: right - in front of player at right */
 .played-card-position.pos-5 { 
     top: 50%; 
-    right: -32px; 
+    right: calc(var(--table-width) * -0.0533333); 
     transform: translateY(-50%);
 }
 /* Position 6: bottom right - in front of player at bottom right */
 .played-card-position.pos-6 { 
-    bottom: 72px; 
-    right: 24px; 
+    bottom: calc(var(--table-height) * 0.1636364); 
+    right: calc(var(--table-width) * 0.04); 
     transform: translateX(50%);
 }
 /* Position 7: top center - in front of player at top */
 .played-card-position.pos-7 { 
-    top: -52px; 
+    top: calc(var(--table-height) * -0.1181818); 
     left: 50%; 
     transform: translateX(-50%);
 }
@@ -1068,14 +1070,14 @@ input[type="text"]::placeholder {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 600px;
-    height: 440px;
+    width: var(--table-width);
+    height: var(--table-height);
     pointer-events: none;
 }
 
 .table-position {
     position: absolute;
-    width: 120px;
+    width: clamp(80px, calc(var(--table-width) * 0.2), 140px);
     text-align: center;
     pointer-events: auto;
 }
