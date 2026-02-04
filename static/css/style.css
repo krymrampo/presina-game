@@ -792,7 +792,8 @@ input[type="text"]::placeholder {
 
 .hand-area .card {
     width: 65px;
-    height: 98px;
+    height: auto;
+    aspect-ratio: 173 / 276;
     border-radius: 6px;
     cursor: pointer;
     object-fit: contain;
