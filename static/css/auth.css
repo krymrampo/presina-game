@@ -97,9 +97,9 @@
 /* ==================== User Welcome (Logged In) ==================== */
 .user-welcome {
     text-align: center;
-    padding: 24px 0;
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 24px;
+    padding: 8px 0 6px;
+    border-bottom: none;
+    margin-bottom: 12px;
 }
 
 .user-avatar-large {

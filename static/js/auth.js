@@ -74,9 +74,14 @@ const AuthUI = {
             loggedSection.classList.remove('hidden');
             
             // Update user info
-            document.getElementById('user-display-name').textContent = 
-                `Ciao, ${this.currentUser.display_name || this.currentUser.username}!`;
-            document.getElementById('user-username').textContent = `@${this.currentUser.username}`;
+            const displayNameEl = document.getElementById('user-display-name');
+            if (displayNameEl) {
+                displayNameEl.textContent = `Ciao, ${this.currentUser.display_name || this.currentUser.username}!`;
+            }
+            const usernameEl = document.getElementById('user-username');
+            if (usernameEl) {
+                usernameEl.textContent = `@${this.currentUser.username}`;
+            }
             
             // Update avatar
             const homeImg = document.getElementById('user-avatar-img');
