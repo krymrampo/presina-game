@@ -792,8 +792,9 @@ class PresinaGameOnline:
         players_info = []
         for pid in self.player_order:
             p = self.players[pid]
-            # Show hand to the player themselves, or to others in special turn
-            include_hand = (pid == player_id)
+            # Special turn: players see others' cards but not their own
+            hide_own_hand = is_special and self.phase in (GamePhase.BETTING, GamePhase.PLAYING, GamePhase.WAITING_JOLLY)
+            include_hand = (pid == player_id) and not hide_own_hand
             others_hand_visible = (is_special and pid != player_id and self.phase in (GamePhase.BETTING, GamePhase.PLAYING))
             players_info.append(p.to_dict(include_hand=include_hand, others_hand_visible=others_hand_visible))
         

@@ -447,7 +447,7 @@ class User:
     def update_avatar(self, image_data):
         """Update user avatar from base64 image data"""
         if not image_data:
-            return False
+            return False, "Immagine mancante"
         
         try:
             # Remove data URL prefix if present
