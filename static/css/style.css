@@ -795,6 +795,9 @@ input[type="text"]::placeholder {
     height: 98px;
     border-radius: 6px;
     cursor: pointer;
+    object-fit: contain;
+    background-color: #0f1110;
+    display: block;
     /* GPU acceleration: anima solo transform */
     transition: none;
     box-shadow: var(--shadow);

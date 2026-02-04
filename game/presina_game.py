@@ -761,6 +761,8 @@ class PresinaGameOnline:
     
     def is_special_turn(self) -> bool:
         """Check if this is the special turn (1 card)."""
+        if self.current_turn < 0 or self.current_turn >= len(self.CARDS_PER_TURN):
+            return False
         return self.CARDS_PER_TURN[self.current_turn] == 1
     
     # ==================== Utility Methods ====================
@@ -794,7 +796,8 @@ class PresinaGameOnline:
             p = self.players[pid]
             # Special turn: players see others' cards but not their own
             hide_own_hand = is_special and self.phase in (GamePhase.BETTING, GamePhase.PLAYING, GamePhase.WAITING_JOLLY)
-            include_hand = (pid == player_id) and not hide_own_hand
+            # Always include my own hand so the client can render hidden, clickable cards
+            include_hand = (pid == player_id)
             others_hand_visible = (is_special and pid != player_id and self.phase in (GamePhase.BETTING, GamePhase.PLAYING))
             players_info.append(p.to_dict(include_hand=include_hand, others_hand_visible=others_hand_visible))
         
