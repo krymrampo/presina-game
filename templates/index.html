@@ -165,8 +165,8 @@
                 <div id="existing-room-banner" class="banner hidden">
                     <span>Sei già in una stanza!</span>
                     <div class="banner-actions">
-                        <button id="btn-rejoin" class="btn btn-small">Rientra</button>
-                        <button id="btn-abandon" class="btn btn-small btn-secondary">Abbandona</button>
+                        <button id="btn-rejoin" class="btn btn-small btn-primary">🎮 Torna in partita</button>
+                        <button id="btn-abandon" class="btn btn-small btn-danger">🚪 Abbandona</button>
                     </div>
                 </div>
                 
@@ -223,6 +223,18 @@
                     <div class="button-group">
                         <button id="btn-confirm-join-private" class="btn btn-primary">Entra</button>
                         <button id="btn-cancel-join-private" class="btn btn-secondary">Annulla</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confirm Abandon Modal -->
+            <div id="confirm-abandon-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>🚪 Abbandonare la partita?</h3>
+                    <p>Se abbandoni, un bot giocherà al tuo posto per questo turno e verrai rimosso al turno successivo.</p>
+                    <div class="button-group">
+                        <button id="btn-confirm-abandon" class="btn btn-danger">Sì, abbandona</button>
+                        <button id="btn-cancel-abandon" class="btn btn-secondary">Annulla</button>
                     </div>
                 </div>
             </div>
@@ -396,7 +408,11 @@
                 
                 <!-- Footer -->
                 <div class="game-footer">
-                    powered by Krym_rampo & SopraSteria team
+                    <div class="game-footer-buttons">
+                        <button id="btn-game-to-lobby" class="btn btn-secondary btn-small">📋 Lobby</button>
+                        <button id="btn-game-abandon" class="btn btn-danger btn-small">🚪 Abbandona</button>
+                    </div>
+                    <span class="footer-text">powered by Krym_rampo & SopraSteria team</span>
                 </div>
             </div>
         </div>

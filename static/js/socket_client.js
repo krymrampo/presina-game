@@ -329,6 +329,9 @@ const SocketClient = {
                 showScreen('waiting-room');
                 updateWaitingRoom(data.game_state);
                 clearCardSelection();
+            } else if (App.currentScreen === 'lobby') {
+                // Player is deliberately in lobby (go_to_lobby) — don't force back to game screen
+                // Just update the game state silently so it's fresh when they return
             } else if (data.game_state.phase === 'trick_complete') {
                 // Trick just completed - show cards for 3 seconds then advance
                 if (App.currentScreen !== 'game') {
@@ -457,6 +460,18 @@ const SocketClient = {
     
     abandonRoom() {
         this.socket.emit('abandon_room', {
+            player_id: App.playerId
+        });
+    },
+
+    goToLobby() {
+        this.socket.emit('go_to_lobby', {
+            player_id: App.playerId
+        });
+    },
+
+    returnToGame() {
+        this.socket.emit('return_to_game', {
             player_id: App.playerId
         });
     },

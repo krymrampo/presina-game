@@ -147,7 +147,12 @@ function setupEventListeners() {
         if (e.key === 'Enter') searchRooms();
     });
     document.getElementById('btn-rejoin').addEventListener('click', () => {
-        SocketClient.rejoinGame();
+        // Use returnToGame if we went to lobby during an active game
+        if (App.gameState && App.gameState.phase !== 'waiting' && App.gameState.phase !== 'game_over') {
+            SocketClient.returnToGame();
+        } else {
+            SocketClient.rejoinGame();
+        }
     });
     document.getElementById('btn-abandon').addEventListener('click', abandonSavedRoom);
     
@@ -197,6 +202,12 @@ function setupEventListeners() {
     document.getElementById('btn-jolly-prende').addEventListener('click', () => chooseJolly('prende'));
     document.getElementById('btn-jolly-lascia').addEventListener('click', () => chooseJolly('lascia'));
     document.getElementById('btn-next-turn').addEventListener('click', readyNextTurn);
+
+    // Game footer buttons
+    document.getElementById('btn-game-to-lobby').addEventListener('click', gameGoToLobby);
+    document.getElementById('btn-game-abandon').addEventListener('click', showConfirmAbandonModal);
+    document.getElementById('btn-confirm-abandon').addEventListener('click', confirmAbandonFromGame);
+    document.getElementById('btn-cancel-abandon').addEventListener('click', hideConfirmAbandonModal);
     
     // Chat toggle
     document.getElementById('chat-toggle').addEventListener('click', toggleChat);
@@ -244,7 +255,12 @@ function checkAndShowRejoinBanner() {
     if (savedRoom && banner) {
         try {
             const roomData = JSON.parse(savedRoom);
-            banner.querySelector('span').textContent = `Hai una partita in corso: "${roomData.name}"`;
+            const isActiveGame = App.gameState && App.gameState.phase !== 'waiting' && App.gameState.phase !== 'game_over';
+            if (isActiveGame) {
+                banner.querySelector('span').textContent = `🎮 Partita in corso: "${roomData.name}"`;
+            } else {
+                banner.querySelector('span').textContent = `Hai una stanza attiva: "${roomData.name}"`;
+            }
             banner.classList.remove('hidden');
             App.currentRoom = roomData;
         } catch (e) {
@@ -254,21 +270,8 @@ function checkAndShowRejoinBanner() {
 }
 
 function abandonSavedRoom() {
-    if (!confirm('Vuoi abbandonare questa stanza? Non potrai rientrare.')) {
-        return;
-    }
-    
-    SocketClient.abandonRoom();
-    
-    // Clear local session immediately
-    App.currentRoom = null;
-    App.gameState = null;
-    sessionStorage.removeItem('presina_room');
-    
-    const banner = document.getElementById('existing-room-banner');
-    if (banner) banner.classList.add('hidden');
-    
-    SocketClient.listRooms();
+    // Show the confirm abandon modal instead of native confirm
+    document.getElementById('confirm-abandon-modal').classList.remove('hidden');
 }
 
 function showCreateRoomModal() {
@@ -355,14 +358,10 @@ function joinRoom(roomId, isPrivate = false) {
 function leaveRoom() {
     // Ask confirmation if game is in progress
     if (App.gameState && App.gameState.phase !== 'waiting' && App.gameState.phase !== 'game_over') {
-        if (!confirm('Sei sicuro di voler abbandonare la partita in corso?')) {
-            return;
-        }
-        // Use abandon to fully remove from room during game
-        SocketClient.abandonRoom();
-    } else {
-        SocketClient.leaveRoom();
+        showConfirmAbandonModal();
+        return;
     }
+    SocketClient.leaveRoom();
     // Clear saved room on explicit leave
     App.currentRoom = null;
     App.gameState = null;
@@ -556,6 +555,36 @@ function backToLobby() {
     sessionStorage.removeItem('presina_room');
     showScreen('lobby');
     SocketClient.listRooms();
+}
+
+// ==================== Game ↔ Lobby Navigation ====================
+function gameGoToLobby() {
+    // Tell server we're going to lobby (marks is_lobby_away)
+    SocketClient.goToLobby();
+    showScreen('lobby');
+    SocketClient.listRooms();
+    checkAndShowRejoinBanner();
+}
+
+function showConfirmAbandonModal() {
+    document.getElementById('confirm-abandon-modal').classList.remove('hidden');
+}
+
+function hideConfirmAbandonModal() {
+    document.getElementById('confirm-abandon-modal').classList.add('hidden');
+}
+
+function confirmAbandonFromGame() {
+    hideConfirmAbandonModal();
+    SocketClient.abandonRoom();
+    App.currentRoom = null;
+    App.gameState = null;
+    sessionStorage.removeItem('presina_room');
+    showScreen('lobby');
+    SocketClient.listRooms();
+    // Hide the rejoin banner
+    const banner = document.getElementById('existing-room-banner');
+    if (banner) banner.classList.add('hidden');
 }
 
 function playAgain() {

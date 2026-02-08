@@ -255,7 +255,7 @@ class RoomManager:
         if player.player_id in self.player_rooms:
             old_room_id = self.player_rooms[player.player_id]
             if old_room_id != room_id:
-                return False, "Sei già in un'altra stanza"
+                return False, "Sei già in un'altra stanza. Abbandonala prima di entrare in una nuova."
         
         # Check if game is in progress
         if room.game.phase != GamePhase.WAITING:

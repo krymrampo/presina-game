@@ -180,17 +180,24 @@ class PresinaGameOnline:
         # Reset last turn correctness flag
         self.last_turn_all_correct = False
 
-        # Remove bot players from previous turn
-        bot_ids = [pid for pid, p in self.players.items() if p.is_bot]
-        for pid in bot_ids:
+        # Remove abandoned-bot players from previous turn (those who used "Abbandona")
+        abandoned_bot_ids = [pid for pid, p in self.players.items() if p.is_bot and not p.is_lobby_away]
+        for pid in abandoned_bot_ids:
             bot_name = self.players[pid].name
             self.force_remove_player(pid)
             self._add_message('system', f"🤖 {bot_name} è stato rimosso dalla partita")
 
+        # Activate bot for lobby-away players (they left to lobby and didn't return)
+        for player in self.players.values():
+            if player.is_lobby_away and not player.is_bot:
+                player.is_bot = True
+                self._add_message('system', f"🤖 {player.name} è ancora in lobby – un bot giocherà al suo posto")
+
         # Check if enough real players remain after bot removal
-        active = self.get_active_players()
-        if len(active) < self.MIN_PLAYERS:
-            if len(active) == 1:
+        real_active = self.get_real_active_players()
+        if len(real_active) < self.MIN_PLAYERS:
+            active = self.get_active_players()
+            if len(active) <= 1 and active:
                 self._add_message('system', f"{active[0].name} è l'ultimo giocatore rimasto!")
             self._end_game()
             return
@@ -428,6 +435,33 @@ class PresinaGameOnline:
         player.offline_since = None  # Don't trigger offline timeout
         player.sid = None
         self._add_message('system', f"🤖 {player.name} ha abbandonato – un bot giocherà al suo posto per questo turno")
+        return True
+
+    def mark_lobby_away(self, player_id: str) -> bool:
+        """Mark a player as gone to lobby (still in game, timer handles auto-play)."""
+        player = self.get_player(player_id)
+        if not player:
+            return False
+        player.is_lobby_away = True
+        self._add_message('system', f"📋 {player.name} è andato nella lobby")
+        return True
+
+    def return_from_lobby(self, player_id: str, sid: str) -> bool:
+        """Player returned from lobby — reactivate them, disable bot if active."""
+        player = self.get_player(player_id)
+        if not player:
+            return False
+        was_bot = player.is_bot
+        player.is_lobby_away = False
+        player.is_bot = False
+        player.is_online = True
+        player.offline_since = None
+        player.sid = sid
+        player.last_activity = time.time()
+        if was_bot:
+            self._add_message('system', f"👋 {player.name} è tornato in partita — bot disattivato")
+        else:
+            self._add_message('system', f"👋 {player.name} è tornato in partita")
         return True
 
     def _handle_bot_auto_play(self, _depth: int = 0):
@@ -875,6 +909,7 @@ class PresinaGameOnline:
             player.is_spectator = False
             player.join_next_turn = False
             player.ready_for_next_turn = False
+            player.is_lobby_away = False
         
         self._add_message('system', 'Nuova partita! In attesa di giocatori...')
         return True

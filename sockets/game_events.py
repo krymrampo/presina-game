@@ -385,6 +385,67 @@ def register_game_events(socketio):
         
         _broadcast_game_state(socketio, room)
 
+    @socketio.on('go_to_lobby')
+    def handle_go_to_lobby(data):
+        """
+        Player goes to lobby without abandoning the game.
+        Data: { player_id }
+        """
+        player_id = data.get('player_id')
+        if not player_id:
+            return
+
+        if not verify_player_socket(player_id, request.sid):
+            return
+
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                return
+
+            if room.game.phase in (GamePhase.WAITING, GamePhase.GAME_OVER):
+                return  # No need for lobby-away in non-active phases
+
+            room.game.mark_lobby_away(player_id)
+
+        _broadcast_game_state(socketio, room)
+
+    @socketio.on('return_to_game')
+    def handle_return_to_game(data):
+        """
+        Player returns to game from lobby — reactivate, disable bot if active.
+        Data: { player_id }
+        """
+        player_id = data.get('player_id')
+        if not player_id:
+            return
+
+        if not verify_player_socket(player_id, request.sid):
+            return
+
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                emit('error', {'message': 'Non sei in nessuna stanza'})
+                return
+
+            room.game.return_from_lobby(player_id, request.sid)
+            room_manager.register_socket(request.sid, player_id)
+            # Re-join the socket.io room so broadcasts reach this client
+            join_room(room.room_id)
+
+            state = room.game.get_state_for_player(player_id)
+            state['admin_id'] = room.admin_id
+
+        # Send state to the returning player
+        emit('rejoin_success', {
+            'room': room.to_dict(),
+            'game_state': state
+        })
+
+        # Broadcast updated state to everyone
+        _broadcast_game_state(socketio, room)
+
 
 def _broadcast_game_state(socketio, room, include_offline=False):
     """Broadcast game state to all players in a room.

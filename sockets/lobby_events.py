@@ -224,7 +224,7 @@ def register_lobby_events(socketio):
         # Check if already in a room
         existing_room = room_manager.get_player_room(player_id)
         if existing_room:
-            emit('error', {'message': 'Sei già in una stanza'})
+            emit('error', {'message': 'Sei già in una stanza. Abbandonala prima di crearne una nuova.'})
             return
         
         # Create player and room

@@ -689,10 +689,32 @@ input[type="text"]::placeholder {
     background: var(--bg-card);
     border-top: 1px solid var(--border-color);
     padding: 6px 16px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: 11px;
     color: var(--text-muted);
     flex-shrink: 0;
+}
+
+.game-footer-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.game-footer .footer-text {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
 }
 
 .game-container {
