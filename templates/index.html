@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presina - Gioco di Carte Online</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260201d">
-    <link rel="stylesheet" href="/static/css/auth.css?v=20260201a">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260208a">
+    <link rel="stylesheet" href="/static/css/auth.css?v=20260208a">
+    <link rel="stylesheet" href="/static/css/mobile.css?v=20260208a">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
@@ -65,8 +66,15 @@
                 
                 <div id="home-logged" class="hidden">
                     <div class="user-welcome">
+                        <img id="user-avatar-img" class="home-avatar-img" src="/static/img/logo.png" alt="Avatar">
                         <h3 id="user-display-name">Ciao!</h3>
                         <p id="user-username" class="hidden">@utente</p>
+                    </div>
+                    
+                    <div class="home-stats">
+                        <div class="home-stat"><span id="home-stat-games">0</span><small>Partite</small></div>
+                        <div class="home-stat"><span id="home-stat-wins">0</span><small>Vittorie</small></div>
+                        <div class="home-stat"><span id="home-stat-winrate">0%</span><small>Win rate</small></div>
                     </div>
                     
                     <div class="button-group">
@@ -455,10 +463,11 @@
         </div>
     </div>
 
-    <script src="/static/js/main.js?v=20260131a"></script>
-    <script src="/static/js/auth.js?v=20260131a"></script>
-    <script src="/static/js/socket_client.js?v=20260131a"></script>
-    <script src="/static/js/game_ui.js?v=20260131a"></script>
-    <script src="/static/js/chat.js?v=20260131a"></script>
+    <script src="/static/js/main.js?v=20260208a"></script>
+    <script src="/static/js/auth.js?v=20260208a"></script>
+    <script src="/static/js/socket_client.js?v=20260208a"></script>
+    <script src="/static/js/game_ui.js?v=20260208a"></script>
+    <script src="/static/js/chat.js?v=20260208a"></script>
+    <script src="/static/js/mobile.js?v=20260208a"></script>
 </body>
 </html>

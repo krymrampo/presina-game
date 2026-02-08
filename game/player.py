@@ -154,7 +154,8 @@ class Player:
             'ready_for_next_turn': self.ready_for_next_turn,
             'cards_in_hand': len(self.hand),
             'is_bot': self.is_bot,
-            'is_lobby_away': self.is_lobby_away
+            'is_lobby_away': self.is_lobby_away,
+            'is_eliminated': self.is_eliminated
         }
         
         if include_hand:

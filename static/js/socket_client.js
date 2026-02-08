@@ -197,6 +197,8 @@ const SocketClient = {
             if (banner) banner.classList.add('hidden');
             showScreen('waiting-room');
             updateWaitingRoom(data.game_state);
+            // Load chat history for new room
+            SocketClient.getChatHistory();
         });
         
         socket.on('join_error', (data) => {
@@ -227,6 +229,8 @@ const SocketClient = {
                 showScreen('game');
                 GameUI.updateGameScreen(data.game_state);
             }
+            // Load chat history for this room
+            SocketClient.getChatHistory();
         });
         
         socket.on('player_joined', (data) => {
@@ -288,6 +292,8 @@ const SocketClient = {
                 showScreen('game');
                 GameUI.updateGameScreen(data.game_state);
             }
+            // Load chat history on rejoin
+            SocketClient.getChatHistory();
         });
         
         socket.on('rejoin_failed', (data) => {

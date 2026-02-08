@@ -288,9 +288,10 @@ const GameUI = {
             const hasTimer = timerInfo && timerInfo.active && timerInfo.player_id === player.player_id && timerInfo.seconds_left !== null;
             const timerText = hasTimer ? ` <span class="turn-timer">⏱ ${timerInfo.seconds_left}s</span>` : '';
             
+            const dotClass = isOffline ? 'offline' : (isAway ? 'away' : 'online');
             return `
                 <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn current-turn-pulse' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''} ${player.is_bot ? 'is-bot' : ''} ${statusColorClass}">
-                    <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}${botBadge}${timerText}</div>
+                    <div class="player-name"><span class="online-dot ${dotClass}"></span> ${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}${botBadge}${timerText}</div>
                     <div class="player-bet">${betInfo}</div>
                 </div>
             `;
@@ -370,11 +371,12 @@ const GameUI = {
                 }
             }
             
+            const dotClass = !player.is_online ? 'offline' : (player.is_away ? 'away' : 'online');
             return `
                 <div class="player-info-card ${isCurrent ? 'current' : ''} ${isMe ? 'me' : ''} ${statusClass} ${statusColorClass} ${player.is_bot ? 'is-bot' : ''}">
                     <div class="name-row">
                         <span>
-                            <span class="online-dot ${player.is_online ? 'online' : 'offline'}"></span>
+                            <span class="online-dot ${dotClass}"></span>
                             ${escapeHtml(player.name)}
                             ${player.is_spectator ? ' 👁️' : ''}
                             ${player.is_bot ? ' 🤖' : ''}
@@ -648,6 +650,7 @@ const GameUI = {
     // ==================== Messages ====================
     updateMessages(gameState) {
         const messagesList = document.getElementById('messages-list');
+        if (!messagesList) return;
         
         if (!gameState.messages || gameState.messages.length === 0) {
             messagesList.innerHTML = '';

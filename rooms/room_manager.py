@@ -380,9 +380,9 @@ class RoomManager:
             del self.player_rooms[player_id]
 
         # Remove socket mapping for this player
-        sids_to_remove = [sid for sid, pid in self.socket_to_player.items() if pid == player_id]
+        sids_to_remove = [sid for sid, pid in self.sid_to_player.items() if pid == player_id]
         for sid in sids_to_remove:
-            del self.socket_to_player[sid]
+            del self.sid_to_player[sid]
 
         # Reassign admin if needed (pick a non-bot player)
         if room.admin_id == player_id:
