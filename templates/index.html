@@ -234,18 +234,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Confirm Abandon Modal -->
-            <div id="confirm-abandon-modal" class="modal hidden">
-                <div class="modal-content">
-                    <h3>🚪 Abbandonare la partita?</h3>
-                    <p>Se abbandoni, un bot giocherà al tuo posto per questo turno e verrai rimosso al turno successivo.</p>
-                    <div class="button-group">
-                        <button id="btn-confirm-abandon" class="btn btn-danger">Sì, abbandona</button>
-                        <button id="btn-cancel-abandon" class="btn btn-secondary">Annulla</button>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- WAITING ROOM SCREEN -->
@@ -455,6 +443,18 @@
         </div>
     </div>
     
+    <!-- Confirm Abandon Modal (root level, visible from any screen) -->
+    <div id="confirm-abandon-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>🚪 Abbandonare la partita?</h3>
+            <p>Se abbandoni, un bot giocherà al tuo posto per questo turno e verrai rimosso al turno successivo.</p>
+            <div class="button-group">
+                <button id="btn-confirm-abandon" class="btn btn-danger">Sì, abbandona</button>
+                <button id="btn-cancel-abandon" class="btn btn-secondary">Annulla</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Reconnection Overlay -->
     <div id="reconnect-overlay" class="reconnect-overlay hidden">
         <div class="reconnect-content">
