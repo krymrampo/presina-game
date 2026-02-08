@@ -262,7 +262,7 @@ def register_game_events(socketio):
             return
 
         # Verify player identity
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
