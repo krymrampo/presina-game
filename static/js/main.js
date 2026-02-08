@@ -207,6 +207,7 @@ function setupEventListeners() {
     
     // Game over
     document.getElementById('btn-back-lobby').addEventListener('click', backToLobby);
+    document.getElementById('btn-play-again').addEventListener('click', playAgain);
 }
 
 // ==================== Lobby Functions ====================
@@ -322,8 +323,16 @@ function createRoom() {
         return;
     }
     
+    // Loading state
+    const btn = document.getElementById('btn-confirm-create');
+    btn.disabled = true;
+    btn.textContent = 'Creazione...';
+    
     SocketClient.createRoom(roomName, !isPrivate, accessCode);
     hideCreateRoomModal();
+    
+    // Reset button (in case of error)
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'Crea'; }, 3000);
 }
 
 function searchRooms() {
@@ -349,8 +358,11 @@ function leaveRoom() {
         if (!confirm('Sei sicuro di voler abbandonare la partita in corso?')) {
             return;
         }
+        // Use abandon to fully remove from room during game
+        SocketClient.abandonRoom();
+    } else {
+        SocketClient.leaveRoom();
     }
-    SocketClient.leaveRoom();
     // Clear saved room on explicit leave
     App.currentRoom = null;
     App.gameState = null;
@@ -521,6 +533,8 @@ function clearCardSelection() {
 }
 
 function makeBet(bet) {
+    // Disable all bet buttons to prevent double-click
+    document.querySelectorAll('.bet-btn').forEach(b => { b.disabled = true; });
     SocketClient.makeBet(bet);
 }
 
@@ -542,6 +556,14 @@ function backToLobby() {
     sessionStorage.removeItem('presina_room');
     showScreen('lobby');
     SocketClient.listRooms();
+}
+
+function playAgain() {
+    const btn = document.getElementById('btn-play-again');
+    btn.disabled = true;
+    btn.textContent = 'Preparazione...';
+    SocketClient.playAgain();
+    // Button re-enabled when game_state arrives (waiting room)
 }
 
 // ==================== Chat Functions ====================

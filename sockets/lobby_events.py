@@ -10,6 +10,7 @@ from auth_utils import resolve_token, build_auth_payload
 from game.player import Player
 from game.presina_game import GamePhase
 from rooms.room_manager import room_manager
+from sockets.utils import verify_player_socket, ensure_player_socket
 
 logger = logging.getLogger(__name__)
 
@@ -30,26 +31,6 @@ def _validate_name(name: str, max_length: int = MAX_NAME_LENGTH) -> str:
         raise ValueError('Il nome non può essere vuoto')
     
     return name
-
-
-def _verify_player_socket(player_id: str, sid: str) -> bool:
-    """
-    Verify that the player_id is associated with the given socket SID.
-    This prevents players from impersonating others.
-    """
-    registered_player = room_manager.get_player_by_sid(sid)
-    return registered_player == player_id
-
-def _ensure_player_socket(player_id: str, sid: str) -> bool:
-    """
-    Ensure this socket is associated with the player_id.
-    If the socket isn't registered yet, register it.
-    """
-    registered_player = room_manager.get_player_by_sid(sid)
-    if registered_player is None:
-        room_manager.register_socket(sid, player_id)
-        return True
-    return registered_player == player_id
 
 def _emit_room_state(socketio, room, event: str, extra: dict = None, exclude_player_id: str = None, include_offline: bool = True):
     """Emit per-player room state to avoid leaking private info.
@@ -102,16 +83,20 @@ def register_lobby_events(socketio):
         
         # Notify room if player was in one
         room = room_manager.get_player_room(player_id) if player_id else None
-        if player_id and room:
-            # Small delay to allow for quick reconnections
+        room_id_for_broadcast = room.room_id if room else None
+        if player_id and room_id_for_broadcast:
             import threading
             def delayed_broadcast():
                 import time
                 time.sleep(2)  # Wait 2 seconds for quick reconnect
-                # Check if player is still offline
-                player = room.game.get_player(player_id)
-                if player and not player.is_online:
-                    _emit_room_state(socketio, room, 'game_state')
+                with room_manager.lock:
+                    # Re-fetch room - it may have been deleted in the meantime
+                    still_room = room_manager.get_room(room_id_for_broadcast)
+                    if not still_room:
+                        return
+                    player = still_room.game.get_player(player_id)
+                    if player and not player.is_online:
+                        _emit_room_state(socketio, still_room, 'game_state')
             
             threading.Thread(target=delayed_broadcast, daemon=True).start()
         
@@ -124,7 +109,12 @@ def register_lobby_events(socketio):
     def handle_register(data):
         """
         Register a player.
-        Data: { player_id, name }
+        Data: { player_id, name, auth_token? }
+        
+        For authenticated users, if an existing player session is found
+        in a room (same user_id), the session is taken over: the client
+        receives the old player_id so it can rejoin seamlessly from
+        a different device.
         """
         player_id = data.get('player_id')
         name = data.get('name', 'Anonimo')
@@ -134,13 +124,42 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'ID giocatore mancante'})
             return
         
-        room_manager.register_socket(request.sid, player_id)
+        # Resolve authentication first
+        auth = None
+        user_id = None
         if auth_token:
             user, is_guest = resolve_token(auth_token)
             if user:
-                room_manager.set_player_auth(player_id, build_auth_payload(user, is_guest))
-            else:
-                room_manager.set_player_auth(player_id, None)
+                auth = build_auth_payload(user, is_guest)
+                user_id = auth.get('user_id')  # None for guests
+        
+        # For authenticated (non-guest) users, check for existing session in a room
+        if user_id:
+            with room_manager.lock:
+                result = room_manager.takeover_player_session(user_id, request.sid)
+            if result:
+                old_player_id, room, old_sid = result
+                room_manager.set_player_auth(old_player_id, auth)
+                
+                # Notify old device that session was transferred
+                if old_sid:
+                    socketio.emit('session_taken_over', {
+                        'message': 'La tua sessione è stata trasferita su un altro dispositivo'
+                    }, to=old_sid)
+                
+                player = room.game.get_player(old_player_id)
+                emit('registered', {
+                    'player_id': old_player_id,
+                    'name': player.name if player else name,
+                    'existing_room': room.to_dict()
+                })
+                return
+        
+        # Normal registration – no existing session found
+        with room_manager.lock:
+            room_manager.register_socket(request.sid, player_id)
+        if auth:
+            room_manager.set_player_auth(player_id, auth)
         else:
             room_manager.set_player_auth(player_id, None)
         emit('registered', {'player_id': player_id, 'name': name})
@@ -178,7 +197,7 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'ID giocatore mancante'})
             return
 
-        if not _ensure_player_socket(player_id, request.sid):
+        if not ensure_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
@@ -247,7 +266,7 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'Dati mancanti'})
             return
 
-        if not _ensure_player_socket(player_id, request.sid):
+        if not ensure_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
@@ -321,7 +340,7 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'ID giocatore mancante'})
             return
 
-        if not _ensure_player_socket(player_id, request.sid):
+        if not ensure_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
@@ -363,14 +382,15 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'ID giocatore mancante'})
             return
 
-        if not _ensure_player_socket(player_id, request.sid):
+        if not ensure_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
 
-        room = room_manager.get_player_room(player_id)
-        room_id = room.room_id if room else None
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            room_id = room.room_id if room else None
 
-        success, message, room = room_manager.abandon_room(player_id)
+            success, message, room = room_manager.abandon_room(player_id)
 
         if not success:
             emit('error', {'message': message})
@@ -380,7 +400,10 @@ def register_lobby_events(socketio):
             leave_room(room_id)
 
         if room:
-            _emit_room_state(socketio, room, 'game_state', exclude_player_id=player_id)
+            # Use _broadcast_game_state from game_events which calls tick()
+            # to trigger bot auto-play if it's the bot's turn
+            from sockets.game_events import _broadcast_game_state
+            _broadcast_game_state(socketio, room)
 
         emit('left_room', {'message': message})
 
@@ -402,7 +425,7 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'Dati mancanti'})
             return
 
-        if not _ensure_player_socket(admin_id, request.sid):
+        if not ensure_player_socket(admin_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
@@ -445,7 +468,7 @@ def register_lobby_events(socketio):
             emit('error', {'message': 'ID giocatore mancante'})
             return
 
-        if not _ensure_player_socket(player_id, request.sid):
+        if not ensure_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         

@@ -14,6 +14,20 @@ GUEST_SESSION_DAYS = 7
 
 # In-memory guest sessions: token -> session data
 _guest_sessions: Dict[str, dict] = {}
+_last_guest_cleanup = 0.0
+_GUEST_CLEANUP_INTERVAL = 300  # cleanup every 5 minutes
+
+
+def _cleanup_expired_guests():
+    """Remove expired guest sessions to prevent memory leaks."""
+    global _last_guest_cleanup
+    now = time.time()
+    if now - _last_guest_cleanup < _GUEST_CLEANUP_INTERVAL:
+        return
+    _last_guest_cleanup = now
+    expired = [t for t, s in _guest_sessions.items() if s.get('expires_at', 0) < now]
+    for t in expired:
+        _guest_sessions.pop(t, None)
 
 
 def _now_iso() -> str:
@@ -70,6 +84,7 @@ def resolve_token(token: Optional[str]) -> Tuple[Optional[Union[User, dict]], bo
     Resolve token to a user.
     Returns (user_or_dict, is_guest).
     """
+    _cleanup_expired_guests()
     if not token:
         return None, False
 

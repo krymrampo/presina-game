@@ -6,12 +6,7 @@ from flask_socketio import emit
 import html
 
 from rooms.room_manager import room_manager
-
-
-def _verify_player_socket(player_id: str, sid: str) -> bool:
-    """Verify player_id matches socket SID."""
-    registered_player = room_manager.get_player_by_sid(sid)
-    return registered_player == player_id
+from sockets.utils import verify_player_socket
 
 
 def register_chat_events(socketio):
@@ -29,7 +24,7 @@ def register_chat_events(socketio):
         if not player_id or not message:
             return
 
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
@@ -59,7 +54,7 @@ def register_chat_events(socketio):
         if not player_id:
             return
 
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         

@@ -41,6 +41,7 @@ class Player:
         self.is_spectator = False
         self.join_next_turn = False  # For players joining mid-game
         self.ready_for_next_turn = False
+        self.is_bot = False  # True when player abandoned and bot plays for them
     
     def reset_for_turn(self):
         """Reset player state for a new turn."""
@@ -150,7 +151,8 @@ class Player:
             'is_spectator': self.is_spectator,
             'join_next_turn': self.join_next_turn,
             'ready_for_next_turn': self.ready_for_next_turn,
-            'cards_in_hand': len(self.hand)
+            'cards_in_hand': len(self.hand),
+            'is_bot': self.is_bot
         }
         
         if include_hand:

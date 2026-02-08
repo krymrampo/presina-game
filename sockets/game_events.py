@@ -4,19 +4,14 @@ Game Socket.IO events.
 import time
 import logging
 from flask import request
-from flask_socketio import emit
+from flask_socketio import emit, join_room
 
 from models.user import User
 from rooms.room_manager import room_manager
 from game.presina_game import GamePhase
+from sockets.utils import verify_player_socket
 
-def _verify_player_socket(player_id: str, sid: str) -> bool:
-    """
-    Verify that the player_id is associated with the given socket SID.
-    This prevents players from impersonating others.
-    """
-    registered_player = room_manager.get_player_by_sid(sid)
-    return registered_player == player_id
+logger = logging.getLogger(__name__)
 
 def register_game_events(socketio):
     """Register all game-related socket events."""
@@ -33,39 +28,71 @@ def register_game_events(socketio):
             emit('error', {'message': 'ID giocatore mancante'})
             return
         
-        # Verify player identity
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
-        room = room_manager.get_player_room(player_id)
-        if not room:
-            emit('error', {'message': 'Non sei in nessuna stanza'})
-            return
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                emit('error', {'message': 'Non sei in nessuna stanza'})
+                return
 
-        if room.game.check_and_handle_turn_timeout():
-            _broadcast_game_state(socketio, room)
+            room.game.tick()
+            
+            if room.admin_id != player_id:
+                emit('error', {'message': 'Solo l\'admin può avviare la partita'})
+                return
+            
+            if not room.game.can_start():
+                emit('error', {'message': 'Servono almeno 2 giocatori'})
+                return
+            
+            room.game.start_game()
         
-        if room.admin_id != player_id:
-            emit('error', {'message': 'Solo l\'admin può avviare la partita'})
+        _broadcast_game_state(socketio, room)
+        
+        socketio.emit('rooms_list', {
+            'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
+        })
+    
+    @socketio.on('play_again')
+    def handle_play_again(data):
+        """
+        Reset the game in the same room (admin only, after game over).
+        Data: { player_id }
+        """
+        player_id = data.get('player_id')
+        
+        if not player_id:
+            emit('error', {'message': 'ID giocatore mancante'})
             return
         
-        if not room.game.can_start():
-            emit('error', {'message': 'Servono almeno 2 giocatori'})
+        if not verify_player_socket(player_id, request.sid):
+            emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
-        room.game.start_game()
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                emit('error', {'message': 'Non sei in nessuna stanza'})
+                return
+            
+            if room.admin_id != player_id:
+                emit('error', {'message': 'Solo l\'admin può riavviare la partita'})
+                return
+            
+            if not room.game.reset_game():
+                emit('error', {'message': 'La partita non è ancora terminata'})
+                return
+            
+            # Allow stats to be recorded again for the next game
+            room.stats_recorded = False
+            room.update_activity()
         
-        # Send game state to all players
-        for pid, player in room.game.players.items():
-            if player.sid:
-                state = room.game.get_state_for_player(pid)
-                state['admin_id'] = room.admin_id
-                socketio.emit('game_started', {
-                    'game_state': state
-                }, room=player.sid)
+        # Broadcast updated state – players will see the waiting room
+        _broadcast_game_state(socketio, room)
         
-        # Broadcast updated room list
         socketio.emit('rooms_list', {
             'rooms': [r.to_dict() for r in room_manager.get_public_rooms()]
         })
@@ -83,18 +110,9 @@ def register_game_events(socketio):
             emit('error', {'message': 'Dati mancanti'})
             return
         
-        # Verify player identity
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
-        
-        room = room_manager.get_player_room(player_id)
-        if not room:
-            emit('error', {'message': 'Non sei in nessuna stanza'})
-            return
-
-        if room.game.check_and_handle_turn_timeout():
-            _broadcast_game_state(socketio, room)
         
         try:
             bet_value = int(bet)
@@ -105,13 +123,19 @@ def register_game_events(socketio):
             emit('error', {'message': 'Puntata non valida'})
             return
         
-        success, message = room.game.make_bet(player_id, bet_value)
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                emit('error', {'message': 'Non sei in nessuna stanza'})
+                return
+
+            room.game.tick()
+            success, message = room.game.make_bet(player_id, bet_value)
         
         if not success:
             emit('error', {'message': message})
             return
 
-        # Send updated game state to all players
         _broadcast_game_state(socketio, room)
     
     @socketio.on('play_card')
@@ -129,18 +153,9 @@ def register_game_events(socketio):
             emit('error', {'message': 'Dati mancanti'})
             return
         
-        # Verify player identity
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
-        
-        room = room_manager.get_player_room(player_id)
-        if not room:
-            emit('error', {'message': 'Non sei in nessuna stanza'})
-            return
-
-        if room.game.check_and_handle_turn_timeout():
-            _broadcast_game_state(socketio, room)
         
         try:
             card_value = int(value)
@@ -148,19 +163,26 @@ def register_game_events(socketio):
             emit('error', {'message': 'Valore carta non valido'})
             return
         
-        success, message = room.game.play_card(player_id, suit, card_value, jolly_choice)
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                emit('error', {'message': 'Non sei in nessuna stanza'})
+                return
+
+            room.game.tick()
+            success, message = room.game.play_card(player_id, suit, card_value, jolly_choice)
+            waiting_jolly = (room.game.phase == GamePhase.WAITING_JOLLY
+                             and room.game.pending_jolly_player == player_id)
         
         if not success:
             emit('error', {'message': message})
             return
 
-        # Check if waiting for jolly choice
-        if room.game.phase == GamePhase.WAITING_JOLLY and room.game.pending_jolly_player == player_id:
-            emit('jolly_choice_required', {
-                'message': 'Scegli: prende o lascia?'
-            })
+        if waiting_jolly:
+            emit('jolly_choice_required', {'message': 'Scegli: prende o lascia?'})
+            # Also broadcast so other players see WAITING_JOLLY status
+            _broadcast_game_state(socketio, room)
         else:
-            # Send updated game state to all players
             _broadcast_game_state(socketio, room)
     
     @socketio.on('choose_jolly')
@@ -176,23 +198,22 @@ def register_game_events(socketio):
             emit('error', {'message': 'Dati mancanti'})
             return
 
-        # Verify player identity
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
-        room = room_manager.get_player_room(player_id)
-        if not room:
-            emit('error', {'message': 'Non sei in nessuna stanza'})
-            return
-        
-        success, message = room.game.play_card(player_id, None, None, choice)
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                emit('error', {'message': 'Non sei in nessuna stanza'})
+                return
+            
+            success, message = room.game.play_card(player_id, None, None, choice)
         
         if not success:
             emit('error', {'message': message})
             return
 
-        # Send updated game state to all players
         _broadcast_game_state(socketio, room)
     
     @socketio.on('advance_trick')
@@ -200,31 +221,29 @@ def register_game_events(socketio):
         """
         Advance from TRICK_COMPLETE phase after 3 second display.
         Data: { player_id }
-        Only authenticated players in the room can trigger this.
+        Lock ensures only the first call actually advances.
         """
         player_id = data.get('player_id')
         
         if not player_id:
             return
         
-        # Verify player identity
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             return
         
-        room = room_manager.get_player_room(player_id)
-        if not room:
-            return
-        
-        # Verify player is actually in this room
-        player = room.game.get_player(player_id)
-        if not player:
-            return
-        
-        # Only process if in TRICK_COMPLETE phase
-        if room.game.phase != GamePhase.TRICK_COMPLETE:
-            return
-        
-        success, message = room.game.advance_from_trick_complete()
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                return
+            
+            player = room.game.get_player(player_id)
+            if not player:
+                return
+            
+            if room.game.phase != GamePhase.TRICK_COMPLETE:
+                return
+            
+            success, message = room.game.advance_from_trick_complete()
         
         if success:
             _broadcast_game_state(socketio, room)
@@ -285,28 +304,29 @@ def register_game_events(socketio):
             emit('error', {'message': 'ID giocatore mancante'})
             return
 
-        # Verify player identity
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             emit('error', {'message': 'Sessione non valida, ricarica la pagina'})
             return
         
-        room = room_manager.get_player_room(player_id)
-        if not room:
-            emit('error', {'message': 'Non sei in nessuna stanza'})
-            return
-        
-        # Update player's sid if it changed (reconnection)
-        player = room.game.get_player(player_id)
-        if player and player.sid != request.sid:
-            player.sid = request.sid
-            player.is_online = True
-            player.offline_since = None
-        
-        state = room.game.get_state_for_player(player_id)
-        state['admin_id'] = room.admin_id
-        emit('game_state', {
-            'game_state': state
-        })
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                emit('error', {'message': 'Non sei in nessuna stanza'})
+                return
+            
+            player = room.game.get_player(player_id)
+            if player and player.sid != request.sid:
+                player.sid = request.sid
+                player.is_online = True
+                player.offline_since = None
+                # Re-join the socket.io room so chat broadcasts work
+                join_room(room.room_id)
+            
+            room.game.tick()
+            state = room.game.get_state_for_player(player_id)
+            state['admin_id'] = room.admin_id
+
+        emit('game_state', {'game_state': state})
     
     @socketio.on('ping')
     def handle_ping(data):
@@ -316,17 +336,17 @@ def register_game_events(socketio):
         """
         player_id = data.get('player_id')
         if player_id:
-            room = room_manager.get_player_room(player_id)
-            if room:
-                player = room.game.get_player(player_id)
-                if player:
-                    player.is_online = True
-                    player.offline_since = None
-                    player.last_activity = time.time()
-                    if player.sid != request.sid:
-                        player.sid = request.sid
-                    # Also update room manager's sid mapping
-                    room_manager.register_socket(request.sid, player_id)
+            with room_manager.lock:
+                room = room_manager.get_player_room(player_id)
+                if room:
+                    player = room.game.get_player(player_id)
+                    if player:
+                        player.is_online = True
+                        player.offline_since = None
+                        player.last_activity = time.time()
+                        if player.sid != request.sid:
+                            player.sid = request.sid
+                        room_manager.register_socket(request.sid, player_id)
         emit('pong', {'timestamp': time.time()})
     
     @socketio.on('visibility_change')
@@ -341,79 +361,76 @@ def register_game_events(socketio):
         if not player_id:
             return
         
-        # Verify player identity
-        if not _verify_player_socket(player_id, request.sid):
+        if not verify_player_socket(player_id, request.sid):
             return
         
-        room = room_manager.get_player_room(player_id)
-        if not room:
-            return
+        with room_manager.lock:
+            room = room_manager.get_player_room(player_id)
+            if not room:
+                return
+            
+            player = room.game.get_player(player_id)
+            if not player:
+                return
+            
+            if is_visible:
+                player.is_away = False
+                player.away_since = None
+                player.is_online = True
+                player.offline_since = None
+                player.last_activity = time.time()
+            else:
+                player.is_away = True
+                player.away_since = time.time()
         
-        player = room.game.get_player(player_id)
-        if not player:
-            return
-        
-        if is_visible:
-            # User came back to the page
-            player.is_away = False
-            player.away_since = None
-            player.is_online = True
-            player.offline_since = None
-            player.last_activity = time.time()
-        else:
-            # User switched tab or minimized
-            player.is_away = True
-            player.away_since = time.time()
-            # Note: is_online remains True - they're still connected!
-        
-        # Broadcast updated state so other players see the away status
         _broadcast_game_state(socketio, room)
 
 
 def _broadcast_game_state(socketio, room, include_offline=False):
     """Broadcast game state to all players in a room.
     
-    Args:
-        socketio: SocketIO instance
-        room: Room object
-        include_offline: If True, also try to send to offline players (in case they reconnected)
+    Calls tick() once before building per-player states.
     """
-    if room and room.game.phase == GamePhase.GAME_OVER:
-        _record_game_stats(room)
+    if not room:
+        return
 
-    for pid, player in room.game.players.items():
-        # Send to online players with valid sid
-        if player.sid and player.is_online:
-            try:
-                state = room.game.get_state_for_player(pid)
-                state['admin_id'] = room.admin_id
-                socketio.emit('game_state', {
-                    'game_state': state
-                }, room=player.sid)
-            except Exception as e:
-                # Log error but don't stop broadcasting to others
-                import logging
-                logging.getLogger(__name__).error(f"Error broadcasting to {pid}: {e}")
-        elif include_offline and player.sid:
-            # Try to send to offline players too (they might have reconnected)
-            try:
-                state = room.game.get_state_for_player(pid)
-                state['admin_id'] = room.admin_id
-                socketio.emit('game_state', {
-                    'game_state': state
-                }, room=player.sid)
-            except:
-                pass  # Ignore errors for offline players
+    with room_manager.lock:
+        room.game.tick()
+
+        if room.game.phase == GamePhase.GAME_OVER:
+            _record_game_stats(room)
+
+        # Build all states while holding lock
+        states_to_send = []
+        for pid, player in room.game.players.items():
+            if player.sid and (player.is_online or include_offline):
+                try:
+                    state = room.game.get_state_for_player(pid)
+                    state['admin_id'] = room.admin_id
+                    states_to_send.append((player.sid, state))
+                except Exception as e:
+                    logger.error(f"Error building state for {pid}: {e}")
+
+    # Emit outside lock (I/O)
+    for sid, state in states_to_send:
+        try:
+            socketio.emit('game_state', {'game_state': state}, room=sid)
+        except Exception as e:
+            logger.error(f"Error emitting to {sid}: {e}")
 
 
 def _broadcast_to_room(socketio, room, event, data, include_offline=False):
     """Broadcast an event to all players in a room."""
-    for pid, player in room.game.players.items():
-        if player.sid and (player.is_online or include_offline):
-            try:
-                socketio.emit(event, data, room=player.sid)
-            except:
-                pass
+    targets = []
+    with room_manager.lock:
+        for pid, player in room.game.players.items():
+            if player.sid and (player.is_online or include_offline):
+                targets.append(player.sid)
+    for sid in targets:
+        try:
+            socketio.emit(event, data, room=sid)
+        except Exception:
+            pass
 
 
 def _record_game_stats(room):
@@ -429,7 +446,7 @@ def _record_game_stats(room):
     results_map = {r.get('player_id'): r for r in (room.game.game_results or [])}
     eligible_players = [
         p for p in room.game.players.values()
-        if not p.is_spectator and not p.join_next_turn
+        if not p.is_spectator and not p.join_next_turn and not p.is_bot
     ]
     players_count = len(eligible_players)
 

@@ -10,21 +10,45 @@ from datetime import datetime
 from pathlib import Path
 
 import psycopg2
-from psycopg2 import extras
+from psycopg2 import extras, pool as pg_pool
 UPLOADS_PATH = Path(__file__).parent.parent / "uploads" / "avatars"
 DEFAULT_AVATAR_URL = "/static/img/logo.png"
 
 # Ensure uploads directory exists
 UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
+# Connection pool (lazy-initialized)
+_connection_pool = None
+
+
+def _get_pool():
+    """Get or create the connection pool."""
+    global _connection_pool
+    if _connection_pool is None:
+        database_url = (os.environ.get("DATABASE_URL") or "").strip()
+        if not database_url:
+            raise RuntimeError("DATABASE_URL non impostata. Impostala per usare Postgres.")
+        sslmode = os.environ.get("DB_SSLMODE", "require")
+        _connection_pool = pg_pool.ThreadedConnectionPool(
+            minconn=1,
+            maxconn=10,
+            dsn=database_url,
+            sslmode=sslmode,
+        )
+    return _connection_pool
+
 
 def get_db_connection():
-    """Get a database connection"""
-    database_url = (os.environ.get("DATABASE_URL") or "").strip()
-    if not database_url:
-        raise RuntimeError("DATABASE_URL non impostata. Impostala per usare Postgres.")
-    conn = psycopg2.connect(database_url, sslmode="require")
-    return conn
+    """Get a database connection from the pool."""
+    return _get_pool().getconn()
+
+
+def release_db_connection(conn):
+    """Return a connection to the pool."""
+    try:
+        _get_pool().putconn(conn)
+    except Exception:
+        pass
 
 
 def init_database():
@@ -103,7 +127,7 @@ def init_database():
     ''')
     
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
     print("Database initialized successfully")
 
 
@@ -176,7 +200,7 @@ class User:
             conn.rollback()
             return None, str(e)
         finally:
-            conn.close()
+            release_db_connection(conn)
     
     @classmethod
     def login(cls, username, password):
@@ -184,14 +208,16 @@ class User:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
-        cursor.execute('''
-            SELECT id, username, password_hash, display_name, avatar, 
-                   created_at, last_login, is_active
-            FROM users WHERE username = %s AND is_active = TRUE
-        ''', (username.lower(),))
-        
-        row = cursor.fetchone()
-        conn.close()
+        try:
+            cursor.execute('''
+                SELECT id, username, password_hash, display_name, avatar, 
+                       created_at, last_login, is_active
+                FROM users WHERE username = %s AND is_active = TRUE
+            ''', (username.lower(),))
+            
+            row = cursor.fetchone()
+        finally:
+            release_db_connection(conn)
         
         if not row:
             return None, "Username o password non validi"
@@ -221,13 +247,15 @@ class User:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
-        cursor.execute('''
-            SELECT id, username, display_name, avatar, created_at, last_login, is_active
-            FROM users WHERE id = %s
-        ''', (user_id,))
-        
-        row = cursor.fetchone()
-        conn.close()
+        try:
+            cursor.execute('''
+                SELECT id, username, display_name, avatar, created_at, last_login, is_active
+                FROM users WHERE id = %s
+            ''', (user_id,))
+            
+            row = cursor.fetchone()
+        finally:
+            release_db_connection(conn)
         
         if not row:
             return None
@@ -248,14 +276,16 @@ class User:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
-        cursor.execute('''
-            SELECT id, username, display_name, avatar, created_at, last_login, is_active
-            FROM users 
-            WHERE session_token = %s AND session_expires > %s
-        ''', (token, int(time.time())))
-        
-        row = cursor.fetchone()
-        conn.close()
+        try:
+            cursor.execute('''
+                SELECT id, username, display_name, avatar, created_at, last_login, is_active
+                FROM users 
+                WHERE session_token = %s AND session_expires > %s
+            ''', (token, int(time.time())))
+            
+            row = cursor.fetchone()
+        finally:
+            release_db_connection(conn)
         
         if not row:
             return None
@@ -278,29 +308,33 @@ class User:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
-        cursor.execute('''
-            UPDATE users 
-            SET session_token = %s, session_expires = %s, last_login = CURRENT_TIMESTAMP
-            WHERE id = %s
-        ''', (token, expires, self.id))
-        
-        conn.commit()
-        conn.close()
+        try:
+            cursor.execute('''
+                UPDATE users 
+                SET session_token = %s, session_expires = %s, last_login = CURRENT_TIMESTAMP
+                WHERE id = %s
+            ''', (token, expires, self.id))
+            
+            conn.commit()
+        finally:
+            release_db_connection(conn)
         
         return token
     
     def logout(self):
         """Clear session"""
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
-        
-        cursor.execute('''
-            UPDATE users SET session_token = NULL, session_expires = NULL
-            WHERE id = %s
-        ''', (self.id,))
-        
-        conn.commit()
-        conn.close()
+        try:
+            cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+            
+            cursor.execute('''
+                UPDATE users SET session_token = NULL, session_expires = NULL
+                WHERE id = %s
+            ''', (self.id,))
+            
+            conn.commit()
+        finally:
+            release_db_connection(conn)
     
     def get_stats(self):
         """Get user statistics"""
@@ -308,14 +342,16 @@ class User:
             return self.stats
         
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
-        
-        cursor.execute('''
-            SELECT * FROM user_stats WHERE user_id = %s
-        ''', (self.id,))
-        
-        row = cursor.fetchone()
-        conn.close()
+        try:
+            cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+            
+            cursor.execute('''
+                SELECT * FROM user_stats WHERE user_id = %s
+            ''', (self.id,))
+            
+            row = cursor.fetchone()
+        finally:
+            release_db_connection(conn)
         
         if row:
             self.stats = dict(row)
@@ -334,8 +370,10 @@ class User:
                 )
             else:
                 self.stats['avg_lives_remaining'] = 0
+        else:
+            self.stats = {}
         
-        return self.stats or {}
+        return self.stats
     
     def update_stats_after_game(self, game_result):
         """Update stats after a game"""
@@ -409,22 +447,24 @@ class User:
             conn.rollback()
             raise e
         finally:
-            conn.close()
+            release_db_connection(conn)
     
     def get_recent_games(self, limit=10):
         """Get recent game history"""
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
-        cursor.execute('''
-            SELECT * FROM game_history 
-            WHERE user_id = %s
-            ORDER BY played_at DESC
-            LIMIT %s
-        ''', (self.id, limit))
-        
-        games = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        try:
+            cursor.execute('''
+                SELECT * FROM game_history 
+                WHERE user_id = %s
+                ORDER BY played_at DESC
+                LIMIT %s
+            ''', (self.id, limit))
+            
+            games = [dict(row) for row in cursor.fetchall()]
+        finally:
+            release_db_connection(conn)
         
         return games
     
@@ -433,14 +473,16 @@ class User:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         
-        cursor.execute('''
-            SELECT * FROM achievements 
-            WHERE user_id = %s
-            ORDER BY unlocked_at DESC
-        ''', (self.id,))
-        
-        achievements = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        try:
+            cursor.execute('''
+                SELECT * FROM achievements 
+                WHERE user_id = %s
+                ORDER BY unlocked_at DESC
+            ''', (self.id,))
+            
+            achievements = [dict(row) for row in cursor.fetchall()]
+        finally:
+            release_db_connection(conn)
         
         return achievements
     
@@ -482,13 +524,15 @@ class User:
             # Update database
             avatar_url = f"/uploads/avatars/{filename}"
             conn = get_db_connection()
-            cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
-            cursor.execute(
-                'UPDATE users SET avatar = %s WHERE id = %s',
-                (avatar_url, self.id)
-            )
-            conn.commit()
-            conn.close()
+            try:
+                cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+                cursor.execute(
+                    'UPDATE users SET avatar = %s WHERE id = %s',
+                    (avatar_url, self.id)
+                )
+                conn.commit()
+            finally:
+                release_db_connection(conn)
             
             self.avatar = avatar_url
             return True, avatar_url
@@ -499,13 +543,15 @@ class User:
     def update_display_name(self, display_name):
         """Update user display name"""
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
-        cursor.execute(
-            'UPDATE users SET display_name = %s WHERE id = %s',
-            (display_name, self.id)
-        )
-        conn.commit()
-        conn.close()
+        try:
+            cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+            cursor.execute(
+                'UPDATE users SET display_name = %s WHERE id = %s',
+                (display_name, self.id)
+            )
+            conn.commit()
+        finally:
+            release_db_connection(conn)
         self.display_name = display_name
     
     def to_dict(self, include_stats=False):
@@ -525,5 +571,5 @@ class User:
         return data
 
 
-# Initialize database on module import
-init_database()
+# Database initialization should be called explicitly via init_database()
+# (called from app.py at startup)

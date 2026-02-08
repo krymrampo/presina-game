@@ -17,7 +17,7 @@ from auth_utils import (
     serialize_user,
     invalidate_token
 )
-from models.user import User, get_db_connection
+from models.user import User, get_db_connection, release_db_connection, init_database
 from sockets import register_lobby_events, register_game_events, register_chat_events
 
 # Setup logging
@@ -60,6 +60,12 @@ app.wsgi_app = _BlockWebSocketTransport(app.wsgi_app)
 register_lobby_events(socketio)
 register_game_events(socketio)
 register_chat_events(socketio)
+
+# Initialize database tables
+try:
+    init_database()
+except Exception as e:
+    logger.warning(f"Database initialization skipped: {e}")
 
 
 # ==================== Routes ====================
@@ -248,27 +254,29 @@ def api_leaderboard():
     order_by = order_map.get(category, order_map['wins'])
 
     conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
-    cursor.execute(f'''
-        SELECT 
-            u.username,
-            u.display_name,
-            s.games_played,
-            s.games_won,
-            s.games_lost,
-            s.best_streak,
-            CASE 
-                WHEN s.games_played > 0 THEN ROUND((s.games_won * 100.0) / s.games_played, 1)
-                ELSE 0
-            END AS win_rate
-        FROM users u
-        JOIN user_stats s ON s.user_id = u.id
-        WHERE u.is_active = 1
-        ORDER BY {order_by}
-        LIMIT %s
-    ''', (limit,))
-    rows = cursor.fetchall()
-    conn.close()
+    try:
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+        cursor.execute(f'''
+            SELECT 
+                u.username,
+                u.display_name,
+                s.games_played,
+                s.games_won,
+                s.games_lost,
+                s.best_streak,
+                CASE 
+                    WHEN s.games_played > 0 THEN ROUND((s.games_won * 100.0) / s.games_played, 1)
+                    ELSE 0
+                END AS win_rate
+            FROM users u
+            JOIN user_stats s ON s.user_id = u.id
+            WHERE u.is_active = TRUE
+            ORDER BY {order_by}
+            LIMIT %s
+        ''', (limit,))
+        rows = cursor.fetchall()
+    finally:
+        release_db_connection(conn)
 
     leaderboard = []
     for idx, row in enumerate(rows):

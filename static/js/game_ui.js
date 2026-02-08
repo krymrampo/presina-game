@@ -187,8 +187,9 @@ const GameUI = {
         
         handArea.innerHTML = sortedHand.map(card => {
             const isDisabled = !isMyTurn ? 'disabled' : '';
+            const safeName = card.display_name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const clickHandler = isMyTurn ? 
-                `onclick="selectCard('${card.suit}', ${card.value}, '${card.display_name}', event)"` : '';
+                `onclick="selectCard('${card.suit}', ${card.value}, '${safeName}', event)"` : '';
             
             return `
                 <img src="/carte_napoletane/${card.suit}/${card.suit}_${card.value}.jpg" 
@@ -282,13 +283,14 @@ const GameUI = {
             }
             
             const spectatorBadge = player.is_spectator ? ' 👁️' : '';
+            const botBadge = player.is_bot ? ' 🤖' : '';
             const timerInfo = gameState.turn_timer;
             const hasTimer = timerInfo && timerInfo.active && timerInfo.player_id === player.player_id && timerInfo.seconds_left !== null;
             const timerText = hasTimer ? ` <span class="turn-timer">⏱ ${timerInfo.seconds_left}s</span>` : '';
             
             return `
-                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn current-turn-pulse' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''} ${statusColorClass}">
-                    <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}${timerText}</div>
+                <div class="table-position pos-${posIndex} ${isCurrent ? 'current-turn current-turn-pulse' : ''} ${isOffline ? 'offline' : ''} ${isMe ? 'is-me' : ''} ${player.is_spectator ? 'spectator' : ''} ${player.is_bot ? 'is-bot' : ''} ${statusColorClass}">
+                    <div class="player-name">${isMe ? '👤 ' : ''}${escapeHtml(player.name)}${spectatorBadge}${botBadge}${timerText}</div>
                     <div class="player-bet">${betInfo}</div>
                 </div>
             `;
@@ -311,7 +313,7 @@ const GameUI = {
                     return `
                         <div class="played-card-position pos-${posIndex}" data-player-id="${playerId}" title="${player?.name}: ${card.display_name}${jollyText}">
                             <img src="/carte_napoletane/${card.suit}/${card.suit}_${card.value}.jpg" 
-                                 class="card" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                                 class="card" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">
                         </div>
                     `;
                 }).join('');
@@ -369,12 +371,13 @@ const GameUI = {
             }
             
             return `
-                <div class="player-info-card ${isCurrent ? 'current' : ''} ${isMe ? 'me' : ''} ${statusClass} ${statusColorClass}">
+                <div class="player-info-card ${isCurrent ? 'current' : ''} ${isMe ? 'me' : ''} ${statusClass} ${statusColorClass} ${player.is_bot ? 'is-bot' : ''}">
                     <div class="name-row">
                         <span>
                             <span class="online-dot ${player.is_online ? 'online' : 'offline'}"></span>
                             ${escapeHtml(player.name)}
                             ${player.is_spectator ? ' 👁️' : ''}
+                            ${player.is_bot ? ' 🤖' : ''}
                         </span>
                         <span class="lives-display">❤️ ${player.lives}</span>
                     </div>
@@ -685,6 +688,18 @@ const GameUI = {
                 </div>
             `;
         }).join('');
+        
+        // Show "Play Again" button only for admin
+        const playAgainBtn = document.getElementById('btn-play-again');
+        if (playAgainBtn) {
+            if (gameState.admin_id === App.playerId) {
+                playAgainBtn.classList.remove('hidden');
+                playAgainBtn.disabled = false;
+                playAgainBtn.textContent = '🔄 Gioca Ancora';
+            } else {
+                playAgainBtn.classList.add('hidden');
+            }
+        }
     }
 };
 

@@ -98,6 +98,9 @@ const SocketClient = {
             this.reconnectAttempts = 0;
             this.startHeartbeat();
             this.setupVisibilityHandler();
+            // Hide reconnection overlay
+            const overlay = document.getElementById('reconnect-overlay');
+            if (overlay) overlay.classList.add('hidden');
             
             // If we have a saved room, try to rejoin automatically
             if (App.currentRoom && App.playerId) {
@@ -111,6 +114,11 @@ const SocketClient = {
             this.connected = false;
             this.stopHeartbeat();
             this.removeVisibilityHandler();
+            // Show reconnection overlay if we had an active session
+            if (App.playerId) {
+                const overlay = document.getElementById('reconnect-overlay');
+                if (overlay) overlay.classList.remove('hidden');
+            }
         });
         
         socket.on('connect_error', (error) => {
@@ -145,6 +153,33 @@ const SocketClient = {
         // Registration
         socket.on('registered', (data) => {
             console.log('Registered as:', data);
+            
+            // If server assigned a different player_id (account-based device switch)
+            if (data.player_id && data.player_id !== App.playerId) {
+                console.log('Device takeover: switching player_id from', App.playerId, 'to', data.player_id);
+                App.playerId = data.player_id;
+                sessionStorage.setItem('presina_player_id', data.player_id);
+            }
+            
+            // If server reports an existing room for this account
+            if (data.existing_room) {
+                App.currentRoom = data.existing_room;
+                sessionStorage.setItem('presina_room', JSON.stringify(data.existing_room));
+                // Show rejoin banner (may be on lobby screen already)
+                if (typeof checkAndShowRejoinBanner === 'function') {
+                    checkAndShowRejoinBanner();
+                }
+            }
+        });
+        
+        // Session taken over by another device
+        socket.on('session_taken_over', (data) => {
+            console.log('Session taken over:', data.message);
+            App.currentRoom = null;
+            App.gameState = null;
+            sessionStorage.removeItem('presina_room');
+            showScreen('lobby');
+            alert(data.message || 'Sessione trasferita su un altro dispositivo');
         });
         
         // Lobby events
@@ -220,8 +255,12 @@ const SocketClient = {
         });
         
         socket.on('left_room', (data) => {
-            App.currentRoom = null;
-            sessionStorage.removeItem('presina_room');
+            // Only clear room data if we actually left (not just marked offline during game)
+            const msg = data?.message || '';
+            if (msg !== 'Disconnesso dalla partita') {
+                App.currentRoom = null;
+                sessionStorage.removeItem('presina_room');
+            }
         });
         
         socket.on('player_disconnected', (data) => {
@@ -367,7 +406,7 @@ const SocketClient = {
         this.socket.emit('register_player', {
             player_id: App.playerId,
             name: App.playerName,
-            auth_token: authToken
+            auth_token: authToken || null
         });
     },
     
@@ -466,6 +505,12 @@ const SocketClient = {
     
     advanceTrick() {
         this.socket.emit('advance_trick', {
+            player_id: App.playerId
+        });
+    },
+    
+    playAgain() {
+        this.socket.emit('play_again', {
             player_id: App.playerId
         });
     },

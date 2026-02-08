@@ -984,10 +984,11 @@ input[type="text"]::placeholder {
 .played-card-position {
     position: absolute;
     width: calc(var(--table-width) * 0.12);
-    height: calc(var(--table-height) * 0.2454545);
+    aspect-ratio: 173 / 276;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     border-radius: 6px;
     transition: none;
+    overflow: hidden;
 }
 
 .played-card-position .card {
@@ -1129,6 +1130,17 @@ input[type="text"]::placeholder {
 
 .table-position.offline .player-name {
     opacity: 0.5;
+}
+
+.table-position.is-bot .player-name {
+    background: rgba(147, 51, 234, 0.2);
+    border: 2px dashed rgba(147, 51, 234, 0.6);
+    opacity: 0.75;
+}
+
+.player-info-card.is-bot {
+    opacity: 0.75;
+    border-left: 3px solid rgba(147, 51, 234, 0.6);
 }
 
 .table-position.spectator .player-name {
@@ -1890,6 +1902,13 @@ input[type="text"]::placeholder {
     font-size: 1.1rem;
 }
 
+.game-over-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
 /* ==================== Spectator Banner ==================== */
 #spectator-banner {
     background: var(--bg-light);
@@ -2177,4 +2196,40 @@ html {
         padding: 14px 28px;
         font-size: 16px;
     }
+}
+
+/* ==================== Reconnect Overlay ==================== */
+.reconnect-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s ease;
+}
+.reconnect-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+.reconnect-content {
+    text-align: center;
+    color: var(--text-primary);
+}
+.reconnect-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 16px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: reconnect-spin 0.8s linear infinite;
+}
+@keyframes reconnect-spin {
+    to { transform: rotate(360deg); }
+}
+.reconnect-text {
+    font-size: 1rem;
+    opacity: 0.9;
 }

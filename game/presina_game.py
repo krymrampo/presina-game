@@ -179,6 +179,22 @@ class PresinaGameOnline:
         """Start a new turn."""
         # Reset last turn correctness flag
         self.last_turn_all_correct = False
+
+        # Remove bot players from previous turn
+        bot_ids = [pid for pid, p in self.players.items() if p.is_bot]
+        for pid in bot_ids:
+            bot_name = self.players[pid].name
+            self.force_remove_player(pid)
+            self._add_message('system', f"🤖 {bot_name} è stato rimosso dalla partita")
+
+        # Check if enough real players remain after bot removal
+        active = self.get_active_players()
+        if len(active) < self.MIN_PLAYERS:
+            if len(active) == 1:
+                self._add_message('system', f"{active[0].name} è l'ultimo giocatore rimasto!")
+            self._end_game()
+            return
+
         # Reset players for new turn
         for player in self.players.values():
             player.reset_for_turn()
@@ -401,6 +417,61 @@ class PresinaGameOnline:
                     self.play_card(player_id, card.suit, card.value)
         elif self.phase == GamePhase.WAITING_JOLLY and self.pending_jolly_player == player_id:
             self.play_card(player_id, None, None, 'prende')
+
+    def mark_as_bot(self, player_id: str) -> bool:
+        """Mark a player as bot-controlled (after abandon). Bot finishes current turn."""
+        player = self.get_player(player_id)
+        if not player:
+            return False
+        player.is_bot = True
+        player.is_online = False
+        player.offline_since = None  # Don't trigger offline timeout
+        player.sid = None
+        self._add_message('system', f"🤖 {player.name} ha abbandonato – un bot giocherà al suo posto per questo turno")
+        return True
+
+    def _handle_bot_auto_play(self, _depth: int = 0):
+        """Immediately auto-play for any bot whose turn it is."""
+        if _depth > 20:  # Safety: max 20 chained bot actions
+            return
+        if self.phase not in (GamePhase.BETTING, GamePhase.PLAYING, GamePhase.WAITING_JOLLY):
+            return
+
+        # Determine current player
+        if self.phase == GamePhase.BETTING:
+            current = self.get_current_better()
+        elif self.phase == GamePhase.WAITING_JOLLY:
+            current = self.get_player(self.pending_jolly_player) if self.pending_jolly_player else None
+        else:
+            current = self.get_current_player()
+
+        if not current or not current.is_bot:
+            return
+
+        # Bot plays immediately (no delay)
+        self._add_message('system', f"🤖 {current.name} (Bot) gioca automaticamente")
+
+        if self.phase == GamePhase.BETTING:
+            forbidden = self.get_forbidden_bet()
+            auto_bet = 1 if forbidden == 0 else 0
+            self.make_bet(current.player_id, auto_bet)
+        elif self.phase == GamePhase.PLAYING:
+            if current.hand:
+                card = current.hand[0]
+                if card.is_jolly:
+                    self.play_card(current.player_id, card.suit, card.value, 'prende')
+                else:
+                    self.play_card(current.player_id, card.suit, card.value)
+        elif self.phase == GamePhase.WAITING_JOLLY and self.pending_jolly_player == current.player_id:
+            self.play_card(current.player_id, None, None, 'prende')
+
+        # After playing, the game may have advanced to another bot's turn
+        # Recurse to handle chains of bots (e.g. multiple bots betting in sequence)
+        self._handle_bot_auto_play(_depth + 1)
+
+    def get_real_active_players(self) -> List[Player]:
+        """Get active players that are NOT bots (real humans still in the game)."""
+        return [p for p in self.get_active_players() if not p.is_bot]
     
     # ==================== Betting Phase ====================
     
@@ -740,8 +811,11 @@ class PresinaGameOnline:
         self.phase = GamePhase.GAME_OVER
         self._clear_turn_timer()
         
-        # Sort players by lives (descending)
-        all_players = list(self.players.values())
+        # Sort non-spectator players by lives (descending)
+        all_players = [
+            p for p in self.players.values()
+            if not p.is_spectator and not p.join_next_turn
+        ]
         all_players.sort(key=lambda p: p.lives, reverse=True)
         
         self.game_results = []
@@ -749,13 +823,61 @@ class PresinaGameOnline:
             self.game_results.append({
                 'position': i + 1,
                 'player_id': player.player_id,
-                'name': player.name,
+                'name': f"🤖 {player.name}" if player.is_bot else player.name,
                 'lives': player.lives
             })
         
         if self.game_results:
             winner = self.game_results[0]
             self._add_message('system', f"Partita finita! Vince {winner['name']} con {winner['lives']} vite!")
+    
+    def reset_game(self):
+        """Reset game state so the same room can start a new game."""
+        if self.phase != GamePhase.GAME_OVER:
+            return False
+        
+        # Reset game-level state
+        self.phase = GamePhase.WAITING
+        self.current_turn = 0
+        self.current_trick = 0
+        self.current_player_index = 0
+        self.first_better_index = 0
+        self.trick_starter_index = 0
+        self.bets_made = []
+        self.cards_on_table = []
+        self.last_trick_cards = []
+        self.pending_jolly_player = None
+        self.trick_winner_id = None
+        self.is_last_trick_of_turn = False
+        self.turn_results = []
+        self.game_results = []
+        self.last_turn_all_correct = False
+        self.messages = []
+        self._clear_turn_timer()
+
+        # Remove bot players (they were abandoned and should not persist)
+        bot_ids = [pid for pid, p in self.players.items() if p.is_bot]
+        for pid in bot_ids:
+            del self.players[pid]
+            if pid in self.player_order:
+                self.player_order.remove(pid)
+        
+        # Reset each player that is still present
+        for player in self.players.values():
+            player.lives = Player.INITIAL_LIVES
+            player.hand = []
+            player.bet = None
+            player.tricks_won = 0
+            player.total_tricks_won = 0
+            player.total_bets_correct = 0
+            player.total_bets_wrong = 0
+            player.total_lives_lost = 0
+            player.is_spectator = False
+            player.join_next_turn = False
+            player.ready_for_next_turn = False
+        
+        self._add_message('system', 'Nuova partita! In attesa di giocatori...')
+        return True
     
     # ==================== Special Turn (1 card) ====================
     
@@ -778,11 +900,14 @@ class PresinaGameOnline:
         if len(self.messages) > 100:
             self.messages = self.messages[-100:]
     
-    def get_state_for_player(self, player_id: str) -> dict:
-        """Get the game state from a specific player's perspective."""
-        # Check for offline players periodically
+    def tick(self):
+        """Run periodic checks (offline players, turn timeouts, bot auto-play). Call once before broadcasting, NOT per-player."""
         self.check_and_handle_offline_player()
         self.check_and_handle_turn_timeout()
+        self._handle_bot_auto_play()
+
+    def get_state_for_player(self, player_id: str) -> dict:
+        """Get the game state from a specific player's perspective."""
         
         player = self.get_player(player_id)
         is_spectator = player is None or player.is_spectator if player else True

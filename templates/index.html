@@ -408,7 +408,10 @@
                 <div id="final-standings" class="standings">
                     <!-- Final standings -->
                 </div>
-                <button id="btn-back-lobby" class="btn btn-primary">Torna alla Lobby</button>
+                <div class="game-over-actions">
+                    <button id="btn-play-again" class="btn btn-primary hidden">🔄 Gioca Ancora</button>
+                    <button id="btn-back-lobby" class="btn btn-secondary">Torna alla Lobby</button>
+                </div>
             </div>
         </div>
 
@@ -428,6 +431,14 @@
         </div>
     </div>
     
+    <!-- Reconnection Overlay -->
+    <div id="reconnect-overlay" class="reconnect-overlay hidden">
+        <div class="reconnect-content">
+            <div class="reconnect-spinner"></div>
+            <p class="reconnect-text">Connessione persa. Riconnessione in corso…</p>
+        </div>
+    </div>
+
     <script src="/static/js/main.js?v=20260131a"></script>
     <script src="/static/js/auth.js?v=20260131a"></script>
     <script src="/static/js/socket_client.js?v=20260131a"></script>

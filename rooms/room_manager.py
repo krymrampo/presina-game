@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 import time
 import uuid
+import threading
 
 from game.player import Player
 from game.presina_game import PresinaGameOnline, GamePhase
@@ -90,6 +91,7 @@ class RoomManager:
     OFFLINE_GRACE_SECONDS_WAITING = 300.0  # Grace period: 5 minutes (was 30s - too short!)
     
     def __init__(self):
+        self.lock = threading.RLock()  # Protects all mutable state
         self.rooms: Dict[str, Room] = {}
         self.player_rooms: Dict[str, str] = {}  # player_id -> room_id
         self.sid_to_player: Dict[str, str] = {}  # socket sid -> player_id
@@ -197,7 +199,6 @@ class RoomManager:
     
     def get_public_rooms(self) -> List[Room]:
         """Get all public rooms for the lobby."""
-        self.cleanup_offline_players()
         return [r for r in self.rooms.values() if r.is_public]
 
     # ==================== Auth Mapping ====================
@@ -372,19 +373,25 @@ class RoomManager:
             success, msg = self.leave_room(player_id)
             return success, msg, room if room_id in self.rooms else None
 
-        # Game in progress: force remove player from game to free the slot
-        room.game.force_remove_player(player_id)
+        # Game in progress: mark player as bot so it finishes the current turn
+        room.game.mark_as_bot(player_id)
 
         if player_id in self.player_rooms:
             del self.player_rooms[player_id]
 
-        # Reassign admin if needed
-        if room.admin_id == player_id:
-            remaining_ids = list(room.game.players.keys())
-            room.admin_id = remaining_ids[0] if remaining_ids else room.admin_id
+        # Remove socket mapping for this player
+        sids_to_remove = [sid for sid, pid in self.socket_to_player.items() if pid == player_id]
+        for sid in sids_to_remove:
+            del self.socket_to_player[sid]
 
-        # Delete room if empty
-        if len(room.game.players) == 0:
+        # Reassign admin if needed (pick a non-bot player)
+        if room.admin_id == player_id:
+            real_players = [pid for pid, p in room.game.players.items() if not p.is_bot]
+            room.admin_id = real_players[0] if real_players else room.admin_id
+
+        # Delete room if no real players remain
+        real_players = [pid for pid, p in room.game.players.items() if not p.is_bot]
+        if len(real_players) == 0:
             self.delete_room(room_id)
             return True, "Stanza chiusa", None
 
@@ -429,6 +436,44 @@ class RoomManager:
         if player_id not in self.player_rooms:
             return None
         return self.get_room(self.player_rooms[player_id])
+    
+    # ==================== Device Takeover ====================
+    
+    def takeover_player_session(self, user_id: int, new_sid: str) -> Optional[tuple]:
+        """
+        When an authenticated user connects from a new device,
+        find and take over their existing player session.
+        
+        Must be called with self.lock held.
+        
+        Returns (old_player_id, room, old_sid) if found, None otherwise.
+        """
+        if not user_id:
+            return None
+        
+        for room_id, room in self.rooms.items():
+            for pid, player in room.game.players.items():
+                if player.user_id == user_id:
+                    old_sid = player.sid
+                    
+                    # Remove old socket mapping (prevents old device from affecting player)
+                    if old_sid and old_sid in self.sid_to_player:
+                        del self.sid_to_player[old_sid]
+                    
+                    # Update player's socket to new device
+                    player.sid = new_sid
+                    player.is_online = True
+                    player.offline_since = None
+                    player.is_away = False
+                    player.away_since = None
+                    player.last_activity = time.time()
+                    
+                    # Register new socket → old player_id
+                    self.sid_to_player[new_sid] = pid
+                    
+                    return (pid, room, old_sid)
+        
+        return None
     
     # ==================== Reconnection ====================
     
@@ -488,6 +533,10 @@ class RoomManager:
             if room:
                 player = room.game.get_player(player_id)
                 if player:
+                    # Only mark offline if this sid is still the player's current sid.
+                    # If the player has a different sid (device takeover), skip.
+                    if player.sid is not None and player.sid != sid:
+                        return
                     player.is_online = False
                     player.offline_since = time.time()
                     player.sid = None
