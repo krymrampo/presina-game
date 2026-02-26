@@ -341,6 +341,152 @@
                     <!-- Right Panel removed (players list now on table) -->
                 </div>
                 
+                <!-- ==================== MOBILE UI ==================== -->
+
+                <!-- Mobile Spectator Banner -->
+                <div id="mobile-spectator-banner" class="mobile-spectator-banner hidden">
+                    👁️ Sei spettatore. Giocherai dal prossimo turno.
+                </div>
+
+                <!-- Mobile Special Turn Note -->
+                <div id="mobile-special-note" class="mobile-special-note hidden">
+                    ⚠️ Turno speciale: vedi le carte degli altri, non le tue!
+                </div>
+
+                <!-- Mobile Player Status Bar -->
+                <div class="mobile-player-bar">
+                    <div class="mobile-player-info">
+                        <div class="mobile-player-avatar">🃏</div>
+                        <div class="mobile-player-details">
+                            <div id="mobile-player-name" class="mobile-player-name">Giocatore</div>
+                            <div class="mobile-player-stats">
+                                <span>❤️ <span id="mobile-player-lives">3</span></span>
+                                <span>🎯 <span id="mobile-player-bet">-</span></span>
+                                <span>✅ <span id="mobile-player-tricks">0</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mobile-quick-actions" class="mobile-quick-actions"></div>
+                </div>
+
+                <!-- Mobile Hand -->
+                <div class="mobile-hand-container">
+                    <div class="mobile-hand-title">
+                        <span>Le tue carte</span>
+                        <span id="mobile-cards-count">0 carte</span>
+                    </div>
+                    <div id="mobile-hand" class="mobile-hand"></div>
+                </div>
+
+                <!-- Mobile Tab Bar -->
+                <div class="mobile-tab-bar">
+                    <button class="mobile-tab-btn active" data-tab="game" onclick="MobileUI.switchTab('game')">
+                        <span class="icon">🃏</span>
+                        <span>Gioco</span>
+                    </button>
+                    <button id="mobile-bet-tab-btn" class="mobile-tab-btn" data-tab="bet" onclick="MobileUI.openBettingSheet()" style="display:none;">
+                        <span class="icon">🎯</span>
+                        <span>Punta</span>
+                    </button>
+                    <button class="mobile-tab-btn" data-tab="players" onclick="MobileUI.openPlayersSheet()">
+                        <span class="icon">👥</span>
+                        <span>Giocatori</span>
+                    </button>
+                    <button class="mobile-tab-btn" data-tab="chat" onclick="MobileUI.openChatSheet()">
+                        <span class="icon">💬</span>
+                        <span>Chat</span>
+                        <span id="mobile-chat-badge" class="mobile-tab-badge hidden">0</span>
+                    </button>
+                </div>
+
+                <!-- Mobile Card Confirm Overlay -->
+                <div id="mobile-card-confirm" class="mobile-card-confirm hidden">
+                    <img id="mobile-card-confirm-img" class="mobile-card-confirm-card" src="" alt="Carta selezionata">
+                    <p class="mobile-card-confirm-text">Vuoi giocare questa carta?</p>
+                    <div class="mobile-card-confirm-actions">
+                        <button class="btn btn-secondary" onclick="MobileUI.cancelCard()">✗ Annulla</button>
+                        <button class="btn btn-primary" onclick="MobileUI.confirmCard()">✓ Gioca</button>
+                    </div>
+                </div>
+
+                <!-- Mobile Players Sheet -->
+                <div id="mobile-players-sheet-overlay" class="mobile-sheet-overlay" onclick="MobileUI.closeSheets()"></div>
+                <div id="mobile-players-sheet" class="mobile-sheet">
+                    <div class="mobile-sheet-handle"></div>
+                    <div class="mobile-sheet-header">
+                        <span class="mobile-sheet-title">👥 Giocatori</span>
+                        <button class="mobile-sheet-close" onclick="MobileUI.closeSheets()">✕</button>
+                    </div>
+                    <div id="mobile-players-sheet-content" class="mobile-sheet-content">
+                        <div class="mobile-players-list"></div>
+                    </div>
+                </div>
+
+                <!-- Mobile Chat Sheet -->
+                <div id="mobile-chat-sheet-overlay" class="mobile-sheet-overlay" onclick="MobileUI.closeSheets()"></div>
+                <div id="mobile-chat-sheet" class="mobile-sheet">
+                    <div class="mobile-sheet-handle"></div>
+                    <div class="mobile-sheet-header">
+                        <span class="mobile-sheet-title">💬 Chat</span>
+                        <button class="mobile-sheet-close" onclick="MobileUI.closeSheets()">✕</button>
+                    </div>
+                    <div class="mobile-sheet-content">
+                        <div id="mobile-chat-messages" class="mobile-chat-messages"></div>
+                    </div>
+                    <div class="mobile-chat-input-area">
+                        <input type="text" id="mobile-chat-input" maxlength="200" placeholder="Scrivi un messaggio...">
+                        <button class="mobile-chat-send-btn" onclick="MobileUI.sendChatMessage()">➤</button>
+                    </div>
+                </div>
+
+                <!-- Mobile Betting Sheet -->
+                <div id="mobile-betting-sheet-overlay" class="mobile-sheet-overlay" onclick="MobileUI.closeSheets()"></div>
+                <div id="mobile-betting-sheet" class="mobile-sheet">
+                    <div class="mobile-sheet-handle"></div>
+                    <div class="mobile-sheet-header">
+                        <span class="mobile-sheet-title">🎯 Fai la tua puntata</span>
+                        <button class="mobile-sheet-close" onclick="MobileUI.closeSheets()">✕</button>
+                    </div>
+                    <div class="mobile-sheet-content">
+                        <div class="mobile-betting-content">
+                            <h4>Quante mani pensi di vincere?</h4>
+                            <div id="mobile-bet-grid" class="mobile-bet-grid"></div>
+                            <p id="mobile-bet-forbidden-note" class="mobile-bet-forbidden-note hidden"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Turn Results (full-screen) -->
+                <div id="mobile-turn-results" class="mobile-turn-results">
+                    <div class="mobile-turn-results-header">
+                        <h3>📊 Risultati del Turno</h3>
+                    </div>
+                    <div id="mobile-turn-results-content" class="mobile-turn-results-content"></div>
+                    <div class="mobile-turn-results-footer">
+                        <p id="mobile-ready-count" class="ready-count">In attesa...</p>
+                        <button id="mobile-btn-next-turn" class="btn btn-primary hidden">Prossimo Turno</button>
+                    </div>
+                </div>
+
+                <!-- Mobile Jolly Choice -->
+                <div id="mobile-jolly-choice" class="mobile-jolly-overlay hidden">
+                    <div class="mobile-jolly-title">🃏 Jolly!</div>
+                    <div class="mobile-jolly-subtitle">Hai giocato il Jolly. Scegli come usarlo:</div>
+                    <div class="mobile-jolly-buttons">
+                        <button class="mobile-jolly-btn prende" onclick="MobileUI.chooseJolly('prende')">💪 Prende (Più Forte)</button>
+                        <button class="mobile-jolly-btn lascia" onclick="MobileUI.chooseJolly('lascia')">🪶 Lascia (Più Debole)</button>
+                    </div>
+                </div>
+
+                <!-- Mobile Trick Winner Popup -->
+                <div id="mobile-trick-popup" class="mobile-trick-popup">
+                    <div class="mobile-trick-popup-icon">🏆</div>
+                    <div id="mobile-trick-popup-title" class="mobile-trick-popup-title">Hai vinto la mano!</div>
+                    <div id="mobile-trick-popup-card" class="mobile-trick-popup-card"></div>
+                </div>
+
+                <!-- ==================== END MOBILE UI ==================== -->
+
                 <!-- Table Bets Overlay (visible during betting phase) -->
                 <div id="table-bets-overlay" class="table-bets-overlay hidden">
                     <h3>Puntate in corso...</h3>

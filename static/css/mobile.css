@@ -8,6 +8,15 @@
     display: none;
 }
 
+/* ==================== Hide mobile-only in-flow elements on desktop ==================== */
+.mobile-player-bar,
+.mobile-hand-container,
+.mobile-tab-bar,
+.mobile-spectator-banner,
+.mobile-special-note {
+    display: none;
+}
+
 /* ==================== Mobile Game Layout ==================== */
 @media (max-width: 768px) {
     /* Hide desktop-only elements on mobile */
@@ -980,6 +989,15 @@
     
     /* Hide desktop chat on mobile */
     .game-chat {
+        display: none !important;
+    }
+
+    /* Hide desktop footer and desktop spectator banner on mobile */
+    .game-footer {
+        display: none !important;
+    }
+
+    #spectator-banner {
         display: none !important;
     }
     
