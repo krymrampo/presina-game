@@ -36,6 +36,17 @@ const Chat = {
         if (!this.isOpen && (App.currentScreen === 'game' || App.currentScreen === 'game-over')) {
             document.getElementById('chat-badge').classList.remove('hidden');
         }
+        
+        // Update mobile chat badge
+        if (window.MobileUI && MobileUI.isMobile()) {
+            const lastMsg = this.messages[this.messages.length - 1];
+            const isOwn = lastMsg && lastMsg.player_id === App.playerId;
+            const chatSheet = document.getElementById('mobile-chat-sheet');
+            if (chatSheet && !chatSheet.classList.contains('active') && !isOwn) {
+                MobileUI.unreadChatCount++;
+                MobileUI.updateChatBadge();
+            }
+        }
     },
     
     loadHistory(messages) {
@@ -57,6 +68,28 @@ const Chat = {
             waitingChatMessages.innerHTML = this.renderMessageList();
             waitingChatMessages.scrollTop = waitingChatMessages.scrollHeight;
         }
+        
+        // Render in mobile chat
+        const mobileChatMessages = document.getElementById('mobile-chat-messages');
+        if (mobileChatMessages) {
+            mobileChatMessages.innerHTML = this.renderMobileMessageList();
+            mobileChatMessages.scrollTop = mobileChatMessages.scrollHeight;
+        }
+    },
+    
+    renderMobileMessageList() {
+        return this.messages.map(msg => {
+            const isOwn = msg.player_id === App.playerId;
+            const nameKey = msg.player_id || msg.player_name || '';
+            const nameColor = this.getNameColor(nameKey);
+            
+            return `
+                <div class="mobile-chat-message ${isOwn ? 'own' : 'other'}">
+                    ${!isOwn ? `<div class="msg-name" style="color: ${nameColor};">${escapeHtml(msg.player_name)}</div>` : ''}
+                    <div>${escapeHtml(msg.message)}</div>
+                </div>
+            `;
+        }).join('');
     },
     
     renderMessageList() {

@@ -146,6 +146,14 @@
         display: none;
     }
     
+    /* Show mobile-only in-flow elements */
+    .mobile-player-bar,
+    .mobile-hand-container,
+    .mobile-spectator-banner,
+    .mobile-special-note {
+        display: block;
+    }
+
     /* Mobile Player Status Bar */
     .mobile-player-bar {
         background: var(--bg-card);

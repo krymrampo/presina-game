@@ -228,6 +228,7 @@ const SocketClient = {
             } else {
                 showScreen('game');
                 GameUI.updateGameScreen(data.game_state);
+                MobileUI.updateGameScreen(data.game_state);
             }
             // Load chat history for this room
             SocketClient.getChatHistory();
@@ -291,6 +292,7 @@ const SocketClient = {
             } else {
                 showScreen('game');
                 GameUI.updateGameScreen(data.game_state);
+                MobileUI.updateGameScreen(data.game_state);
             }
             // Load chat history on rejoin
             SocketClient.getChatHistory();
@@ -310,6 +312,7 @@ const SocketClient = {
             App.gameState = data.game_state;
             showScreen('game');
             GameUI.updateGameScreen(data.game_state);
+            MobileUI.updateGameScreen(data.game_state);
         });
         
         socket.on('game_state', (data) => {
@@ -344,6 +347,7 @@ const SocketClient = {
                     showScreen('game');
                 }
                 GameUI.updateGameScreen(data.game_state);
+                MobileUI.updateGameScreen(data.game_state);
                 // Clear card selection
                 if (typeof clearCardSelection === 'function') {
                     clearCardSelection();
@@ -356,6 +360,11 @@ const SocketClient = {
                         data.game_state.trick_winner.card?.display_name || '',
                         isCurrentPlayerWinner,
                         data.game_state.trick_winner.player_id
+                    );
+                    MobileUI.showTrickWinner(
+                        data.game_state.trick_winner.player_name,
+                        data.game_state.trick_winner.card?.display_name || '',
+                        isCurrentPlayerWinner
                     );
                 }
                 // After 3 seconds, advance (only one client needs to trigger this)
@@ -388,6 +397,7 @@ const SocketClient = {
                 }
                 
                 GameUI.updateGameScreen(data.game_state);
+                MobileUI.updateGameScreen(data.game_state);
             }
         });
         
