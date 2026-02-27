@@ -8,12 +8,19 @@
     display: none;
 }
 
-/* ==================== Hide mobile-only in-flow elements on desktop ==================== */
+/* ==================== Hide mobile-only elements on desktop ==================== */
 .mobile-player-bar,
 .mobile-hand-container,
 .mobile-tab-bar,
 .mobile-spectator-banner,
-.mobile-special-note {
+.mobile-special-note,
+.mobile-sheet-overlay,
+.mobile-sheet,
+.mobile-card-confirm,
+.mobile-jolly-overlay,
+.mobile-turn-results,
+.mobile-trick-popup,
+.mobile-table-bets {
     display: none;
 }
 
@@ -27,6 +34,17 @@
     /* Show mobile-only elements */
     .mobile-only {
         display: block !important;
+    }
+
+    /* Re-enable mobile overlays/components only on mobile */
+    .mobile-sheet-overlay,
+    .mobile-sheet,
+    .mobile-card-confirm,
+    .mobile-jolly-overlay,
+    .mobile-turn-results,
+    .mobile-trick-popup,
+    .mobile-table-bets {
+        display: block;
     }
     
     /* Game screen mobile layout */
